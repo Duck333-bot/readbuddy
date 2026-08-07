@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { progressPercent } from "@/lib/format";
+import { readSelection, type ReaderSelection } from "@/lib/selection";
 import { trpc } from "@/lib/trpc";
 import {
   ArrowLeft,
@@ -24,14 +25,11 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation, useParams, useSearch } from "wouter";
-
-type SelectionState = {
-  text: string;
-  x: number;
-  y: number;
-};
+type SelectionState = ReaderSelection;
 
 const FONT_SIZES = [17, 18, 19, 20, 22, 24];
+/** Height of the sticky reader header in pixels (`h-14`). */
+const HEADER_HEIGHT = 56;
 const WIDTHS = [
   { label: "Narrow", value: "34rem" },
   { label: "Comfortable", value: "40rem" },
@@ -142,6 +140,12 @@ export default function Reader() {
         return;
       }
       if (pageNumber === null) return;
+      // Shift+Arrow is how people extend a text selection; it must never turn
+      // the page out from under them.
+      if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
+        if (event.key === "Escape") setSelection(null);
+        return;
+      }
       if (event.key === "ArrowRight" || event.key === "PageDown") {
         event.preventDefault();
         goTo(pageNumber + 1);
@@ -158,25 +162,13 @@ export default function Reader() {
 
   // Detect a text selection inside the page body and place the action pill.
   const handleSelection = useCallback(() => {
-    const active = window.getSelection();
-    const text = active?.toString().trim() ?? "";
-    if (!text || text.length < 2) {
-      setSelection(null);
-      return;
-    }
-    const container = articleRef.current;
-    if (!container || !active || active.rangeCount === 0) return;
-    const range = active.getRangeAt(0);
-    if (!container.contains(range.commonAncestorContainer)) {
-      setSelection(null);
-      return;
-    }
-    const rect = range.getBoundingClientRect();
-    setSelection({
-      text: text.slice(0, 3500),
-      x: rect.left + rect.width / 2,
-      y: rect.top,
-    });
+    setSelection(
+      readSelection(window.getSelection(), articleRef.current, {
+        headerHeight: HEADER_HEIGHT,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+      }),
+    );
   }, []);
 
   useEffect(() => {
@@ -184,10 +176,14 @@ export default function Reader() {
     document.addEventListener("mouseup", onUp);
     document.addEventListener("touchend", onUp);
     document.addEventListener("selectionchange", onUp);
+    // Also react to keyboard-driven selection (shift+arrow / shift+end), which
+    // some readers rely on and which never fires `mouseup`.
+    document.addEventListener("keyup", onUp);
     return () => {
       document.removeEventListener("mouseup", onUp);
       document.removeEventListener("touchend", onUp);
       document.removeEventListener("selectionchange", onUp);
+      document.removeEventListener("keyup", onUp);
     };
   }, [handleSelection]);
 
@@ -371,7 +367,8 @@ export default function Reader() {
                 </p>
               ) : (
                 <div
-                  className="font-reading text-foreground selection:bg-transparent"
+                  data-testid="page-text"
+                  className="font-reading text-foreground selection:bg-primary/20 selection:text-foreground"
                   style={{
                     fontSize: `${FONT_SIZES[fontSizeIndex]}px`,
                     lineHeight: 1.82,
@@ -473,8 +470,8 @@ export default function Reader() {
       {/* Floating selection action */}
       {selection && (
         <div
-          className="fixed z-50 -translate-x-1/2 -translate-y-full"
-          style={{ left: selection.x, top: Math.max(selection.y - 10, 56) }}>
+          className="fixed z-50 -translate-y-1/2 animate-in fade-in zoom-in-95 duration-150"
+          style={{ left: selection.x, top: selection.y }}>
           <Button
             size="sm"
             className="h-9 gap-1.5 rounded-full px-4 text-xs shadow-lift"

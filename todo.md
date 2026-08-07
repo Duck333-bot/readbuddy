@@ -63,4 +63,16 @@
 - [x] Fixed mysql2 insertId tuple bug found by the smoke script
 - [x] Cascade foreign keys added so deleting a book/user removes pages and notes automatically
 - [x] Smoke script re-run end-to-end with no manual SQL cleanup required
-- [ ] Reader and buddy panel need a real uploaded book to verify visually (requires signed-in session)
+- [x] Reader and buddy panel need a real uploaded book to verify visually (requires signed-in session)
+
+## Verification round 2 (scripted UI check)
+- [x] Fix selection detection: text-node-safe containment check (selection was never registering)
+- [x] Guard arrow-key page turns while extending a selection with shift
+- [x] Make the native selection highlight visible (was `selection:bg-transparent`)
+- [x] Move the ask pill into the margin beside the selection so it never covers text
+- [x] Extract selection logic into `client/src/lib/selection.ts` with 14 unit tests
+- [x] Add `scripts/ui-check.mjs`: real drag selection -> pill -> live AI answer -> save -> notebook -> deep link
+- [x] Confirmed in a real browser: selection, pill, live AI answer (~1.5k chars), saved note, notebook deep link
+- [x] Confirmed `auth.devLogin` is gated behind `NODE_ENV === "development"` (404 in production)
+- [x] Removed the seeded preview books, pages and notes from the database
+- [x] Removed scratch scripts from the project root
