@@ -62,6 +62,11 @@ export type InvokeParams = {
   tool_choice?: ToolChoice;
   maxTokens?: number;
   max_tokens?: number;
+  /**
+   * OpenAI GPT-5 family: caps *visible* output while leaving reasoning tokens
+   * unconstrained. Use this instead of max_tokens for gpt-* models.
+   */
+  max_completion_tokens?: number;
   outputSchema?: OutputSchema;
   output_schema?: OutputSchema;
   responseFormat?: ResponseFormat;
@@ -356,6 +361,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     reasoning,
     maxTokens,
     max_tokens,
+    max_completion_tokens,
   } = params;
 
   const payload: Record<string, unknown> = {
@@ -381,6 +387,9 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   const resolvedMaxTokens = max_tokens ?? maxTokens;
   if (typeof resolvedMaxTokens === "number") {
     payload.max_tokens = resolvedMaxTokens;
+  }
+  if (typeof max_completion_tokens === "number") {
+    payload.max_completion_tokens = max_completion_tokens;
   }
 
   if (thinking) {

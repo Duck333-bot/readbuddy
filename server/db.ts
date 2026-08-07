@@ -1,6 +1,15 @@
-import { eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import {
+  bookPages,
+  books,
+  InsertBook,
+  InsertBookPage,
+  InsertNotebookEntry,
+  InsertUser,
+  notebookEntries,
+  users,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +98,163 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+async function requireDb() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db;
+}
+
+/**
+ * mysql2 returns `[ResultSetHeader, fields]`, so the auto-increment id lives on
+ * the first element. Older drizzle drivers surface the header directly, so both
+ * shapes are handled.
+ */
+function readInsertId(result: unknown): number {
+  const header = Array.isArray(result) ? result[0] : result;
+  const id = (header as { insertId?: number } | undefined)?.insertId;
+  if (typeof id !== "number" || !Number.isFinite(id)) {
+    throw new Error("Insert did not return a usable id");
+  }
+  return id;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   Books                                    */
+/* -------------------------------------------------------------------------- */
+
+export async function createBook(values: InsertBook) {
+  const db = await requireDb();
+  const result = await db.insert(books).values(values);
+  return readInsertId(result);
+}
+
+export async function insertBookPages(rows: InsertBookPage[]) {
+  if (rows.length === 0) return;
+  const db = await requireDb();
+  // Chunk to stay well under MySQL max packet size for very long books.
+  const CHUNK = 40;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    await db.insert(bookPages).values(rows.slice(i, i + CHUNK));
+  }
+}
+
+export async function listBooksForUser(userId: number) {
+  const db = await requireDb();
+  return db
+    .select()
+    .from(books)
+    .where(eq(books.userId, userId))
+    .orderBy(desc(books.updatedAt));
+}
+
+export async function getBookForUser(bookId: number, userId: number) {
+  const db = await requireDb();
+  const rows = await db
+    .select()
+    .from(books)
+    .where(and(eq(books.id, bookId), eq(books.userId, userId)))
+    .limit(1);
+  return rows[0];
+}
+
+export async function getBookPage(bookId: number, pageNumber: number) {
+  const db = await requireDb();
+  const rows = await db
+    .select()
+    .from(bookPages)
+    .where(and(eq(bookPages.bookId, bookId), eq(bookPages.pageNumber, pageNumber)))
+    .limit(1);
+  return rows[0];
+}
+
+export async function updateBookProgress(bookId: number, userId: number, lastPage: number) {
+  const db = await requireDb();
+  await db
+    .update(books)
+    .set({ lastPage, lastOpenedAt: new Date() })
+    .where(and(eq(books.id, bookId), eq(books.userId, userId)));
+}
+
+export async function updateBookMeta(
+  bookId: number,
+  userId: number,
+  values: { title?: string; author?: string | null },
+) {
+  const db = await requireDb();
+  await db
+    .update(books)
+    .set(values)
+    .where(and(eq(books.id, bookId), eq(books.userId, userId)));
+}
+
+export async function deleteBookForUser(bookId: number, userId: number) {
+  const db = await requireDb();
+  const existing = await getBookForUser(bookId, userId);
+  if (!existing) return false;
+  await db.delete(bookPages).where(eq(bookPages.bookId, bookId));
+  await db.delete(notebookEntries).where(
+    and(eq(notebookEntries.bookId, bookId), eq(notebookEntries.userId, userId)),
+  );
+  await db.delete(books).where(and(eq(books.id, bookId), eq(books.userId, userId)));
+  return true;
+}
+
+export async function searchBookText(bookId: number, term: string, limit = 20) {
+  const db = await requireDb();
+  return db
+    .select({ pageNumber: bookPages.pageNumber, content: bookPages.content })
+    .from(bookPages)
+    .where(and(eq(bookPages.bookId, bookId), sql`${bookPages.content} LIKE ${"%" + term + "%"}`))
+    .orderBy(asc(bookPages.pageNumber))
+    .limit(limit);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                  Notebook                                  */
+/* -------------------------------------------------------------------------- */
+
+export async function createNotebookEntry(values: InsertNotebookEntry) {
+  const db = await requireDb();
+  const result = await db.insert(notebookEntries).values(values);
+  return readInsertId(result);
+}
+
+export async function listNotebookEntries(userId: number, bookId?: number) {
+  const db = await requireDb();
+  const where = bookId
+    ? and(eq(notebookEntries.userId, userId), eq(notebookEntries.bookId, bookId))
+    : eq(notebookEntries.userId, userId);
+  return db
+    .select({
+      id: notebookEntries.id,
+      bookId: notebookEntries.bookId,
+      pageNumber: notebookEntries.pageNumber,
+      mode: notebookEntries.mode,
+      highlight: notebookEntries.highlight,
+      question: notebookEntries.question,
+      answer: notebookEntries.answer,
+      createdAt: notebookEntries.createdAt,
+      bookTitle: books.title,
+      bookCoverUrl: books.coverUrl,
+    })
+    .from(notebookEntries)
+    .leftJoin(books, eq(notebookEntries.bookId, books.id))
+    .where(where)
+    .orderBy(desc(notebookEntries.createdAt));
+}
+
+export async function deleteNotebookEntry(entryId: number, userId: number) {
+  const db = await requireDb();
+  await db
+    .delete(notebookEntries)
+    .where(and(eq(notebookEntries.id, entryId), eq(notebookEntries.userId, userId)));
+}
+
+export async function countNotebookEntries(userId: number) {
+  const db = await requireDb();
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(notebookEntries)
+    .where(eq(notebookEntries.userId, userId));
+  return Number(rows[0]?.count ?? 0);
+}
