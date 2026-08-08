@@ -12,6 +12,8 @@ import {
 } from "../drizzle/schema";
 import {
   bookBrain,
+  bookChunks,
+  bookEmbeddings,
   bookEntities,
   readerMemory,
   readerSettings,
@@ -398,4 +400,78 @@ export async function getAllPagesForBook(bookId: number) {
     .from(bookPages)
     .where(eq(bookPages.bookId, bookId))
     .orderBy(asc(bookPages.pageNumber));
+}
+
+/* -------------------------------------------------------------------------- */
+/*                        Book Chunks (hierarchical pipeline)                 */
+/* -------------------------------------------------------------------------- */
+
+export async function deleteBookChunks(bookId: number) {
+  const db = await requireDb();
+  await db.delete(bookChunks).where(eq(bookChunks.bookId, bookId));
+}
+
+export async function insertBookChunk(values: {
+  bookId: number;
+  chapterNumber: number;
+  chunkSequence: number;
+  startPage: number;
+  endPage: number;
+  text: string;
+  summary?: string | null;
+  entities?: string[] | null;
+  concepts?: string[] | null;
+  keyPassages?: { text: string; reason: string }[] | null;
+}) {
+  const db = await requireDb();
+  const result = await db.insert(bookChunks).values(values);
+  const header = Array.isArray(result) ? result[0] : result;
+  return (header as { insertId?: number }).insertId ?? 0;
+}
+
+export async function getBookChunks(bookId: number) {
+  const db = await requireDb();
+  return db
+    .select()
+    .from(bookChunks)
+    .where(eq(bookChunks.bookId, bookId))
+    .orderBy(asc(bookChunks.chapterNumber), asc(bookChunks.chunkSequence));
+}
+
+export async function getBookChunksByIds(ids: number[]) {
+  if (ids.length === 0) return [];
+  const db = await requireDb();
+  return db.select().from(bookChunks).where(sql`${bookChunks.id} IN (${sql.join(ids.map(id => sql`${id}`), sql`, `)})`);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                        Book Embeddings (semantic retrieval)                */
+/* -------------------------------------------------------------------------- */
+
+export async function deleteBookEmbeddings(bookId: number) {
+  const db = await requireDb();
+  await db.delete(bookEmbeddings).where(eq(bookEmbeddings.bookId, bookId));
+}
+
+export async function insertBookEmbedding(values: {
+  bookId: number;
+  chunkId: number;
+  embedding: number[];
+  metadata?: {
+    startPage: number;
+    endPage: number;
+    chapterNumber: number;
+    chunkSequence: number;
+  } | null;
+}) {
+  const db = await requireDb();
+  await db.insert(bookEmbeddings).values(values);
+}
+
+export async function getBookEmbeddings(bookId: number) {
+  const db = await requireDb();
+  return db
+    .select()
+    .from(bookEmbeddings)
+    .where(eq(bookEmbeddings.bookId, bookId));
 }

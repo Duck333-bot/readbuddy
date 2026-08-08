@@ -156,6 +156,74 @@ export type BookBrain = typeof bookBrain.$inferSelect;
 export type InsertBookBrain = typeof bookBrain.$inferInsert;
 
 /**
+ * Chunks of a book for hierarchical processing.
+ * Each chunk is typically 5–10 pages. Chunks are analyzed independently,
+ * then synthesized at chapter and whole-book levels.
+ */
+export const bookChunks = mysqlTable(
+  "bookChunks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    bookId: int("bookId")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    /** Chapter number (1-indexed). 0 if chapter detection failed. */
+    chapterNumber: int("chapterNumber").notNull(),
+    /** Chunk sequence within the chapter (0-indexed). */
+    chunkSequence: int("chunkSequence").notNull(),
+    /** Starting page number of this chunk. */
+    startPage: int("startPage").notNull(),
+    /** Ending page number of this chunk (inclusive). */
+    endPage: int("endPage").notNull(),
+    /** Concatenated text of all pages in this chunk. */
+    text: text("text").notNull(),
+    /** Chunk-level summary (generated during pass 2). */
+    summary: text("summary"),
+    /** Chunk-level entities as JSON array. */
+    entities: json("entities").$type<string[]>(),
+    /** Chunk-level concepts as JSON array. */
+    concepts: json("concepts").$type<string[]>(),
+    /** Important passages in this chunk as JSON array. */
+    keyPassages: json("keyPassages").$type<{ text: string; reason: string }[]>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("bookChunks_bookId_idx").on(table.bookId)],
+);
+export type BookChunk = typeof bookChunks.$inferSelect;
+export type InsertBookChunk = typeof bookChunks.$inferInsert;
+
+/**
+ * Embeddings for semantic retrieval.
+ * Each chunk gets an embedding vector for similarity search.
+ */
+export const bookEmbeddings = mysqlTable(
+  "bookEmbeddings",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    bookId: int("bookId")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    chunkId: int("chunkId")
+      .notNull()
+      .references(() => bookChunks.id, { onDelete: "cascade" }),
+    /** Embedding vector as a JSON array of floats. */
+    embedding: json("embedding").$type<number[]>().notNull(),
+    /** Metadata: page range, chapter, etc. */
+    metadata: json("metadata").$type<{
+      startPage: number;
+      endPage: number;
+      chapterNumber: number;
+      chunkSequence: number;
+    }>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("bookEmbeddings_bookId_idx").on(table.bookId)],
+);
+export type BookEmbedding = typeof bookEmbeddings.$inferSelect;
+export type InsertBookEmbedding = typeof bookEmbeddings.$inferInsert;
+
+/**
  * Entities extracted from a book (pass 3): people, places, concepts, terms.
  * One row per entity. The AI uses these for "Remind me who this person is" etc.
  */

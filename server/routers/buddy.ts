@@ -39,20 +39,22 @@ export const buddyRouter = router({
 
       const page = await db.getBookPage(book.id, input.pageNumber);
 
-      // Fetch Book Brain context and reader memory in parallel — both are
-      // optional enrichments; failures are silently swallowed.
-      const [settings, brainCtx, memory] = await Promise.all([
+      // Fetch settings and reader memory first, then build brain context
+      // with the correct spoiler mode and the highlight text for semantic retrieval.
+      const [settings, memory] = await Promise.all([
         db.getReaderSettings(ctx.user.id, input.bookId).catch(() => null),
-        buildBrainContext(input.bookId, input.pageNumber, "safe").catch(() => null),
         db.getReaderMemory(ctx.user.id, input.bookId).catch(() => null),
       ]);
 
       const spoilerMode = settings?.spoilerMode ?? "safe";
 
-      // Re-build brain context with the correct spoiler mode.
-      const finalBrainCtx = brainCtx
-        ? await buildBrainContext(input.bookId, input.pageNumber, spoilerMode).catch(() => null)
-        : null;
+      // Build brain context with spoiler mode + highlight for semantic retrieval.
+      const finalBrainCtx = await buildBrainContext(
+        input.bookId,
+        input.pageNumber,
+        spoilerMode,
+        input.highlight,
+      ).catch(() => null);
 
       try {
         const answer = await askReadingBuddy({

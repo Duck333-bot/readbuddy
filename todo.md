@@ -91,3 +91,42 @@
 - [x] Reader memory: track vocab/concepts asked, infer preferred explanation level
 - [x] Update all vitest mocks to cover new DB helpers and modes — 48/48 tests pass
 - [x] Production build passes cleanly
+
+
+## CRITICAL FIX: Book Brain v3 — Process 100% of Every Book
+
+### Phase 1: Hierarchical Processing (chunk → chapter → whole book)
+- [ ] Identify chapter boundaries in bookPages (heuristic: page text starts with "Chapter", "CHAPTER", or numbered sections)
+- [ ] Rewrite buildFullText() to chunk by chapter (not 60k char limit)
+- [ ] Add chunkAnalysis pass: for each chunk (5–10 pages), generate summary + entities + concepts + important passages
+- [ ] Add chapterSynthesis pass: combine all chunk analyses for each chapter into a chapter-level brain
+- [ ] Add wholeBookSynthesis pass: combine all chapter brains into the final book brain
+- [ ] Update passCompleted enum to track: 1=extraction, 2=chunks, 3=chapters, 4=whole-book, 5=embeddings
+
+### Phase 2: Semantic Retrieval via Embeddings
+- [ ] Add bookEmbeddings table: (id, bookId, chunkId, embedding, metadata)
+- [ ] Generate embeddings for every chunk using Manus Forge embedding API
+- [ ] Implement semantic search: highlight → embed → search all chunks → rerank → return top 5
+- [ ] Update buildBrainContext() to use semantic search instead of page-proximity heuristic
+- [ ] Test: "remind me what the author said 180 pages ago" returns relevant passages
+
+### Phase 3: Spoiler-Aware Retrieval
+- [ ] Filter retrieved chunks by reader's current page before sending to AI
+- [ ] Store chunk page ranges in bookEmbeddings metadata
+- [ ] In buildBrainContext(), exclude chunks that occur after reader's current page when spoilerMode="safe"
+
+### Phase 4: LLM Provider Abstraction
+- [ ] Create server/llm/provider.ts: abstract interface for LLM calls
+- [ ] Create server/llm/openai.ts: OpenAI-compatible wrapper (current Forge endpoint)
+- [ ] Create server/llm/deepseek.ts: DeepSeek API wrapper (use DEEPSEEK_API_KEY env var)
+- [ ] Create server/llm/router.ts: task-based routing (chunk analysis → DeepSeek, whole-book → stronger model, etc.)
+- [ ] Update invokeLLM() to use the router instead of hardcoded OpenAI
+- [ ] Update bookBrain.ts to use the new provider abstraction
+
+### Phase 5: Testing & Verification
+- [ ] End-to-end test: upload a 300+ page book, verify all chunks are processed
+- [ ] Verify embeddings are generated for every chunk
+- [ ] Test semantic retrieval: query should find relevant passages from anywhere in the book
+- [ ] Test spoiler mode: retrieval should exclude future chapters
+- [ ] Update vitest mocks for new DB helpers (bookEmbeddings, chunkAnalysis, etc.)
+- [ ] Production build passes cleanly
