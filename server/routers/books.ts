@@ -190,6 +190,7 @@ export const booksRouter = router({
     .query(async ({ ctx, input }) => {
       await ownBookOrThrow(input.bookId, ctx.user.id);
       const brain = await db.getBookBrain(input.bookId);
+      const entities = await db.getBookEntities(input.bookId);
       return {
         passCompleted: brain?.passCompleted ?? 0,
         overallSummary: brain?.overallSummary ?? null,
@@ -200,6 +201,7 @@ export const booksRouter = router({
           summary: string;
           startPage: number;
         }[],
+        entities: entities.map(e => ({ name: e.name, type: e.type, pages: e.pages })),
       };
     }),
 

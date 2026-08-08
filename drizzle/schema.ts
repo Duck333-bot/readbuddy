@@ -185,6 +185,16 @@ export const bookChunks = mysqlTable(
     concepts: json("concepts").$type<string[]>(),
     /** Important passages in this chunk as JSON array. */
     keyPassages: json("keyPassages").$type<{ text: string; reason: string }[]>(),
+    /** Processing status: pending | processing | done | failed */
+    status: mysqlEnum("status", ["pending", "processing", "done", "failed"]).default("pending").notNull(),
+    /** Number of processing attempts (for retry logic). */
+    attemptCount: int("attemptCount").default(0).notNull(),
+    /** Last error message if status = failed. */
+    lastError: text("lastError"),
+    /** Timestamp when this chunk was successfully processed. */
+    processedAt: timestamp("processedAt"),
+    /** Version of the analysis pipeline that processed this chunk. */
+    analysisVersion: int("analysisVersion").default(1).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -197,6 +207,36 @@ export type InsertBookChunk = typeof bookChunks.$inferInsert;
  * Embeddings for semantic retrieval.
  * Each chunk gets an embedding vector for similarity search.
  */
+/**
+ * Fine-grained retrieval passages: ~800-token windows covering 100% of the book.
+ * Each passage gets its own embedding for precise semantic retrieval.
+ * These are separate from analysis chunks (which are larger, for understanding).
+ */
+export const retrievalPassages = mysqlTable(
+  "retrievalPassages",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    bookId: int("bookId")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    /** Starting page number of this passage. */
+    startPage: int("startPage").notNull(),
+    /** Ending page number of this passage (inclusive). */
+    endPage: int("endPage").notNull(),
+    /** The actual text of this passage (800-1000 tokens). */
+    text: text("text").notNull(),
+    /** Embedding vector as a JSON array of floats. */
+    embedding: json("embedding").$type<number[]>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("retrievalPassages_bookId_idx").on(table.bookId),
+    index("retrievalPassages_pages_idx").on(table.startPage, table.endPage),
+  ],
+);
+export type RetrievalPassage = typeof retrievalPassages.$inferSelect;
+export type InsertRetrievalPassage = typeof retrievalPassages.$inferInsert;
+
 export const bookEmbeddings = mysqlTable(
   "bookEmbeddings",
   {

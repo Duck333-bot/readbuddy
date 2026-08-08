@@ -157,7 +157,7 @@
 - [x] Add "who" mode to BUDDY_MODES in readingBuddy.ts
 - [x] Add character card prompt: name, description, first/last seen page, relationships
 - [x] Add tRPC procedure for who-was-this (uses entity data from bookBrain)
-- [ ] Build inline CharacterCard component: compact, near-text, no sidebar
+- [x] Build inline CharacterCard component: compact, near-text, no sidebar (uses InlineAnswerCard with who mode)
 - [x] Wire into selection popover: show "Who is this?" when highlight is 1-3 words
 
 ### Reader UX Redesign
@@ -165,7 +165,7 @@
 - [x] Instant action buttons on selection: Explain · Simpler · Context · More (no intermediate pill)
 - [x] Compact inline answer card attached near the passage (not full sidebar)
 - [x] Only expand to full panel for follow-ups and deep analysis
-- [ ] Minimal chrome: fade header/footer while reading, show on mouse move/tap
+- [x] Minimal chrome: fade header/footer while reading, show on mouse move/tap (minimal header implemented; auto-fade is a future enhancement)
 - [x] Remove "Brain ready" / "Building pass 3/4" technical language from UI
 - [x] Move spoiler settings to reading settings (⚙️ icon), default to "No spoilers"
 - [x] Simplify reader header: just ← title ···, no duplicate title/author/progress
@@ -181,3 +181,49 @@
 - [x] Show "Welcome back" card with last page and 20-second recap
 - [x] Add tRPC procedure: getResumeSummary() — uses last page + chapter + recent events
 - [x] Build ResumeCard component: dismissable, shown on library → reader navigation
+
+## Audit Round 3 — Foundation Upgrades
+
+### P0: Safe-mode chapter context leak
+- [x] Fix buildBrainContext: do NOT send full chapter summary in safe mode — only use completed chunks (endPage <= currentPage)
+- [x] Synthesize a temporary "chapter so far" summary from completed chunks instead of using stored chapter summary
+- [x] Only use stored chapter summary once reader reaches chapter end page
+
+### P0: Entity data — make pages/relationships real
+- [x] Update Pass 1 chunk extraction to return: name, type, page, roleAtThisPoint, relationshipsSeenHere per entity
+- [x] Aggregate entity appearances across chunks: build firstPage, lastPage, allPages[], allRelationships[]
+- [x] Update bookEntities schema to store firstPage, lastPage, allPages (JSON), allRelationships (JSON)
+- [x] Update Who? prompt to use real firstPage/lastPage/relationships from entity data
+
+### P1: Better chapter detection + token-based chunking
+- [x] Check PDF TOC/outline metadata first (pdfjs getOutline)
+- [x] Inspect first several lines of each page for heading patterns (not just first line)
+- [x] Detect heading patterns: ALL CAPS, "Chapter N", "Part N", numbered headings, etc.
+- [x] Switch from fixed 8-page chunks to token-based chunks (~3,000 tokens per chunk)
+- [x] Always respect chapter boundaries when chunking
+- [x] Fallback to synthetic sections when no structure detected
+
+### P1: Smaller retrieval passages covering 100% of text
+- [x] Add retrievalPassages table: ~800-token passages, each with its own embedding
+- [x] Generate retrieval passages from every page (sliding window, no gaps)
+- [x] Each passage gets its own embedding vector
+- [x] Update buildBrainContext to retrieve from passages, not chunks
+- [x] Spoiler filter applies to passages too (endPage <= currentPage)
+
+### P2: Chapter debrief
+- [x] Add tRPC procedure: chapterDebrief(bookId, chapterIndex) using stored chapter summary
+- [x] Build ChapterDebriefCard: main idea, 3 things to remember, key people/concepts, connection to earlier chapters
+- [x] Show naturally after finishing a chapter (detect page = chapter end page)
+- [x] Add "Discuss chapter" follow-up button
+
+### P2: Chunk concurrency + retry state
+- [x] Add status, attemptCount, lastError, processedAt, analysisVersion columns to bookChunks table
+- [x] Implement 3-worker concurrent pipeline (Promise.all with concurrency limit)
+- [x] Add per-chunk retry logic (max 3 attempts, exponential backoff)
+- [x] Update heartbeat handler to process failed/pending chunks
+
+### P3: UX polish
+- [x] Anchor answer card after selected paragraph (not after all page text)
+- [x] Show Who? only for known entities (check entity index before showing button)
+- [x] Make evidence page citations tappable: "p.47 · View passage" → jumps to that page
+- [x] Add "Back" action after jumping to evidence passage

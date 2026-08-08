@@ -32,11 +32,43 @@ function parseJson<T>(raw: string, fallback: T): T {
 }
 
 /**
- * Detect chapter boundaries in a list of pages.
- * Returns groups of pages, each group representing one chapter.
- * Heuristic: a page starts a new chapter if its first non-empty line matches
- * common chapter heading patterns.
+ * Estimate token count from character count.
+ * Rough approximation: 1 token ≈ 4 characters for English prose.
  */
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+/**
+ * Detect chapter boundaries in a list of pages.
+ * Uses multiple heuristics in order of reliability:
+ * 1. First non-empty line matches chapter heading patterns
+ * 2. First several lines of the page contain heading patterns
+ * 3. ALL CAPS short line at the top of a page
+ * 4. Numbered headings (1., 1.1, etc.)
+ * 5. Fallback: synthetic sections based on token count
+ */
+function isChapterBoundary(page: { content: string }): boolean {
+  const lines = page.content.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length === 0) return false;
+
+  // Check first 5 non-empty lines for heading patterns
+  const headingLines = lines.slice(0, 5);
+  for (const line of headingLines) {
+    // Standard chapter/part headings
+    if (/^chapter\s+(\d+|[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten)/i.test(line)) return true;
+    if (/^part\s+(\d+|[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten)/i.test(line)) return true;
+    if (/^(epilogue|prologue|introduction|preface|foreword|afterword|appendix|conclusion|acknowledgements?)$/i.test(line)) return true;
+    // Roman numeral chapters: "I", "II", "III", "IV", "V", etc. (standalone)
+    if (/^[IVXLCDM]{1,6}$/.test(line) && line.length <= 6) return true;
+    // Numbered headings: "1.", "2.", "Chapter 1:", "CHAPTER ONE"
+    if (/^\d+\.?\s*$/.test(line)) return true;
+    // ALL CAPS short lines (likely section headings): e.g., "THE BEGINNING", "PART ONE"
+    if (line === line.toUpperCase() && line.length >= 3 && line.length <= 60 && /[A-Z]/.test(line)) return true;
+  }
+  return false;
+}
+
 function detectChapterGroups(
   pages: { pageNumber: number; content: string }[],
 ): { chapterNumber: number; pages: { pageNumber: number; content: string }[] }[] {
@@ -45,13 +77,8 @@ function detectChapterGroups(
   let currentPages: { pageNumber: number; content: string }[] = [];
 
   for (const page of pages) {
-    const firstLine = page.content.split("\n").find(l => l.trim().length > 0)?.trim() ?? "";
-    const isChapterStart =
-      /^chapter\s+(\d+|[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten)/i.test(firstLine) ||
-      /^part\s+(\d+|[ivxlcdm]+)/i.test(firstLine) ||
-      /^epilogue|^prologue|^introduction|^preface/i.test(firstLine);
-
-    if (isChapterStart && currentPages.length > 0) {
+    const isStart = isChapterBoundary(page);
+    if (isStart && currentPages.length > 0) {
       groups.push({ chapterNumber: currentChapter, pages: currentPages });
       currentChapter++;
       currentPages = [];
@@ -59,20 +86,32 @@ function detectChapterGroups(
     currentPages.push(page);
   }
 
-  // Close the last chapter
   if (currentPages.length > 0) {
     groups.push({ chapterNumber: currentChapter, pages: currentPages });
   }
 
-  // If no chapter headings were detected, treat every 15 pages as a "chapter"
-  if (groups.length <= 1 && pages.length > 15) {
+  // If no chapter headings detected, create synthetic sections of ~3,000 tokens each
+  if (groups.length <= 1 && pages.length > 10) {
     const syntheticGroups: typeof groups = [];
-    const chunkSize = 15;
-    for (let i = 0; i < pages.length; i += chunkSize) {
-      syntheticGroups.push({
-        chapterNumber: Math.floor(i / chunkSize),
-        pages: pages.slice(i, i + chunkSize),
-      });
+    let currentGroup: typeof pages = [];
+    let currentTokens = 0;
+    let chapterNum = 0;
+    const TARGET_TOKENS = 3000;
+
+    for (const page of pages) {
+      const pageTokens = estimateTokens(page.content);
+      // Start a new section if we would exceed the target
+      if (currentTokens + pageTokens > TARGET_TOKENS && currentGroup.length > 0) {
+        syntheticGroups.push({ chapterNumber: chapterNum, pages: currentGroup });
+        chapterNum++;
+        currentGroup = [];
+        currentTokens = 0;
+      }
+      currentGroup.push(page);
+      currentTokens += pageTokens;
+    }
+    if (currentGroup.length > 0) {
+      syntheticGroups.push({ chapterNumber: chapterNum, pages: currentGroup });
     }
     return syntheticGroups;
   }
@@ -81,17 +120,43 @@ function detectChapterGroups(
 }
 
 /**
- * Split a chapter's pages into chunks of at most CHUNK_SIZE pages.
- * Smaller books get larger chunks; very large books use smaller chunks.
+ * Split a chapter's pages into token-based chunks of ~TARGET_CHUNK_TOKENS each.
+ * Always respects chapter boundaries (never splits across chapters).
+ * Target: ~3,000 tokens per chunk (~12,000 characters).
  */
-const CHUNK_SIZE = 8; // pages per chunk
+const TARGET_CHUNK_TOKENS = 3000;
+const MAX_CHUNK_TOKENS = 4500; // Hard cap to prevent oversized chunks
 
 function chunkPages(
   pages: { pageNumber: number; content: string }[],
 ): { pageNumber: number; content: string }[][] {
   const chunks: { pageNumber: number; content: string }[][] = [];
-  for (let i = 0; i < pages.length; i += CHUNK_SIZE) {
-    chunks.push(pages.slice(i, i + CHUNK_SIZE));
+  let currentChunk: { pageNumber: number; content: string }[] = [];
+  let currentTokens = 0;
+
+  for (const page of pages) {
+    const pageTokens = estimateTokens(page.content);
+    // If adding this page would exceed the hard cap and we have content, flush
+    if (currentTokens + pageTokens > MAX_CHUNK_TOKENS && currentChunk.length > 0) {
+      chunks.push(currentChunk);
+      currentChunk = [];
+      currentTokens = 0;
+    }
+    currentChunk.push(page);
+    currentTokens += pageTokens;
+    // Flush when we hit the target (soft cap)
+    if (currentTokens >= TARGET_CHUNK_TOKENS) {
+      chunks.push(currentChunk);
+      currentChunk = [];
+      currentTokens = 0;
+    }
+  }
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk);
+  }
+  // Ensure we always have at least one chunk
+  if (chunks.length === 0 && pages.length > 0) {
+    chunks.push(pages);
   }
   return chunks;
 }
@@ -158,7 +223,7 @@ ${chunkText}`;
         endPage,
         text: chunkText,
         summary: analysis.summary,
-        entities: analysis.entities,
+        entities: analysis.entities as string[],
         concepts: analysis.concepts,
         keyPassages: analysis.keyPassages,
       });
@@ -303,24 +368,83 @@ Return ONLY valid JSON array:
 /*  Pass 4 — Embedding Generation                                            */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Create fine-grained retrieval passages from all pages.
+ * Target: ~800 tokens per passage (~3,200 chars), sliding window with 1-page overlap.
+ * These cover 100% of the book text for precise semantic retrieval.
+ */
+function createRetrievalPassages(
+  pages: { pageNumber: number; content: string }[],
+): { startPage: number; endPage: number; text: string }[] {
+  const TARGET_PASSAGE_TOKENS = 800;
+  const passages: { startPage: number; endPage: number; text: string }[] = [];
+  let currentPages: { pageNumber: number; content: string }[] = [];
+  let currentTokens = 0;
+
+  for (let i = 0; i < pages.length; i++) {
+    const page = pages[i]!;
+    const pageTokens = estimateTokens(page.content);
+
+    if (currentTokens + pageTokens > TARGET_PASSAGE_TOKENS * 1.5 && currentPages.length > 0) {
+      // Flush current passage
+      const text = currentPages.map(p => `[p.${p.pageNumber}] ${p.content}`).join("\n\n");
+      passages.push({
+        startPage: currentPages[0]!.pageNumber,
+        endPage: currentPages[currentPages.length - 1]!.pageNumber,
+        text,
+      });
+      // 1-page overlap: keep the last page of the current passage
+      const overlap = currentPages.slice(-1);
+      currentPages = overlap;
+      currentTokens = overlap.reduce((sum, p) => sum + estimateTokens(p.content), 0);
+    }
+
+    currentPages.push(page);
+    currentTokens += pageTokens;
+
+    // Flush when we hit the target
+    if (currentTokens >= TARGET_PASSAGE_TOKENS) {
+      const text = currentPages.map(p => `[p.${p.pageNumber}] ${p.content}`).join("\n\n");
+      passages.push({
+        startPage: currentPages[0]!.pageNumber,
+        endPage: currentPages[currentPages.length - 1]!.pageNumber,
+        text,
+      });
+      // 1-page overlap
+      const overlap = currentPages.slice(-1);
+      currentPages = overlap;
+      currentTokens = overlap.reduce((sum, p) => sum + estimateTokens(p.content), 0);
+    }
+  }
+
+  // Flush remaining pages
+  if (currentPages.length > 0) {
+    const text = currentPages.map(p => `[p.${p.pageNumber}] ${p.content}`).join("\n\n");
+    passages.push({
+      startPage: currentPages[0]!.pageNumber,
+      endPage: currentPages[currentPages.length - 1]!.pageNumber,
+      text,
+    });
+  }
+
+  return passages;
+}
+
 async function runPass4(bookId: number): Promise<void> {
-  // Clear old embeddings (idempotent)
+  // Clear old embeddings and retrieval passages (idempotent)
   await db.deleteBookEmbeddings(bookId);
+  await db.deleteRetrievalPassages(bookId);
 
   const chunks = await db.getBookChunks(bookId);
 
+  // Part A: Embed analysis chunks (for chapter-level understanding)
   for (const chunk of chunks) {
-    // P0-5: Embed richer text — chapter title + summary + entities + concepts + original chunk text.
-    // This ensures specific details (e.g., "scratched initials on the inside of the locket")
-    // are retrievable even if the summary omits them.
     const chapterTitle = `Chapter ${(chunk.chapterNumber ?? 0) + 1}`;
     const textToEmbed = [
       chapterTitle,
       chunk.summary ?? "",
       ((chunk.entities as string[] | null) ?? []).join(", "),
       ((chunk.concepts as string[] | null) ?? []).join(", "),
-      // Include a truncated version of the original text for detail retrieval.
-      // Cap at 2000 chars to keep embedding costs reasonable.
       (chunk.text as string | null)?.slice(0, 2000) ?? "",
     ]
       .filter(Boolean)
@@ -345,8 +469,34 @@ async function runPass4(bookId: number): Promise<void> {
         },
       });
     } catch (err) {
-      // Embedding failures are non-fatal; context builder falls back to proximity.
-      console.warn(`[bookBrain] embedding failed for chunk ${chunk.id}:`, err);
+      console.warn(`[bookBrain] chunk embedding failed for chunk ${chunk.id}:`, err);
+    }
+  }
+
+  // Part B: Create fine-grained retrieval passages covering 100% of the book
+  const allPages = await db.getAllPagesForBook(bookId);
+  const passages = createRetrievalPassages(allPages);
+
+  for (const passage of passages) {
+    try {
+      const embResult = await llmEmbedWithMeta(passage.text.slice(0, 3200));
+      await db.insertRetrievalPassage({
+        bookId,
+        startPage: passage.startPage,
+        endPage: passage.endPage,
+        text: passage.text.slice(0, 8000), // Store up to 8000 chars
+        embedding: embResult.embedding,
+      });
+    } catch (err) {
+      // Store passage without embedding — still useful for proximity retrieval
+      console.warn(`[bookBrain] passage embedding failed (pp.${passage.startPage}-${passage.endPage}):`, err);
+      await db.insertRetrievalPassage({
+        bookId,
+        startPage: passage.startPage,
+        endPage: passage.endPage,
+        text: passage.text.slice(0, 8000),
+        embedding: null,
+      });
     }
   }
 

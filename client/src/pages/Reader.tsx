@@ -308,6 +308,40 @@ export default function Reader() {
     { enabled: !!bookId && !Number.isNaN(bookId) },
   );
 
+  // Entity names from Book Brain (for Who? button gating)
+  const brainQuery = trpc.books.getBrain.useQuery(
+    { bookId },
+    { enabled: !!bookId && !Number.isNaN(bookId) },
+  );
+  const knownEntityNames = new Set(
+    (brainQuery.data?.entities ?? []).map((e: { name: string }) => e.name.toLowerCase()),
+  );
+
+  // Chapter debrief — triggered when reader reaches the last page of a chapter
+  const [showDebrief, setShowDebrief] = useState(false);
+  const [debriefChapter, setDebriefChapter] = useState<number | null>(null);
+  const chapters = (brainQuery.data?.chapterSummaries ?? []) as {
+    chapter: number; title: string; summary: string; startPage: number;
+  }[];
+  // Detect chapter end: current page is the last page before the next chapter starts
+  const currentChapterInfo = [...chapters].reverse().find(c => c.startPage <= (pageNumber ?? 1));
+  const nextChapterInfo = currentChapterInfo
+    ? chapters.find(c => c.chapter === currentChapterInfo.chapter + 1)
+    : null;
+  const isChapterEnd = nextChapterInfo
+    ? (pageNumber ?? 1) === nextChapterInfo.startPage - 1
+    : false;
+  useEffect(() => {
+    if (isChapterEnd && currentChapterInfo && debriefChapter !== currentChapterInfo.chapter) {
+      setDebriefChapter(currentChapterInfo.chapter);
+      setShowDebrief(true);
+    }
+  }, [isChapterEnd, currentChapterInfo?.chapter]);
+  const debriefQuery = trpc.reader.chapterDebrief.useQuery(
+    { bookId, chapterNumber: debriefChapter ?? 1, currentPage: pageNumber ?? 1 },
+    { enabled: !!debriefChapter && showDebrief },
+  );
+
   // Show resume card when returning to a book (has progress, not dismissed)
   useEffect(() => {
     if (resumeQuery.data && !resumeDismissed && !resumeOpen) {
@@ -724,7 +758,8 @@ export default function Reader() {
               className="rounded-full px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent">
               Context
             </button>
-            {selection.text.trim().split(/\s+/).length <= 4 && (
+            {selection.text.trim().split(/\s+/).length <= 4 &&
+              knownEntityNames.has(selection.text.trim().toLowerCase()) && (
               <button
                 onMouseDown={e => e.preventDefault()}
                 onClick={() => askBuddy("who")}
@@ -776,6 +811,39 @@ export default function Reader() {
       )}
 
       <footer className="border-t border-border/60 py-4">
+      {/* Chapter debrief card — appears at end of each chapter */}
+      {showDebrief && debriefQuery.data && (
+        <div className="mx-auto mt-6 max-w-2xl animate-in slide-in-from-bottom-4 duration-300">
+          <div className="rounded-xl border border-primary/20 bg-card p-5 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-primary/70">
+                  Chapter {debriefQuery.data.chapterNumber} Complete
+                </p>
+                <h3 className="mt-0.5 text-base font-semibold text-foreground">
+                  What did you just read?
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowDebrief(false)}
+                className="rounded-full p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="prose prose-sm max-w-none text-sm leading-relaxed text-foreground [&_strong]:font-semibold [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mt-1 [&_li]:mb-0.5">
+              <Streamdown>{debriefQuery.data.debrief}</Streamdown>
+            </div>
+            <div className="mt-4">
+              <button
+                onClick={() => setShowDebrief(false)}
+                className="rounded-lg bg-primary px-4 py-2 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                Continue reading
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
         <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
           <Wordmark />
         </div>

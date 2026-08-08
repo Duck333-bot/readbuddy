@@ -2,6 +2,7 @@
  * Reader-level AI procedures:
  * - lost(): "I'm lost" — gives context for the current page without a highlight
  * - resumeSummary(): "Welcome back" recap when returning to a book
+ * - chapterDebrief(): "What did I just read?" debrief at end of a chapter
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -42,7 +43,6 @@ export const readerRouter = router({
       const spoilerMode = settings?.spoilerMode ?? "safe";
       const brainCtx = await buildBrainContext(input.bookId, input.pageNumber, spoilerMode).catch(() => null);
       const memory = await db.getReaderMemory(ctx.user.id, input.bookId).catch(() => null);
-
       const knownVocab = (memory?.knownVocab ?? []) as { word: string }[];
       const knownConcepts = (memory?.knownConcepts ?? []) as { concept: string }[];
 
@@ -59,7 +59,6 @@ export const readerRouter = router({
       ].filter(Boolean).join("\n");
 
       const prompt = `A reader is on page ${input.pageNumber} of "${book.title}" and feels lost.
-
 ${brainSection ? `BOOK CONTEXT:\n${brainSection}\n` : ""}
 ${memorySection ? `READER HISTORY:\n${memorySection}\n` : ""}
 RECENT PAGES (what they just read):
@@ -110,12 +109,10 @@ Task: Give the reader exactly what they need to continue reading.
 
       // Get the last page content
       const lastPageContent = await db.getBookPage(input.bookId, lastPage);
-
       const chapterInfo = brainCtx?.chapterContext ?? "";
       const pageText = lastPageContent?.content?.slice(0, 1500) ?? "";
 
       const prompt = `A reader is returning to "${book.title}" after a break. They stopped on page ${lastPage} of ${book.pageCount}.
-
 ${chapterInfo ? `Where they stopped: ${chapterInfo}\n` : ""}
 Last page content:
 ${pageText}
@@ -125,7 +122,6 @@ Format:
 - One sentence: where they are in the story
 - One sentence: what just happened before they stopped
 - One sentence: what to watch for as they continue
-
 Keep it under 80 words. Warm and direct. No spoilers beyond page ${lastPage}.`;
 
       const response = await llmCall("reading_buddy", {
@@ -144,6 +140,95 @@ Keep it under 80 words. Warm and direct. No spoilers beyond page ${lastPage}.`;
         pageCount: book.pageCount,
         bookTitle: book.title,
         recap: response.text.trim(),
+      };
+    }),
+
+  /**
+   * Chapter debrief — "What did I just read?"
+   * Triggered when the reader reaches the last page of a chapter.
+   * Uses the stored chapter summary + entities + previous chapter context.
+   */
+  chapterDebrief: protectedProcedure
+    .input(
+      z.object({
+        bookId: z.number().int().positive(),
+        chapterNumber: z.number().int().min(1),
+        currentPage: z.number().int().positive(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const book = await db.getBookForUser(input.bookId, ctx.user.id);
+      if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found." });
+
+      const brain = await db.getBookBrain(input.bookId).catch(() => null);
+      if (!brain) return null;
+
+      const chapters = (brain.chapterSummaries ?? []) as {
+        chapter: number;
+        title: string;
+        summary: string;
+        startPage: number;
+      }[];
+
+      const thisChapter = chapters.find(c => c.chapter === input.chapterNumber);
+      if (!thisChapter) return null;
+
+      // Find the previous chapter for connection context
+      const prevChapter = chapters.find(c => c.chapter === input.chapterNumber - 1);
+
+      // Get entities first seen in this chapter's page range
+      const nextChapter = chapters.find(c => c.chapter === input.chapterNumber + 1);
+      const chapterEndPage = nextChapter ? nextChapter.startPage - 1 : book.pageCount;
+      const entities = await db.getBookEntities(input.bookId);
+      const chapterEntities = entities.filter(e => {
+        const pages = (e.pages as number[] | null) ?? [];
+        if (pages.length === 0) return false;
+        const firstPage = Math.min(...pages);
+        return firstPage >= thisChapter.startPage && firstPage <= chapterEndPage;
+      }).slice(0, 8);
+
+      const prompt = `A reader just finished Chapter ${input.chapterNumber} of "${book.title}".
+
+CHAPTER SUMMARY:
+${thisChapter.summary}
+
+${prevChapter ? `PREVIOUS CHAPTER (${prevChapter.chapter}): ${prevChapter.summary}` : ""}
+
+${chapterEntities.length > 0 ? `NEW CHARACTERS/CONCEPTS IN THIS CHAPTER:\n${chapterEntities.map(e => `• ${e.name}: ${e.description}`).join("\n")}` : ""}
+
+Task: Create a chapter debrief in this exact format:
+
+**Main idea**
+[1-2 sentences: what this chapter was fundamentally about]
+
+**3 things to remember**
+1. [most important event or idea]
+2. [second most important]
+3. [third most important]
+
+**Key people/concepts introduced**
+[list only NEW ones from this chapter, or "None new in this chapter"]
+
+**Connection to earlier chapters**
+[1 sentence connecting this chapter to what came before, or "This is the opening chapter"]
+
+Keep it concise and specific. No spoilers beyond this chapter.`;
+
+      const response = await llmCall("reading_buddy", {
+        messages: [
+          {
+            role: "system",
+            content: "You are ReadBuddy. Help readers consolidate what they just read with a clear, memorable debrief.",
+          },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: 500,
+      });
+
+      return {
+        chapterNumber: input.chapterNumber,
+        chapterTitle: thisChapter.title,
+        debrief: response.text.trim(),
       };
     }),
 });

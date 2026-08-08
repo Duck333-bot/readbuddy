@@ -13,6 +13,7 @@ import {
 import {
   bookBrain,
   bookChunks,
+  retrievalPassages,
   bookEmbeddings,
   bookEntities,
   readerMemory,
@@ -477,4 +478,31 @@ export async function getBookEmbeddings(bookId: number) {
     .select()
     .from(bookEmbeddings)
     .where(eq(bookEmbeddings.bookId, bookId));
+}
+
+// ─── Retrieval Passages ──────────────────────────────────────────────────────
+
+export async function deleteRetrievalPassages(bookId: number): Promise<void> {
+  const db = await requireDb();
+  await db.delete(retrievalPassages).where(eq(retrievalPassages.bookId, bookId));
+}
+
+export async function insertRetrievalPassage(data: {
+  bookId: number;
+  startPage: number;
+  endPage: number;
+  text: string;
+  embedding?: number[] | null;
+}): Promise<void> {
+  const db = await requireDb();
+  await db.insert(retrievalPassages).values(data);
+}
+
+export async function getRetrievalPassages(bookId: number) {
+  const db = await requireDb();
+  return db
+    .select()
+    .from(retrievalPassages)
+    .where(eq(retrievalPassages.bookId, bookId))
+    .orderBy(asc(retrievalPassages.startPage));
 }

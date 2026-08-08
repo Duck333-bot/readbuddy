@@ -48,14 +48,18 @@ For each important or unfamiliar word or phrase, give a one-line definition as i
   ask: `Task: ANSWER the reader's own question about the highlighted passage.
 Answer their question directly and specifically, using the passage and surrounding context. If their question rests on a misreading, gently correct it first.`,
   who: `Task: WHO IS THIS? The reader has highlighted a name or entity and wants a quick reminder.
-Using the Book Brain context, provide a compact character/entity card:
-1. **[Name]** — one sentence describing who/what this is
-2. What role they play in the story so far
-3. Their key relationships (if any)
-4. First appeared: page X (use entity data if available)
-5. Last seen: page X (use entity data if available)
 
-Keep it under 100 words total. No spoilers beyond the reader's current page. If you don't have entity data, use what you can infer from the surrounding page text.`,
+IMPORTANT: Use the entity data in the Book Brain context. If the entity has page data, use it directly.
+Provide a compact character/entity card in this exact format:
+
+**[Name]** — [one sentence: who/what this is]
+Role: [what they do in the story so far]
+First seen: p.[firstPage from entity data, or "unknown"]
+Last seen: p.[lastPage/most recent page from entity data, or "unknown"]
+Relationships: [key relationships, or "none recorded yet"]
+
+Keep it under 80 words. No spoilers beyond the reader's current page.
+If the name is not in the entity data, say "I haven't tracked [name] yet — they may appear later or be a minor character."`,
 };
 
 // BrainContext is defined in bookBrain.ts — import and re-export to avoid duplication.
