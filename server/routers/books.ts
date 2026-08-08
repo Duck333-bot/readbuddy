@@ -4,6 +4,9 @@ import * as db from "../db";
 import { extractPdf, MAX_PAGES, titleFromFilename } from "../pdf";
 import { protectedProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
+import { createHeartbeatJob } from "../_core/heartbeat";
+import { parse as parseCookie } from "cookie";
+import { COOKIE_NAME } from "@shared/const";
 
 /** 40 MB — comfortably fits most books while staying inside the body limit. */
 const MAX_PDF_BYTES = 40 * 1024 * 1024;
@@ -151,12 +154,76 @@ export const booksRouter = router({
         })),
       );
 
+      // Kick off the Book Brain background pipeline via a Heartbeat job.
+      try {
+        const sessionToken =
+          parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+        const job = await createHeartbeatJob(
+          {
+            name: `book-brain-${bookId}`,
+            cron: "0 * * * * *",
+            path: "/api/scheduled/bookBrain",
+            payload: { bookId },
+            description: `Book Brain pipeline for book ${bookId}`,
+          },
+          sessionToken,
+        );
+        await db.upsertBookBrain(bookId, {
+          passCompleted: 1,
+          brainJobTaskUid: job.taskUid,
+        });
+      } catch (brainErr) {
+        console.warn("[books.upload] could not create Book Brain job:", brainErr);
+        await db.upsertBookBrain(bookId, { passCompleted: 1 }).catch(() => {});
+      }
+
       return {
         bookId,
         title,
         pageCount: extracted.pageCount,
         truncated: extracted.pageCount >= MAX_PAGES,
       };
+    }),
+
+  getBrain: protectedProcedure
+    .input(z.object({ bookId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      await ownBookOrThrow(input.bookId, ctx.user.id);
+      const brain = await db.getBookBrain(input.bookId);
+      return {
+        passCompleted: brain?.passCompleted ?? 0,
+        overallSummary: brain?.overallSummary ?? null,
+        themes: (brain?.themes ?? []) as string[],
+        chapterSummaries: (brain?.chapterSummaries ?? []) as {
+          chapter: number;
+          title: string;
+          summary: string;
+          startPage: number;
+        }[],
+      };
+    }),
+
+  getSpoilerMode: protectedProcedure
+    .input(z.object({ bookId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      await ownBookOrThrow(input.bookId, ctx.user.id);
+      const settings = await db.getReaderSettings(ctx.user.id, input.bookId);
+      return { spoilerMode: settings?.spoilerMode ?? "safe" };
+    }),
+
+  setSpoilerMode: protectedProcedure
+    .input(
+      z.object({
+        bookId: z.number().int().positive(),
+        spoilerMode: z.enum(["safe", "full"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ownBookOrThrow(input.bookId, ctx.user.id);
+      await db.upsertReaderSettings(ctx.user.id, input.bookId, {
+        spoilerMode: input.spoilerMode,
+      });
+      return { spoilerMode: input.spoilerMode };
     }),
 
   updateProgress: protectedProcedure

@@ -1,8 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "../db";
-import { askReadingBuddy, BUDDY_MODES } from "../readingBuddy";
+import { askReadingBuddy, BUDDY_MODES, updateReaderMemoryFromAnswer } from "../readingBuddy";
 import { protectedProcedure, router } from "../_core/trpc";
+import { buildBrainContext } from "../bookBrain";
 
 const modeSchema = z.enum(BUDDY_MODES);
 
@@ -38,6 +39,21 @@ export const buddyRouter = router({
 
       const page = await db.getBookPage(book.id, input.pageNumber);
 
+      // Fetch Book Brain context and reader memory in parallel — both are
+      // optional enrichments; failures are silently swallowed.
+      const [settings, brainCtx, memory] = await Promise.all([
+        db.getReaderSettings(ctx.user.id, input.bookId).catch(() => null),
+        buildBrainContext(input.bookId, input.pageNumber, "safe").catch(() => null),
+        db.getReaderMemory(ctx.user.id, input.bookId).catch(() => null),
+      ]);
+
+      const spoilerMode = settings?.spoilerMode ?? "safe";
+
+      // Re-build brain context with the correct spoiler mode.
+      const finalBrainCtx = brainCtx
+        ? await buildBrainContext(input.bookId, input.pageNumber, spoilerMode).catch(() => null)
+        : null;
+
       try {
         const answer = await askReadingBuddy({
           mode: input.mode,
@@ -50,8 +66,40 @@ export const buddyRouter = router({
           pageCount: book.pageCount,
           pageContext: page?.content ?? "",
           history: input.history,
+          brainContext: finalBrainCtx,
+          readerMemory: memory
+            ? {
+                knownVocab: (memory.knownVocab ?? []) as {
+                  word: string;
+                  definition: string;
+                  pageFirstAsked: number;
+                }[],
+                knownConcepts: (memory.knownConcepts ?? []) as {
+                  concept: string;
+                  explanation: string;
+                  pageFirstAsked: number;
+                }[],
+                preferredLevel: memory.preferredLevel,
+              }
+            : null,
+          spoilerMode,
         });
-        return { answer, mode: input.mode };
+
+        // Update reader memory asynchronously — never block the response.
+        updateReaderMemoryFromAnswer(
+          ctx.user.id,
+          input.bookId,
+          input.mode,
+          input.highlight,
+          answer,
+        ).catch(e => console.warn("[buddy.ask] memory update failed:", e));
+
+        return {
+          answer,
+          mode: input.mode,
+          brainReady: finalBrainCtx?.brainReady ?? false,
+          passCompleted: finalBrainCtx?.passCompleted ?? 0,
+        };
       } catch (error) {
         console.error("[buddy.ask] failed:", error);
         throw new TRPCError({
@@ -59,5 +107,26 @@ export const buddyRouter = router({
           message: "The reading buddy could not answer just now. Please try again.",
         });
       }
+    }),
+
+  /** Get the reader's memory for a book (vocab, concepts, preferred level). */
+  getMemory: protectedProcedure
+    .input(z.object({ bookId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const memory = await db.getReaderMemory(ctx.user.id, input.bookId);
+      return {
+        knownVocab: (memory?.knownVocab ?? []) as {
+          word: string;
+          definition: string;
+          pageFirstAsked: number;
+        }[],
+        knownConcepts: (memory?.knownConcepts ?? []) as {
+          concept: string;
+          explanation: string;
+          pageFirstAsked: number;
+        }[],
+        preferredLevel: memory?.preferredLevel ?? "standard",
+        questionCount: memory?.questionCount ?? 0,
+      };
     }),
 });

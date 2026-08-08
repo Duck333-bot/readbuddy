@@ -24,12 +24,22 @@ const mocks = vi.hoisted(() => ({
   getUserByOpenId: vi.fn(),
   getDb: vi.fn(),
   askReadingBuddy: vi.fn(),
+  upsertBookBrain: vi.fn(),
+  getBookBrain: vi.fn(),
+  updateBookBrain: vi.fn(),
+  getReaderSettings: vi.fn(),
+  upsertReaderSettings: vi.fn(),
+  getReaderMemory: vi.fn(),
+  upsertReaderMemory: vi.fn(),
+  getBookEntities: vi.fn(),
+  getAllPagesForBook: vi.fn(),
 }));
 
 vi.mock("./db", () => mocks);
 vi.mock("./readingBuddy", () => ({
   askReadingBuddy: mocks.askReadingBuddy,
-  BUDDY_MODES: ["explain", "simplify", "translate", "define", "ask"] as const,
+  BUDDY_MODES: ["explain", "simplify", "context", "why", "translate", "define", "ask"] as const,
+  updateReaderMemoryFromAnswer: vi.fn().mockResolvedValue(undefined),
 }));
 
 const pdfMocks = vi.hoisted(() => ({
@@ -44,6 +54,18 @@ const storageMocks = vi.hoisted(() => ({
   storagePut: vi.fn(),
 }));
 vi.mock("./storage", () => storageMocks);
+vi.mock("./_core/heartbeat", () => ({
+  createHeartbeatJob: vi.fn().mockResolvedValue({ taskUid: "test-task-uid" }),
+  deleteHeartbeatJob: vi.fn(),
+}));
+vi.mock("../bookBrain", () => ({
+  buildBrainContext: vi.fn().mockResolvedValue(null),
+  runBookBrainPipeline: vi.fn().mockResolvedValue({ passCompleted: 4, skipped: false }),
+}));
+vi.mock("./bookBrain", () => ({
+  buildBrainContext: vi.fn().mockResolvedValue(null),
+  runBookBrainPipeline: vi.fn().mockResolvedValue({ passCompleted: 4, skipped: false }),
+}));
 
 const { appRouter } = await import("./routers");
 
@@ -92,6 +114,16 @@ beforeEach(() => {
   Object.values(mocks).forEach(fn => fn.mockReset());
   pdfMocks.extractPdf.mockReset();
   storageMocks.storagePut.mockReset();
+  // New brain/memory helpers — default to no-ops so upload tests pass
+  mocks.upsertBookBrain.mockResolvedValue(undefined);
+  mocks.getBookBrain.mockResolvedValue(null);
+  mocks.updateBookBrain.mockResolvedValue(undefined);
+  mocks.getReaderSettings.mockResolvedValue(null);
+  mocks.upsertReaderSettings.mockResolvedValue(undefined);
+  mocks.getReaderMemory.mockResolvedValue(null);
+  mocks.upsertReaderMemory.mockResolvedValue(undefined);
+  mocks.getBookEntities.mockResolvedValue([]);
+  mocks.getAllPagesForBook.mockResolvedValue([]);
 });
 
 describe("books router access control", () => {

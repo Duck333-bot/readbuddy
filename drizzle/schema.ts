@@ -1,6 +1,7 @@
 import {
   index,
   int,
+  json,
   mysqlEnum,
   mysqlTable,
   text,
@@ -93,7 +94,7 @@ export const notebookEntries = mysqlTable(
       .notNull()
       .references(() => books.id, { onDelete: "cascade" }),
     pageNumber: int("pageNumber").notNull(),
-    mode: mysqlEnum("mode", ["explain", "simplify", "translate", "define", "ask"])
+    mode: mysqlEnum("mode", ["explain", "simplify", "context", "why", "translate", "define", "ask"])
       .default("explain")
       .notNull(),
     highlight: text("highlight").notNull(),
@@ -106,3 +107,151 @@ export const notebookEntries = mysqlTable(
 
 export type NotebookEntry = typeof notebookEntries.$inferSelect;
 export type InsertNotebookEntry = typeof notebookEntries.$inferInsert;
+
+/**
+ * Book Brain: structured analysis of a book built by the 4-pass background
+ * pipeline. One row per book. `status` tracks which passes have completed.
+ *
+ * Pass 1 — text extraction (done synchronously at upload)
+ * Pass 2 — structure: chapter summaries, overall summary, themes, timeline
+ * Pass 3 — entities: people, places, concepts, terminology, relationships
+ * Pass 4 — deep reading: metaphors, foreshadowing, contradictions, connections
+ */
+export const bookBrain = mysqlTable(
+  "bookBrain",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    bookId: int("bookId")
+      .notNull()
+      .unique()
+      .references(() => books.id, { onDelete: "cascade" }),
+    /** Which passes have completed. 0=none, 1=text, 2=structure, 3=entities, 4=deep */
+    passCompleted: int("passCompleted").notNull().default(0),
+    /** Overall book summary (pass 2) */
+    overallSummary: text("overallSummary"),
+    /** Main themes as a JSON array of strings (pass 2) */
+    themes: json("themes").$type<string[]>(),
+    /** Timeline as a JSON array of {event, page} objects (pass 2) */
+    timeline: json("timeline").$type<{ event: string; page: number }[]>(),
+    /** Chapter summaries as a JSON array of {chapter, title, summary, startPage} (pass 2) */
+    chapterSummaries: json("chapterSummaries").$type<
+      { chapter: number; title: string; summary: string; startPage: number }[]
+    >(),
+    /** Important/difficult passages as JSON (pass 4) */
+    keyPassages: json("keyPassages").$type<
+      { page: number; text: string; reason: string }[]
+    >(),
+    /** Cross-chapter connections as JSON (pass 4) */
+    connections: json("connections").$type<
+      { fromPage: number; toPage: number; description: string }[]
+    >(),
+    /** Heartbeat task UID for the background pipeline job */
+    brainJobTaskUid: varchar("brainJobTaskUid", { length: 65 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("bookBrain_bookId_idx").on(table.bookId)],
+);
+export type BookBrain = typeof bookBrain.$inferSelect;
+export type InsertBookBrain = typeof bookBrain.$inferInsert;
+
+/**
+ * Entities extracted from a book (pass 3): people, places, concepts, terms.
+ * One row per entity. The AI uses these for "Remind me who this person is" etc.
+ */
+export const bookEntities = mysqlTable(
+  "bookEntities",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    bookId: int("bookId")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    type: mysqlEnum("type", ["person", "place", "concept", "term", "other"]).notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description").notNull(),
+    /** Pages where this entity appears, JSON array of ints */
+    pages: json("pages").$type<number[]>(),
+    /** Relationships to other entities, JSON array of {name, relation} */
+    relationships: json("relationships").$type<{ name: string; relation: string }[]>(),
+  },
+  table => [
+    index("entities_bookId_idx").on(table.bookId),
+    index("entities_type_idx").on(table.type),
+  ],
+);
+export type BookEntity = typeof bookEntities.$inferSelect;
+export type InsertBookEntity = typeof bookEntities.$inferInsert;
+
+/**
+ * Reader memory: per-user per-book model of what the reader understands.
+ * One row per (user, book). Updated whenever the user asks a question.
+ */
+export const readerMemory = mysqlTable(
+  "readerMemory",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    bookId: int("bookId")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    /**
+     * Vocabulary the reader has already asked about.
+     * JSON: { word: string; definition: string; pageFirstAsked: number }[]
+     */
+    knownVocab: json("knownVocab").$type<
+      { word: string; definition: string; pageFirstAsked: number }[]
+    >(),
+    /**
+     * Concepts the reader has asked about.
+     * JSON: { concept: string; explanation: string; pageFirstAsked: number }[]
+     */
+    knownConcepts: json("knownConcepts").$type<
+      { concept: string; explanation: string; pageFirstAsked: number }[]
+    >(),
+    /**
+     * Preferred explanation level inferred from interactions.
+     * "simple" | "standard" | "detailed"
+     */
+    preferredLevel: mysqlEnum("preferredLevel", ["simple", "standard", "detailed"])
+      .notNull()
+      .default("standard"),
+    /** Total questions asked (used to infer explanation level preference) */
+    questionCount: int("questionCount").notNull().default(0),
+    /** How many times the reader clicked "Even simpler" */
+    simplerCount: int("simplerCount").notNull().default(0),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("readerMemory_user_book_idx").on(table.userId, table.bookId),
+    index("readerMemory_userId_idx").on(table.userId),
+  ],
+);
+export type ReaderMemory = typeof readerMemory.$inferSelect;
+export type InsertReaderMemory = typeof readerMemory.$inferInsert;
+
+/**
+ * Spoiler mode setting per user per book.
+ * "safe"  = only use information up to the reader's current page (default)
+ * "full"  = AI has full-book context
+ */
+export const readerSettings = mysqlTable(
+  "readerSettings",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    bookId: int("bookId")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    spoilerMode: mysqlEnum("spoilerMode", ["safe", "full"]).notNull().default("safe"),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("readerSettings_user_book_idx").on(table.userId, table.bookId),
+  ],
+);
+export type ReaderSettings = typeof readerSettings.$inferSelect;
+export type InsertReaderSettings = typeof readerSettings.$inferInsert;

@@ -76,3 +76,18 @@
 - [x] Confirmed `auth.devLogin` is gated behind `NODE_ENV === "development"` (404 in production)
 - [x] Removed the seeded preview books, pages and notes from the database
 - [x] Removed scratch scripts from the project root
+
+## Book Brain Upgrade (v2)
+- [x] Read heartbeat/periodic-updates skill and design background job architecture
+- [x] Extend DB schema: bookBrain, bookEntities, readerMemory, readerSettings tables + migration
+- [x] Build 4-pass Book Brain pipeline (pass 2: structure, pass 3: entities, pass 4: deep reading)
+- [x] Wire Heartbeat job at upload: fires every minute, idempotent, updates passCompleted
+- [x] Mount /api/scheduled/bookBrain handler in server/_core/index.ts
+- [x] Add getBrain, getSpoilerMode, setSpoilerMode procedures to books router
+- [x] Upgrade buddy router: inject Book Brain context + reader memory into every ask call
+- [x] Add new buddy modes: context, why (alongside existing explain, simplify, translate, define, ask)
+- [x] Update notebookEntries mode enum to include context and why
+- [x] Rewrite BuddyPanel: 4 primary buttons (Explain/Simpler/Context/Why important), secondary row (Translate/Define), spoiler-mode toggle, Book Brain status badge, "Even simpler" follow-up
+- [x] Reader memory: track vocab/concepts asked, infer preferred explanation level
+- [x] Update all vitest mocks to cover new DB helpers and modes — 48/48 tests pass
+- [x] Production build passes cleanly

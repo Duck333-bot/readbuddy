@@ -22,6 +22,20 @@
       "when": 1786085802672,
       "tag": "0002_motionless_outlaw_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1786103733204,
+      "tag": "0003_many_lorna_dane",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1786155637636,
+      "tag": "0004_stale_valkyrie",
+      "breakpoints": true
     }
   ]
 }

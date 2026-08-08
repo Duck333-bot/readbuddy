@@ -10,6 +10,15 @@ import {
   notebookEntries,
   users,
 } from "../drizzle/schema";
+import {
+  bookBrain,
+  bookEntities,
+  readerMemory,
+  readerSettings,
+  InsertBookBrain,
+  InsertBookEntity,
+  InsertReaderMemory,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -257,4 +266,136 @@ export async function countNotebookEntries(userId: number) {
     .from(notebookEntries)
     .where(eq(notebookEntries.userId, userId));
   return Number(rows[0]?.count ?? 0);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               Book Brain                                   */
+/* -------------------------------------------------------------------------- */
+
+export async function createBookBrain(values: InsertBookBrain) {
+  const db = await requireDb();
+  const result = await db.insert(bookBrain).values(values);
+  return readInsertId(result);
+}
+
+export async function getBookBrain(bookId: number) {
+  const db = await requireDb();
+  const rows = await db.select().from(bookBrain).where(eq(bookBrain.bookId, bookId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updateBookBrain(
+  bookId: number,
+  values: Partial<Omit<InsertBookBrain, "bookId">>,
+) {
+  const db = await requireDb();
+  await db.update(bookBrain).set(values).where(eq(bookBrain.bookId, bookId));
+}
+
+export async function upsertBookBrain(bookId: number, values: Partial<InsertBookBrain>) {
+  const db = await requireDb();
+  const existing = await getBookBrain(bookId);
+  if (existing) {
+    await db.update(bookBrain).set(values).where(eq(bookBrain.bookId, bookId));
+  } else {
+    await db.insert(bookBrain).values({ bookId, ...values });
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              Book Entities                                 */
+/* -------------------------------------------------------------------------- */
+
+export async function insertBookEntities(rows: InsertBookEntity[]) {
+  if (rows.length === 0) return;
+  const db = await requireDb();
+  const CHUNK = 30;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    await db.insert(bookEntities).values(rows.slice(i, i + CHUNK));
+  }
+}
+
+export async function getBookEntities(bookId: number) {
+  const db = await requireDb();
+  return db.select().from(bookEntities).where(eq(bookEntities.bookId, bookId));
+}
+
+export async function deleteBookEntities(bookId: number) {
+  const db = await requireDb();
+  await db.delete(bookEntities).where(eq(bookEntities.bookId, bookId));
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              Reader Memory                                 */
+/* -------------------------------------------------------------------------- */
+
+export async function getReaderMemory(userId: number, bookId: number) {
+  const db = await requireDb();
+  const rows = await db
+    .select()
+    .from(readerMemory)
+    .where(and(eq(readerMemory.userId, userId), eq(readerMemory.bookId, bookId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function upsertReaderMemory(
+  userId: number,
+  bookId: number,
+  values: Partial<Omit<InsertReaderMemory, "userId" | "bookId">>,
+) {
+  const db = await requireDb();
+  const existing = await getReaderMemory(userId, bookId);
+  if (existing) {
+    await db
+      .update(readerMemory)
+      .set(values)
+      .where(and(eq(readerMemory.userId, userId), eq(readerMemory.bookId, bookId)));
+  } else {
+    await db.insert(readerMemory).values({ userId, bookId, ...values });
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                             Reader Settings                                */
+/* -------------------------------------------------------------------------- */
+
+export async function getReaderSettings(userId: number, bookId: number) {
+  const db = await requireDb();
+  const rows = await db
+    .select()
+    .from(readerSettings)
+    .where(and(eq(readerSettings.userId, userId), eq(readerSettings.bookId, bookId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function upsertReaderSettings(
+  userId: number,
+  bookId: number,
+  values: { spoilerMode: "safe" | "full" },
+) {
+  const db = await requireDb();
+  const existing = await getReaderSettings(userId, bookId);
+  if (existing) {
+    await db
+      .update(readerSettings)
+      .set(values)
+      .where(and(eq(readerSettings.userId, userId), eq(readerSettings.bookId, bookId)));
+  } else {
+    await db.insert(readerSettings).values({ userId, bookId, ...values });
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                        All pages for a book (brain)                        */
+/* -------------------------------------------------------------------------- */
+
+export async function getAllPagesForBook(bookId: number) {
+  const db = await requireDb();
+  return db
+    .select({ pageNumber: bookPages.pageNumber, content: bookPages.content })
+    .from(bookPages)
+    .where(eq(bookPages.bookId, bookId))
+    .orderBy(asc(bookPages.pageNumber));
 }
