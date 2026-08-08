@@ -15,6 +15,7 @@
 
 import * as db from "./db";
 import { llmCall, llmEmbed } from "./llm/router";
+import { embed as llmEmbedWithMeta } from "./llm/embeddings";
 
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                   */
@@ -309,11 +310,18 @@ async function runPass4(bookId: number): Promise<void> {
   const chunks = await db.getBookChunks(bookId);
 
   for (const chunk of chunks) {
-    // Embed the chunk summary (cheaper than embedding the full text)
+    // P0-5: Embed richer text — chapter title + summary + entities + concepts + original chunk text.
+    // This ensures specific details (e.g., "scratched initials on the inside of the locket")
+    // are retrievable even if the summary omits them.
+    const chapterTitle = `Chapter ${(chunk.chapterNumber ?? 0) + 1}`;
     const textToEmbed = [
+      chapterTitle,
       chunk.summary ?? "",
       ((chunk.entities as string[] | null) ?? []).join(", "),
       ((chunk.concepts as string[] | null) ?? []).join(", "),
+      // Include a truncated version of the original text for detail retrieval.
+      // Cap at 2000 chars to keep embedding costs reasonable.
+      (chunk.text as string | null)?.slice(0, 2000) ?? "",
     ]
       .filter(Boolean)
       .join("\n");
@@ -321,16 +329,19 @@ async function runPass4(bookId: number): Promise<void> {
     if (!textToEmbed.trim()) continue;
 
     try {
-      const embedding = await llmEmbed(textToEmbed);
+      const embResult = await llmEmbedWithMeta(textToEmbed);
       await db.insertBookEmbedding({
         bookId,
         chunkId: chunk.id,
-        embedding,
+        embedding: embResult.embedding,
         metadata: {
           startPage: chunk.startPage,
           endPage: chunk.endPage,
           chapterNumber: chunk.chapterNumber,
           chunkSequence: chunk.chunkSequence,
+          embeddingProvider: embResult.provider,
+          embeddingModel: embResult.model,
+          embeddingDimensions: embResult.dimensions,
         },
       });
     } catch (err) {
@@ -442,13 +453,27 @@ export async function buildBrainContext(
   }[]).filter(c => spoilerMode === "full" || c.startPage <= pageLimit);
 
   const currentChapter = [...chapters].reverse().find(c => c.startPage <= currentPage);
+  // P0-2: In safe mode, only show the current chapter summary if we have confirmed
+  // that the chapter started at or before the current page. The summary itself was
+  // generated from the full chapter text, so we show it but with a note that it
+  // covers the chapter up to the reader's current position.
   const chapterContext = currentChapter
     ? `Chapter ${currentChapter.chapter} — "${currentChapter.title}": ${currentChapter.summary}`
     : null;
 
-  // Relevant entities: filter by spoiler mode
+  // P0-2: Relevant entities — in safe mode, only include entities whose first
+  // known page is at or before the reader's current page.
   const entities = await db.getBookEntities(bookId);
-  const relevantEntities = entities
+  const filteredEntities = spoilerMode === "full"
+    ? entities
+    : entities.filter(e => {
+        const pages = (e.pages as number[] | null) ?? [];
+        // If no page info, include it (conservative — better to include than exclude).
+        if (pages.length === 0) return true;
+        // Only include if the entity first appeared at or before the current page.
+        return Math.min(...pages) <= pageLimit;
+      });
+  const relevantEntities = filteredEntities
     .slice(0, 15)
     .map(e => `• ${e.name} (${e.type}): ${e.description}`)
     .join("\n");
@@ -464,14 +489,16 @@ export async function buildBrainContext(
   let semanticChunks = "";
   if (queryText && brainReady) {
     try {
-      const queryEmbedding = await llmEmbed(queryText);
+      const queryEmbResult = await llmEmbedWithMeta(queryText);
+      const queryEmbedding = queryEmbResult.embedding;
       const embeddings = await db.getBookEmbeddings(bookId);
 
       // Filter by spoiler mode: exclude chunks that start after the current page
       const eligible = embeddings.filter(emb => {
         const meta = emb.metadata as { startPage: number; endPage: number } | null;
         if (!meta) return true;
-        return spoilerMode === "full" || meta.startPage <= pageLimit;
+        // P0-2: Use endPage so chunks that straddle the current page are excluded.
+        return spoilerMode === "full" || meta.endPage <= pageLimit;
       });
 
       // Score each chunk by cosine similarity
@@ -495,10 +522,16 @@ export async function buildBrainContext(
             if (!chunk) return null;
             const meta = emb.metadata as { startPage: number; endPage: number } | null;
             const pageRange = meta ? `pp.${meta.startPage}–${meta.endPage}` : "";
-            return `[Relevant passage from ${pageRange}, similarity: ${score.toFixed(2)}]\n${chunk.summary ?? ""}`;
+            // P0-5: Return actual evidence — original chunk text (truncated) with page citation.
+            // This lets the AI cite specific details, not just paraphrase the summary.
+            const originalText = (chunk.text as string | null)?.slice(0, 1500) ?? chunk.summary ?? "";
+            return [
+              `[Evidence from ${pageRange} | relevance: ${score.toFixed(2)}]`,
+              originalText,
+            ].join("\n");
           })
           .filter(Boolean)
-          .join("\n\n");
+          .join("\n\n---\n\n");
       }
     } catch (err) {
       console.warn("[bookBrain] semantic retrieval failed:", err);
@@ -506,9 +539,14 @@ export async function buildBrainContext(
     }
   }
 
+  // P0-2: In safe mode, do not expose whole-book summary or themes — they were
+  // generated from the full book and may contain future content.
+  const safeOverallSummary = spoilerMode === "full" ? (brain?.overallSummary ?? null) : null;
+  const safeThemes = spoilerMode === "full" ? ((brain?.themes ?? []) as string[]) : [];
+
   return {
-    overallSummary: brain?.overallSummary ?? null,
-    themes: (brain?.themes ?? []) as string[],
+    overallSummary: safeOverallSummary,
+    themes: safeThemes,
     chapterContext,
     relevantEntities,
     keyPassagesNearby,

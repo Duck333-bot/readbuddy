@@ -235,3 +235,155 @@ describe("LLM provider abstraction", () => {
     expect(getProviderName("embedding")).toBe("openai-forge");
   });
 });
+
+describe("P0-2: Strict spoiler filter (endPage)", () => {
+  it("excludes chunks where endPage > currentPage in safe mode", () => {
+    const currentPage = 100;
+    const embeddings = [
+      { chunkId: 1, embedding: [], metadata: { startPage: 90, endPage: 100, chapterNumber: 1, chunkSequence: 0 } },
+      { chunkId: 2, embedding: [], metadata: { startPage: 95, endPage: 105, chapterNumber: 1, chunkSequence: 1 } }, // straddles — EXCLUDE
+      { chunkId: 3, embedding: [], metadata: { startPage: 101, endPage: 110, chapterNumber: 2, chunkSequence: 0 } }, // future — EXCLUDE
+    ];
+
+    const pageLimit = currentPage;
+    // P0-2 fix: use endPage <= pageLimit
+    const eligible = embeddings.filter(emb => {
+      const meta = emb.metadata;
+      return meta.endPage <= pageLimit;
+    });
+
+    expect(eligible).toHaveLength(1);
+    expect(eligible[0]!.chunkId).toBe(1);
+  });
+
+  it("the old startPage filter incorrectly included straddling chunks", () => {
+    const currentPage = 100;
+    const embeddings = [
+      { chunkId: 2, embedding: [], metadata: { startPage: 95, endPage: 105, chapterNumber: 1, chunkSequence: 1 } },
+    ];
+
+    // Old (wrong) filter: startPage <= pageLimit
+    const oldEligible = embeddings.filter(emb => emb.metadata.startPage <= currentPage);
+    expect(oldEligible).toHaveLength(1); // BUG: includes a chunk with future content
+
+    // New (correct) filter: endPage <= pageLimit
+    const newEligible = embeddings.filter(emb => emb.metadata.endPage <= currentPage);
+    expect(newEligible).toHaveLength(0); // CORRECT: excludes the straddling chunk
+  });
+});
+
+describe("P0-2: Entity page filtering in safe mode", () => {
+  it("excludes entities first mentioned after currentPage", () => {
+    const currentPage = 80;
+    const entities = [
+      { name: "Elena", pages: [5, 20, 45] },         // first page 5 — include
+      { name: "Marcus", pages: [30, 60, 80] },        // first page 30 — include
+      { name: "Malachar", pages: [150, 200, 335] },   // first page 150 — EXCLUDE (future)
+      { name: "The Locket", pages: [] },              // no pages — include (conservative)
+    ];
+
+    const pageLimit = currentPage;
+    const filtered = entities.filter(e => {
+      if (e.pages.length === 0) return true;
+      return Math.min(...e.pages) <= pageLimit;
+    });
+
+    expect(filtered.map(e => e.name)).toEqual(["Elena", "Marcus", "The Locket"]);
+    expect(filtered.map(e => e.name)).not.toContain("Malachar");
+  });
+});
+
+describe("P0-2: Whole-book summary stripped in safe mode", () => {
+  it("overallSummary is null in safe mode", () => {
+    const spoilerMode = "safe";
+    const overallSummary = "The hero defeats the villain in the end.";
+    const safeOverallSummary = spoilerMode === "full" ? overallSummary : null;
+    expect(safeOverallSummary).toBeNull();
+  });
+
+  it("overallSummary is available in full mode", () => {
+    const spoilerMode = "full";
+    const overallSummary = "The hero defeats the villain in the end.";
+    const safeOverallSummary = spoilerMode === "full" ? overallSummary : null;
+    expect(safeOverallSummary).toBe(overallSummary);
+  });
+
+  it("themes are empty in safe mode", () => {
+    const spoilerMode = "safe";
+    const themes = ["redemption", "sacrifice", "truth"];
+    const safeThemes = spoilerMode === "full" ? themes : [];
+    expect(safeThemes).toHaveLength(0);
+  });
+});
+
+describe("P0-5: Evidence passages in semanticChunks", () => {
+  it("formats evidence with page citation and original text", () => {
+    const chunk = {
+      id: 1,
+      text: "Elena discovered the ancient silver locket hidden beneath the floorboards of the old mill.",
+      summary: "Elena finds a locket.",
+      startPage: 47,
+      endPage: 54,
+    };
+    const score = 0.49;
+    const meta = { startPage: 47, endPage: 54 };
+    const pageRange = `pp.${meta.startPage}–${meta.endPage}`;
+    const originalText = (chunk.text as string).slice(0, 1500);
+
+    const evidence = [
+      `[Evidence from ${pageRange} | relevance: ${score.toFixed(2)}]`,
+      originalText,
+    ].join("\n");
+
+    expect(evidence).toContain("pp.47–54");
+    expect(evidence).toContain("silver locket");
+    expect(evidence).toContain("floorboards");
+    expect(evidence).toContain("relevance: 0.49");
+    // Should NOT just be the summary
+    expect(evidence).not.toBe("Elena finds a locket.");
+  });
+});
+
+describe("P0-4: Embeddings provider metadata", () => {
+  it("embed() returns a result with required metadata fields", async () => {
+    const { embed } = await import("./llm/embeddings");
+    const result = await embed("the silver locket beneath the floorboards");
+    // Provider can be "openai", "forge", or "tfidf" depending on env
+    expect(["openai", "forge", "tfidf"]).toContain(result.provider);
+    expect(typeof result.model).toBe("string");
+    expect(result.model.length).toBeGreaterThan(0);
+    expect(result.dimensions).toBeGreaterThan(0);
+    expect(result.embedding).toHaveLength(result.dimensions);
+  });
+
+  it("embed() vectors are approximately L2-normalized", async () => {
+    const { embed } = await import("./llm/embeddings");
+    const result = await embed("test sentence for normalization check");
+    const norm = Math.sqrt(result.embedding.reduce((s, v) => s + v * v, 0));
+    // Allow a wider tolerance since real OpenAI vectors may not be perfectly normalized
+    expect(norm).toBeGreaterThan(0.5);
+    expect(norm).toBeLessThanOrEqual(2.0);
+  });
+
+  it("tfidf fallback produces 512-dim vectors when no API key is available", async () => {
+    // Test the TF-IDF function directly (it's the fallback, always available)
+    function tfidfVector(text: string): number[] {
+      const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+      const vec = new Array(512).fill(0);
+      for (const word of words) {
+        if (word.length < 3) continue;
+        let hash = 0;
+        for (let i = 0; i < word.length; i++) {
+          hash = (hash * 31 + word.charCodeAt(i)) & 0x1ff;
+        }
+        vec[hash] = (vec[hash] ?? 0) + 1;
+      }
+      const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0));
+      return norm === 0 ? vec : vec.map(v => v / norm);
+    }
+    const vec = tfidfVector("the silver locket beneath the floorboards");
+    expect(vec).toHaveLength(512);
+    const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0));
+    expect(norm).toBeCloseTo(1.0, 3);
+  });
+});

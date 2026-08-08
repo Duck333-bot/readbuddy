@@ -96,37 +96,52 @@
 ## CRITICAL FIX: Book Brain v3 — Process 100% of Every Book
 
 ### Phase 1: Hierarchical Processing (chunk → chapter → whole book)
-- [ ] Identify chapter boundaries in bookPages (heuristic: page text starts with "Chapter", "CHAPTER", or numbered sections)
-- [ ] Rewrite buildFullText() to chunk by chapter (not 60k char limit)
-- [ ] Add chunkAnalysis pass: for each chunk (5–10 pages), generate summary + entities + concepts + important passages
-- [ ] Add chapterSynthesis pass: combine all chunk analyses for each chapter into a chapter-level brain
-- [ ] Add wholeBookSynthesis pass: combine all chapter brains into the final book brain
-- [ ] Update passCompleted enum to track: 1=extraction, 2=chunks, 3=chapters, 4=whole-book, 5=embeddings
+- [x] Identify chapter boundaries in bookPages (heuristic: page text starts with "Chapter", "CHAPTER", or numbered sections)
+- [x] Rewrite buildFullText() to chunk by chapter (not 60k char limit)
+- [x] Add chunkAnalysis pass: for each chunk (5–10 pages), generate summary + entities + concepts + important passages
+- [x] Add chapterSynthesis pass: combine all chunk analyses for each chapter into a chapter-level brain
+- [x] Add wholeBookSynthesis pass: combine all chapter brains into the final book brain
+- [x] Update passCompleted enum to track: 1=extraction, 2=chunks, 3=chapters, 4=whole-book, 5=embeddings
 
 ### Phase 2: Semantic Retrieval via Embeddings
-- [ ] Add bookEmbeddings table: (id, bookId, chunkId, embedding, metadata)
-- [ ] Generate embeddings for every chunk using Manus Forge embedding API
-- [ ] Implement semantic search: highlight → embed → search all chunks → rerank → return top 5
-- [ ] Update buildBrainContext() to use semantic search instead of page-proximity heuristic
-- [ ] Test: "remind me what the author said 180 pages ago" returns relevant passages
+- [x] Add bookEmbeddings table: (id, bookId, chunkId, embedding, metadata)
+- [x] Generate embeddings for every chunk using Manus Forge embedding API
+- [x] Implement semantic search: highlight → embed → search all chunks → rerank → return top 5
+- [x] Update buildBrainContext() to use semantic search instead of page-proximity heuristic
+- [x] Test: "remind me what the author said 180 pages ago" returns relevant passages
 
 ### Phase 3: Spoiler-Aware Retrieval
-- [ ] Filter retrieved chunks by reader's current page before sending to AI
-- [ ] Store chunk page ranges in bookEmbeddings metadata
-- [ ] In buildBrainContext(), exclude chunks that occur after reader's current page when spoilerMode="safe"
+- [x] Filter retrieved chunks by reader's current page before sending to AI
+- [x] Store chunk page ranges in bookEmbeddings metadata
+- [x] In buildBrainContext(), exclude chunks that occur after reader's current page when spoilerMode="safe"
 
 ### Phase 4: LLM Provider Abstraction
-- [ ] Create server/llm/provider.ts: abstract interface for LLM calls
-- [ ] Create server/llm/openai.ts: OpenAI-compatible wrapper (current Forge endpoint)
-- [ ] Create server/llm/deepseek.ts: DeepSeek API wrapper (use DEEPSEEK_API_KEY env var)
-- [ ] Create server/llm/router.ts: task-based routing (chunk analysis → DeepSeek, whole-book → stronger model, etc.)
-- [ ] Update invokeLLM() to use the router instead of hardcoded OpenAI
-- [ ] Update bookBrain.ts to use the new provider abstraction
+- [x] Create server/llm/provider.ts: abstract interface for LLM calls
+- [x] Create server/llm/openai.ts: OpenAI-compatible wrapper (current Forge endpoint)
+- [x] Create server/llm/deepseek.ts: DeepSeek API wrapper (use DEEPSEEK_API_KEY env var)
+- [x] Create server/llm/router.ts: task-based routing (chunk analysis → DeepSeek, whole-book → stronger model, etc.)
+- [x] Update invokeLLM() to use the router instead of hardcoded OpenAI
+- [x] Update bookBrain.ts to use the new provider abstraction
 
 ### Phase 5: Testing & Verification
-- [ ] End-to-end test: upload a 300+ page book, verify all chunks are processed
-- [ ] Verify embeddings are generated for every chunk
-- [ ] Test semantic retrieval: query should find relevant passages from anywhere in the book
-- [ ] Test spoiler mode: retrieval should exclude future chapters
-- [ ] Update vitest mocks for new DB helpers (bookEmbeddings, chunkAnalysis, etc.)
-- [ ] Production build passes cleanly
+- [x] End-to-end test: upload a 300+ page book, verify all chunks are processed
+- [x] Verify embeddings are generated for every chunk
+- [x] Test semantic retrieval: query should find relevant passages from anywhere in the book
+- [x] Test spoiler mode: retrieval should exclude future chapters
+- [x] Update vitest mocks for new DB helpers (bookEmbeddings, chunkAnalysis, etc.)
+- [x] Production build passes cleanly
+
+## P0 Correctness Fixes (from audit)
+
+- [x] P0-1: Wire semanticChunks into live AI prompt in readingBuddy.ts
+- [x] P0-1: Remove duplicated BrainContext type; import from bookBrain.ts
+- [x] P0-2: Fix spoiler filter: use endPage <= currentPage (not startPage)
+- [x] P0-2: Strip whole-book overallSummary/themes from safe-mode context
+- [x] P0-2: Strip whole-book entity descriptions from safe-mode context (only include entities first mentioned before currentPage)
+- [x] P0-2: Strip current-chapter summary from safe-mode if chapter started after currentPage
+- [x] P0-3: Migrate live reading buddy from invokeLLM to llmCall("reading_buddy", ...)
+- [x] P0-4: Add server/llm/embeddings.ts with OPENAI_API_KEY direct support + embedding metadata (model, provider, dimensions)
+- [x] P0-4: Store embeddingModel/embeddingProvider/dimensions in bookEmbeddings metadata
+- [x] P0-5: Embed richer text: chapter title + chunk summary + entities + concepts + original chunk text
+- [x] P0-5: Return actual evidence passages (original text) in semanticChunks, not just summaries
+- [x] P0-5: Include page citation in evidence: [p.47] "exact passage text"

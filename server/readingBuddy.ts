@@ -1,4 +1,4 @@
-import { invokeLLM } from "./_core/llm";
+import { llmCall } from "./llm/router";
 import * as db from "./db";
 
 export const BUDDY_MODES = [
@@ -12,8 +12,6 @@ export const BUDDY_MODES = [
 ] as const;
 export type BuddyMode = (typeof BUDDY_MODES)[number];
 
-/** Model chosen for a good balance of quality, latency and cost per question. */
-const MODEL = "gpt-5-mini";
 
 const BASE_SYSTEM = `You are ReadBuddy, a warm and precise reading companion who sits beside a reader as they work through a book.
 
@@ -50,15 +48,9 @@ For each important or unfamiliar word or phrase, give a one-line definition as i
 Answer their question directly and specifically, using the passage and surrounding context. If their question rests on a misreading, gently correct it first.`,
 };
 
-export type BrainContext = {
-  overallSummary: string | null;
-  themes: string[];
-  chapterContext: string | null;
-  relevantEntities: string;
-  keyPassagesNearby: string;
-  brainReady: boolean;
-  passCompleted: number;
-};
+// BrainContext is defined in bookBrain.ts — import and re-export to avoid duplication.
+import type { BrainContext } from "./bookBrain";
+export type { BrainContext };
 
 export type ReaderMemoryContext = {
   knownVocab: { word: string; definition: string; pageFirstAsked: number }[];
@@ -117,6 +109,16 @@ export async function askReadingBuddy(req: BuddyRequest): Promise<string> {
     }
     if (bc.keyPassagesNearby) {
       brainLines.push("NEARBY KEY PASSAGES:", bc.keyPassagesNearby);
+    }
+    // P0-1: Wire semantic retrieval results into the prompt.
+    // This is the core of whole-book understanding — passages retrieved from
+    // anywhere in the book (respecting spoiler mode) that are relevant to the
+    // reader's current highlight.
+    if (bc.semanticChunks) {
+      brainLines.push(
+        "RETRIEVED BOOK EVIDENCE (passages from earlier in the book relevant to this highlight):",
+        bc.semanticChunks,
+      );
     }
     if (req.spoilerMode === "safe") {
       brainLines.push(
@@ -180,19 +182,15 @@ export async function askReadingBuddy(req: BuddyRequest): Promise<string> {
     content: m.content,
   }));
 
-  const response = await invokeLLM({
-    model: MODEL,
+  const response = await llmCall("reading_buddy", {
     messages: [
       { role: "system", content: BASE_SYSTEM },
       ...history,
       { role: "user", content: userPrompt },
     ],
-    max_completion_tokens: 1400,
-    reasoning: { effort: "low" },
+    max_tokens: 1400,
   });
-
-  const content = response.choices?.[0]?.message?.content;
-  const text = typeof content === "string" ? content.trim() : "";
+  const text = response.text.trim();
   if (!text) {
     throw new Error("The reading buddy returned an empty answer. Please try again.");
   }

@@ -462,6 +462,9 @@ export async function insertBookEmbedding(values: {
     endPage: number;
     chapterNumber: number;
     chunkSequence: number;
+    embeddingProvider?: string;
+    embeddingModel?: string;
+    embeddingDimensions?: number;
   } | null;
 }) {
   const db = await requireDb();
