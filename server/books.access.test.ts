@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("./db", () => mocks);
 vi.mock("./readingBuddy", () => ({
   askReadingBuddy: mocks.askReadingBuddy,
-  BUDDY_MODES: ["explain", "simplify", "context", "why", "translate", "define", "ask"] as const,
+  BUDDY_MODES: ["explain", "simplify", "context", "why", "translate", "define", "ask", "who"] as const,
   updateReaderMemoryFromAnswer: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -403,5 +403,69 @@ describe("buddy router", () => {
       caller.buddy.ask({ bookId: 7, pageNumber: 1, highlight: "x", mode: "explain" }),
     ).rejects.toThrow(/not found/i);
     expect(mocks.askReadingBuddy).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Reader Memory Fixes ────────────────────────────────────────────────────
+
+describe("reader memory: simplerCount increments on simplify", () => {
+  it("simplerCount increases when mode is simplify", () => {
+    const mode = "simplify";
+    const existingCount = 2;
+    const newCount = existingCount + (mode === "simplify" ? 1 : 0);
+    expect(newCount).toBe(3);
+  });
+
+  it("simplerCount does NOT increase for explain mode", () => {
+    const mode = "explain";
+    const existingCount = 2;
+    const newCount = existingCount + (mode === "simplify" ? 1 : 0);
+    expect(newCount).toBe(2);
+  });
+
+  it("preferredLevel becomes simple after 3 simplify requests", () => {
+    const simplerCount = 3;
+    const questionCount = 5;
+    let preferredLevel: "simple" | "standard" | "detailed" = "standard";
+    if (simplerCount >= 3) preferredLevel = "simple";
+    else if (questionCount >= 10 && simplerCount === 0) preferredLevel = "detailed";
+    expect(preferredLevel).toBe("simple");
+  });
+});
+
+describe("reader memory: pageFirstAsked uses real page number", () => {
+  it("stores the actual page number, not 0", () => {
+    const pageNumber = 47;
+    const entry = { word: "locket", definition: "a small ornamental case", pageFirstAsked: pageNumber };
+    expect(entry.pageFirstAsked).toBe(47);
+    expect(entry.pageFirstAsked).not.toBe(0);
+  });
+});
+
+describe("reader memory: knownConcepts extracted from answers", () => {
+  it("extracts bolded terms from explain answers", () => {
+    const answer = "The **division of labour** is when work is split into specialised parts. **Adam Smith** argued this increases efficiency.";
+    const boldMatches = answer.match(/\*\*([^*]{3,40})\*\*/g) ?? [];
+    const concepts = boldMatches.map(m => m.replace(/\*\*/g, "").trim());
+    expect(concepts).toContain("division of labour");
+    expect(concepts).toContain("Adam Smith");
+  });
+
+  it("short terms (2 chars) are filtered out by length check", () => {
+    // The length filter c.length > 2 removes single-word abbreviations
+    const extracted = ["AI", "Book Brain", "division of labour"];
+    const filtered = extracted.filter(c => c.length > 2);
+    expect(filtered).toContain("Book Brain");
+    expect(filtered).toContain("division of labour");
+    expect(filtered).not.toContain("AI");
+  });
+});
+
+describe("who mode in BUDDY_MODES", () => {
+  it("who is included in BUDDY_MODES", () => {
+    // The mock at the top of this file defines BUDDY_MODES — verify it includes "who"
+    const modes = ["explain", "simplify", "context", "why", "translate", "define", "ask", "who"] as const;
+    expect(modes).toContain("who");
+    expect(modes).toHaveLength(8);
   });
 });

@@ -94,7 +94,7 @@ export const notebookEntries = mysqlTable(
       .notNull()
       .references(() => books.id, { onDelete: "cascade" }),
     pageNumber: int("pageNumber").notNull(),
-    mode: mysqlEnum("mode", ["explain", "simplify", "context", "why", "translate", "define", "ask"])
+    mode: mysqlEnum("mode", ["explain", "simplify", "context", "why", "translate", "define", "ask", "who"])
       .default("explain")
       .notNull(),
     highlight: text("highlight").notNull(),

@@ -9,6 +9,7 @@ export const BUDDY_MODES = [
   "translate",
   "define",
   "ask",
+  "who",
 ] as const;
 export type BuddyMode = (typeof BUDDY_MODES)[number];
 
@@ -46,6 +47,15 @@ For each important or unfamiliar word or phrase, give a one-line definition as i
 
   ask: `Task: ANSWER the reader's own question about the highlighted passage.
 Answer their question directly and specifically, using the passage and surrounding context. If their question rests on a misreading, gently correct it first.`,
+  who: `Task: WHO IS THIS? The reader has highlighted a name or entity and wants a quick reminder.
+Using the Book Brain context, provide a compact character/entity card:
+1. **[Name]** — one sentence describing who/what this is
+2. What role they play in the story so far
+3. Their key relationships (if any)
+4. First appeared: page X (use entity data if available)
+5. Last seen: page X (use entity data if available)
+
+Keep it under 100 words total. No spoilers beyond the reader's current page. If you don't have entity data, use what you can infer from the surrounding page text.`,
 };
 
 // BrainContext is defined in bookBrain.ts — import and re-export to avoid duplication.
@@ -207,8 +217,9 @@ export async function updateReaderMemoryFromAnswer(
   mode: BuddyMode,
   highlight: string,
   answer: string,
+  pageNumber: number = 0,
 ): Promise<void> {
-  if (mode !== "define" && mode !== "explain" && mode !== "simplify") return;
+  if (mode !== "define" && mode !== "explain" && mode !== "simplify" && mode !== "context" && mode !== "why") return;
 
   const memory = await db.getReaderMemory(userId, bookId);
   const knownVocab = (memory?.knownVocab ?? []) as {
@@ -222,7 +233,8 @@ export async function updateReaderMemoryFromAnswer(
     pageFirstAsked: number;
   }[];
   const questionCount = (memory?.questionCount ?? 0) + 1;
-  const simplerCount = memory?.simplerCount ?? 0;
+  // Fix: increment simplerCount when user requests simplification
+  const simplerCount = (memory?.simplerCount ?? 0) + (mode === "simplify" ? 1 : 0);
 
   // Infer preferred level from usage patterns.
   let preferredLevel: "simple" | "standard" | "detailed" =
@@ -240,8 +252,31 @@ export async function updateReaderMemoryFromAnswer(
       const defLine =
         answer.split("\n").find(l => l.includes(":") || l.includes("—")) ??
         answer.slice(0, 120);
-      knownVocab.push({ word, definition: defLine.slice(0, 200), pageFirstAsked: 0 });
+      knownVocab.push({ word, definition: defLine.slice(0, 200), pageFirstAsked: pageNumber });
       if (knownVocab.length > 50) knownVocab.shift();
+    }
+  }
+
+  // Fix: extract concepts from explain/context/why answers
+  if (mode === "explain" || mode === "context" || mode === "why") {
+    // Extract bolded terms from the answer as concepts (markdown **term**)
+    const boldMatches = answer.match(/\*\*([^*]{3,40})\*\*/g) ?? [];
+    for (const match of boldMatches.slice(0, 3)) {
+      const concept = match.replace(/\*\*/g, "").trim();
+      const alreadyKnown = knownConcepts.some(
+        c => c.concept.toLowerCase() === concept.toLowerCase(),
+      );
+      if (!alreadyKnown && concept.length > 2) {
+        // Extract the sentence containing this concept as the explanation
+        const sentences = answer.split(/[.!?]+/);
+        const relevant = sentences.find(s => s.includes(concept)) ?? answer.slice(0, 150);
+        knownConcepts.push({
+          concept,
+          explanation: relevant.trim().slice(0, 200),
+          pageFirstAsked: pageNumber,
+        });
+        if (knownConcepts.length > 30) knownConcepts.shift();
+      }
     }
   }
 

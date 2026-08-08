@@ -1,0 +1,1 @@
+ALTER TABLE `notebookEntries` MODIFY COLUMN `mode` enum('explain','simplify','context','why','translate','define','ask','who') NOT NULL DEFAULT 'explain';

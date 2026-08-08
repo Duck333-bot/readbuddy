@@ -1,6 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Wordmark } from "@/components/AppShell";
-import BuddyPanel from "@/components/BuddyPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,25 +15,227 @@ import { readSelection, type ReaderSelection } from "@/lib/selection";
 import { trpc } from "@/lib/trpc";
 import {
   ArrowLeft,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
+  HelpCircle,
   NotebookPen,
   Settings2,
-  Sparkles,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Streamdown } from "streamdown";
 import { toast } from "sonner";
 import { Link, useLocation, useParams, useSearch } from "wouter";
+
 type SelectionState = ReaderSelection;
+type BuddyMode = "explain" | "simplify" | "context" | "who" | "why" | "translate" | "define" | "ask";
 
 const FONT_SIZES = [17, 18, 19, 20, 22, 24];
-/** Height of the sticky reader header in pixels (`h-14`). */
 const HEADER_HEIGHT = 56;
 const WIDTHS = [
   { label: "Narrow", value: "34rem" },
   { label: "Comfortable", value: "40rem" },
   { label: "Wide", value: "48rem" },
 ];
+
+/** Inline AI answer card — overlays the text, never shifts the reading column. */
+function InlineAnswerCard({
+  highlight,
+  answer,
+  mode,
+  isLoading,
+  onClose,
+  onSave,
+  onAskFollowUp,
+  onSimpler,
+  onMore,
+  isSaved,
+}: {
+  highlight: string;
+  answer: string;
+  mode: BuddyMode;
+  isLoading: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  onAskFollowUp: (question: string) => void;
+  onSimpler: () => void;
+  onMore: () => void;
+  isSaved: boolean;
+}) {
+  const [followUp, setFollowUp] = useState("");
+  const [showFollowUp, setShowFollowUp] = useState(false);
+
+  return (
+    <div className="mt-4 mb-2 rounded-xl border border-border/70 bg-card shadow-lg animate-in slide-in-from-top-2 duration-200">
+      {/* Highlighted text reference */}
+      <div className="border-b border-border/50 px-4 py-2.5">
+        <p className="text-xs text-muted-foreground line-clamp-2 italic">
+          "{highlight.slice(0, 120)}{highlight.length > 120 ? "…" : ""}"
+        </p>
+      </div>
+
+      {/* Answer */}
+      <div className="px-4 py-3">
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-3.5 w-full" />
+            <Skeleton className="h-3.5 w-11/12" />
+            <Skeleton className="h-3.5 w-4/5" />
+          </div>
+        ) : (
+          <div className="prose prose-sm max-w-none text-sm leading-relaxed text-foreground [&_strong]:font-semibold [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mt-1 [&_li]:mb-0.5">
+            <Streamdown>{answer}</Streamdown>
+          </div>
+        )}
+      </div>
+
+      {/* Action row */}
+      {!isLoading && (
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-border/50 px-4 py-2.5">
+          {mode !== "simplify" && (
+            <button
+              onClick={onSimpler}
+              className="rounded-md px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+              Simpler
+            </button>
+          )}
+          {mode !== "context" && (
+            <button
+              onClick={onMore}
+              className="rounded-md px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+              More context
+            </button>
+          )}
+          <button
+            onClick={() => setShowFollowUp(v => !v)}
+            className="rounded-md px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+            Ask a question
+          </button>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={onSave}
+              disabled={isSaved}
+              className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                isSaved
+                  ? "text-primary/60"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}>
+              {isSaved ? "Saved ✓" : "Save"}
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              aria-label="Close">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Follow-up input */}
+      {showFollowUp && !isLoading && (
+        <div className="border-t border-border/50 px-4 pb-3 pt-2">
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              if (followUp.trim()) {
+                onAskFollowUp(followUp.trim());
+                setFollowUp("");
+                setShowFollowUp(false);
+              }
+            }}
+            className="flex gap-2">
+            <Input
+              value={followUp}
+              onChange={e => setFollowUp(e.target.value)}
+              placeholder="Ask anything about this passage…"
+              className="h-8 flex-1 text-xs"
+              autoFocus
+            />
+            <Button type="submit" size="sm" className="h-8 text-xs" disabled={!followUp.trim()}>
+              Ask
+            </Button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** "I'm lost" card — appears when the reader taps the lost button. */
+function LostCard({
+  answer,
+  isLoading,
+  onClose,
+}: {
+  answer: string;
+  isLoading: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div className="mx-auto mb-6 max-w-prose rounded-xl border border-primary/20 bg-primary/5 shadow-md animate-in slide-in-from-top-2 duration-200">
+      <div className="flex items-center justify-between border-b border-primary/15 px-4 py-2.5">
+        <span className="text-xs font-semibold text-primary">ReadBuddy</span>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="px-4 py-3">
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-3.5 w-full" />
+            <Skeleton className="h-3.5 w-10/12" />
+            <Skeleton className="h-3.5 w-4/5" />
+          </div>
+        ) : (
+          <div className="prose prose-sm max-w-none text-sm leading-relaxed text-foreground">
+            <Streamdown>{answer}</Streamdown>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Resume recap card — shown when returning to a book. */
+function ResumeCard({
+  recap,
+  lastPage,
+  pageCount,
+  onDismiss,
+  onContinue,
+}: {
+  recap: string;
+  lastPage: number;
+  pageCount: number;
+  onDismiss: () => void;
+  onContinue: () => void;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center p-4 sm:bottom-6">
+      <div className="w-full max-w-md rounded-2xl border border-border/70 bg-card p-5 shadow-xl animate-in slide-in-from-bottom-4 duration-300">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-primary">Welcome back</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              You stopped on page {lastPage} of {pageCount}.
+            </p>
+          </div>
+          <button onClick={onDismiss} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-3 text-sm leading-relaxed text-foreground">
+          <Streamdown>{recap}</Streamdown>
+        </div>
+        <Button className="mt-4 w-full" size="sm" onClick={onContinue}>
+          Continue reading
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function Reader() {
   const params = useParams<{ bookId: string }>();
@@ -44,162 +245,209 @@ export default function Reader() {
     redirectOnUnauthenticated: true,
   });
   const [, navigate] = useLocation();
-
   const [pageNumber, setPageNumber] = useState<number | null>(null);
   const [selection, setSelection] = useState<SelectionState | null>(null);
-  const [buddyHighlight, setBuddyHighlight] = useState("");
-  const [buddyOpen, setBuddyOpen] = useState(false);
+
+  // Inline answer state
+  const [activeHighlight, setActiveHighlight] = useState("");
+  const [activeMode, setActiveMode] = useState<BuddyMode>("explain");
+  const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
+  const [answerOpen, setAnswerOpen] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  // "I'm lost" state
+  const [lostOpen, setLostOpen] = useState(false);
+
+  // Resume recap state
+  const [resumeOpen, setResumeOpen] = useState(false);
+  const [resumeDismissed, setResumeDismissed] = useState(false);
+
   const [fontSizeIndex, setFontSizeIndex] = useState(1);
   const [widthIndex, setWidthIndex] = useState(1);
   const [jumpValue, setJumpValue] = useState("");
-
   const articleRef = useRef<HTMLDivElement>(null);
   const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const bookQuery = trpc.books.get.useQuery(
     { bookId },
-    { enabled: isAuthenticated && Number.isFinite(bookId) },
+    { enabled: !!bookId && !Number.isNaN(bookId) },
   );
+  const book = bookQuery.data;
+  const pageCount = book?.pageCount ?? 1;
 
-  /**
-   * `?page=N` (used by notebook deep links) wins over the saved position, so
-   * clicking a note lands the reader exactly where the note was taken.
-   */
-  const requestedPage = useMemo(() => {
-    const raw = new URLSearchParams(search).get("page");
-    const parsed = raw ? Number(raw) : NaN;
-    return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : null;
-  }, [search]);
-
-  // Resume where the reader left off, once, when the book loads.
+  // Initialise page from URL
   useEffect(() => {
-    if (pageNumber === null && bookQuery.data) {
-      const target = requestedPage ?? bookQuery.data.lastPage;
-      setPageNumber(Math.min(Math.max(1, target), Math.max(1, bookQuery.data.pageCount)));
+    const params = new URLSearchParams(search);
+    const p = Number(params.get("page"));
+    if (p > 0 && p <= pageCount) {
+      setPageNumber(p);
+    } else if (book?.lastPage) {
+      setPageNumber(book.lastPage);
+    } else {
+      setPageNumber(1);
     }
-  }, [bookQuery.data, pageNumber, requestedPage]);
-
-  // Support navigating between notes without a full remount.
-  const lastRequestedRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (requestedPage === null || !bookQuery.data) return;
-    if (lastRequestedRef.current === requestedPage) return;
-    lastRequestedRef.current = requestedPage;
-    setPageNumber(Math.min(requestedPage, Math.max(1, bookQuery.data.pageCount)));
-  }, [requestedPage, bookQuery.data]);
+  }, [search, book?.lastPage, pageCount]);
 
   const pageQuery = trpc.books.page.useQuery(
     { bookId, pageNumber: pageNumber ?? 1 },
-    { enabled: isAuthenticated && Number.isFinite(bookId) && pageNumber !== null },
+    { enabled: !!pageNumber && !!bookId },
   );
 
-  const progressMutation = trpc.books.updateProgress.useMutation();
-  const utils = trpc.useUtils();
+  const updateProgress = trpc.books.updateProgress.useMutation();
+  const saveEntry = trpc.notebook.save.useMutation();
 
-  const book = bookQuery.data;
-  const pageCount = book?.pageCount ?? 0;
+  // AI answer mutation
+  const askMutation = trpc.buddy.ask.useMutation();
 
-  // Persist progress, debounced so fast page-flipping does not spam the server.
+  // "I'm lost" mutation
+  const lostMutation = trpc.reader.lost.useMutation();
+
+  // Resume summary query
+  const resumeQuery = trpc.reader.resumeSummary.useQuery(
+    { bookId },
+    { enabled: !!bookId && !Number.isNaN(bookId) },
+  );
+
+  // Show resume card when returning to a book (has progress, not dismissed)
   useEffect(() => {
-    if (!book || pageNumber === null) return;
-    if (progressTimer.current) clearTimeout(progressTimer.current);
-    progressTimer.current = setTimeout(() => {
-      progressMutation.mutate(
-        { bookId: book.id, lastPage: pageNumber },
-        { onSuccess: () => void utils.books.list.invalidate() },
-      );
-    }, 900);
-    return () => {
-      if (progressTimer.current) clearTimeout(progressTimer.current);
-    };
-    // Only page changes should schedule a write.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageNumber, book?.id]);
+    if (resumeQuery.data && !resumeDismissed && !resumeOpen) {
+      setResumeOpen(true);
+    }
+  }, [resumeQuery.data]);
 
   const goTo = useCallback(
-    (next: number) => {
-      if (!pageCount) return;
-      const clamped = Math.min(Math.max(next, 1), pageCount);
+    (page: number) => {
+      const clamped = Math.max(1, Math.min(page, pageCount));
       setPageNumber(clamped);
+      setAnswerOpen(false);
+      setLostOpen(false);
       setSelection(null);
       window.scrollTo({ top: 0, behavior: "smooth" });
+      navigate(`/read/${bookId}?page=${clamped}`, { replace: true });
+      if (progressTimer.current) clearTimeout(progressTimer.current);
+      progressTimer.current = setTimeout(() => {
+        updateProgress.mutate({ bookId, lastPage: clamped });
+      }, 2000);
     },
-    [pageCount],
+    [bookId, pageCount, navigate, updateProgress],
   );
 
-  // Keyboard navigation, disabled while typing in an input.
+  // Keyboard navigation
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
-      if (pageNumber === null) return;
-      // Shift+Arrow is how people extend a text selection; it must never turn
-      // the page out from under them.
-      if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
-        if (event.key === "Escape") setSelection(null);
-        return;
-      }
-      if (event.key === "ArrowRight" || event.key === "PageDown") {
-        event.preventDefault();
-        goTo(pageNumber + 1);
-      } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
-        event.preventDefault();
-        goTo(pageNumber - 1);
-      } else if (event.key === "Escape") {
-        setSelection(null);
-      }
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.shiftKey) return;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") goTo((pageNumber ?? 1) + 1);
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") goTo((pageNumber ?? 1) - 1);
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [goTo, pageNumber]);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [pageNumber, goTo]);
 
-  // Detect a text selection inside the page body and place the action pill.
+  // Selection detection
   const handleSelection = useCallback(() => {
-    setSelection(
-      readSelection(window.getSelection(), articleRef.current, {
+    if (!articleRef.current) return;
+    const sel = readSelection(
+      window.getSelection(),
+      articleRef.current,
+      {
         headerHeight: HEADER_HEIGHT,
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
-      }),
+      },
     );
+    setSelection(sel);
   }, []);
 
   useEffect(() => {
-    const onUp = () => window.setTimeout(handleSelection, 10);
-    document.addEventListener("mouseup", onUp);
-    document.addEventListener("touchend", onUp);
-    document.addEventListener("selectionchange", onUp);
-    // Also react to keyboard-driven selection (shift+arrow / shift+end), which
-    // some readers rely on and which never fires `mouseup`.
-    document.addEventListener("keyup", onUp);
+    document.addEventListener("mouseup", handleSelection);
+    document.addEventListener("keyup", handleSelection);
     return () => {
-      document.removeEventListener("mouseup", onUp);
-      document.removeEventListener("touchend", onUp);
-      document.removeEventListener("selectionchange", onUp);
-      document.removeEventListener("keyup", onUp);
+      document.removeEventListener("mouseup", handleSelection);
+      document.removeEventListener("keyup", handleSelection);
     };
   }, [handleSelection]);
 
-  const askBuddy = useCallback(() => {
-    if (!selection) return;
-    setBuddyHighlight(selection.text);
-    setBuddyOpen(true);
-    setSelection(null);
-    window.getSelection()?.removeAllRanges();
-  }, [selection]);
+  // Dismiss selection when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (articleRef.current?.contains(e.target as Node)) return;
+      if ((e.target as HTMLElement)?.closest("[data-selection-actions]")) return;
+      setSelection(null);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const askBuddy = useCallback(
+    (mode: BuddyMode, question?: string) => {
+      if (!selection?.text) return;
+      setActiveHighlight(selection.text);
+      setActiveMode(mode);
+      setActiveQuestion(question ?? null);
+      setAnswerOpen(true);
+      setIsSaved(false);
+      setSelection(null);
+
+      askMutation.mutate({
+        bookId,
+        pageNumber: pageNumber ?? 1,
+        highlight: selection.text,
+        mode,
+        question,
+      });
+    },
+    [selection, bookId, pageNumber, askMutation],
+  );
+
+  const askFollowUp = useCallback(
+    (question: string) => {
+      if (!activeHighlight) return;
+      setActiveMode("ask");
+      setActiveQuestion(question);
+      setIsSaved(false);
+      askMutation.mutate({
+        bookId,
+        pageNumber: pageNumber ?? 1,
+        highlight: activeHighlight,
+        mode: "ask",
+        question,
+      });
+    },
+    [activeHighlight, bookId, pageNumber, askMutation],
+  );
+
+  const handleSave = useCallback(() => {
+    if (!activeHighlight || !askMutation.data) return;
+    saveEntry.mutate(
+      {
+        bookId,
+        pageNumber: pageNumber ?? 1,
+        mode: activeMode,
+        highlight: activeHighlight,
+        question: activeQuestion ?? undefined,
+        answer: askMutation.data.answer,
+      },
+      {
+        onSuccess: () => {
+          setIsSaved(true);
+          toast.success("Saved to notebook");
+        },
+      },
+    );
+  }, [activeHighlight, activeMode, activeQuestion, askMutation.data, bookId, pageNumber, saveEntry]);
+
+  const handleLost = useCallback(() => {
+    setLostOpen(true);
+    lostMutation.mutate({ bookId, pageNumber: pageNumber ?? 1 });
+  }, [bookId, pageNumber, lostMutation]);
 
   const paragraphs = useMemo(() => {
     const content = pageQuery.data?.content ?? "";
+    if (!content) return [];
     return content
       .split(/\n{2,}/)
-      .map(part => part.trim())
+      .map((part: string) => part.trim())
       .filter(Boolean);
   }, [pageQuery.data?.content]);
 
@@ -210,8 +458,6 @@ export default function Reader() {
         <Skeleton className="mt-8 h-4 w-full" />
         <Skeleton className="mt-3 h-4 w-11/12" />
         <Skeleton className="mt-3 h-4 w-10/12" />
-        <Skeleton className="mt-8 h-4 w-full" />
-        <Skeleton className="mt-3 h-4 w-9/12" />
       </div>
     );
   }
@@ -220,9 +466,7 @@ export default function Reader() {
     return (
       <div className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-6 text-center">
         <h1 className="font-display text-2xl font-semibold">Book not found</h1>
-        <p className="mt-2 text-muted-foreground">
-          This book is not in your library, or it has been removed.
-        </p>
+        <p className="mt-2 text-muted-foreground">This book is not in your library.</p>
         <Button className="mt-6" onClick={() => navigate("/library")}>
           Back to library
         </Button>
@@ -234,7 +478,7 @@ export default function Reader() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Reader chrome — deliberately minimal */}
+      {/* Minimal sticky header */}
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/88 backdrop-blur-md">
         <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
           <Tooltip>
@@ -253,16 +497,13 @@ export default function Reader() {
             <p className="truncate font-display text-sm font-semibold leading-tight">
               {book.title}
             </p>
-            {book.author && (
-              <p className="truncate text-[11px] text-muted-foreground">{book.author}</p>
-            )}
           </div>
 
-          <span className="hidden text-xs text-muted-foreground sm:inline">
-            {percent}% read
+          <span className="hidden text-xs text-muted-foreground sm:inline tabular-nums">
+            {percent}%
           </span>
 
-          {/* Reading preferences */}
+          {/* Reading settings (font size, width, spoiler mode) */}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -278,9 +519,7 @@ export default function Reader() {
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-medium">Text size</span>
-                    <span className="text-xs text-muted-foreground">
-                      {FONT_SIZES[fontSizeIndex]}px
-                    </span>
+                    <span className="text-xs text-muted-foreground">{FONT_SIZES[fontSizeIndex]}px</span>
                   </div>
                   <Slider
                     value={[fontSizeIndex]}
@@ -298,14 +537,18 @@ export default function Reader() {
                         key={option.value}
                         variant={widthIndex === index ? "default" : "outline"}
                         size="sm"
-                        className={`h-7 text-[11px] ${
-                          widthIndex === index ? "" : "bg-background"
-                        }`}
+                        className={`h-7 text-[11px] ${widthIndex === index ? "" : "bg-background"}`}
                         onClick={() => setWidthIndex(index)}>
                         {option.label}
                       </Button>
                     ))}
                   </div>
+                </div>
+                <div>
+                  <span className="mb-2 block text-xs font-medium">Spoiler protection</span>
+                  <p className="text-[11px] text-muted-foreground">
+                    ReadBuddy only uses what you've read so far. Change this in a future update.
+                  </p>
                 </div>
               </div>
             </PopoverContent>
@@ -324,163 +567,212 @@ export default function Reader() {
           </Tooltip>
         </div>
 
-        {/* Thin progress line */}
-        <div className="h-[2px] w-full bg-transparent">
+        {/* Thin progress bar */}
+        <div className="h-0.5 bg-border/40">
           <div
-            className="h-full bg-primary/70 transition-[width] duration-300"
+            className="h-full bg-primary/60 transition-all duration-500"
             style={{ width: `${percent}%` }}
           />
         </div>
       </header>
 
-      {/* Body: page + optional buddy panel */}
-      <div className="flex flex-1">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="paper-grain flex-1">
-            <article
-              ref={articleRef}
-              className="mx-auto px-5 py-12 sm:px-8 sm:py-16"
-              style={{ maxWidth: WIDTHS[widthIndex].value }}>
-              <div className="mb-9 flex items-baseline justify-between border-b border-border/60 pb-3">
-                <span className="font-display text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                  {book.title.length > 46 ? `${book.title.slice(0, 46)}…` : book.title}
-                </span>
-                <span className="text-[11px] tabular-nums text-muted-foreground">
-                  {pageNumber} / {pageCount}
-                </span>
+      {/* Reading area — full width, no sidebar */}
+      <main className="flex-1 px-4 py-10 sm:px-6">
+        <div
+          className="mx-auto"
+          style={{ maxWidth: WIDTHS[widthIndex]?.value ?? "40rem" }}>
+
+          {/* "I'm lost" card */}
+          {lostOpen && (
+            <LostCard
+              answer={lostMutation.data?.answer ?? ""}
+              isLoading={lostMutation.isPending}
+              onClose={() => setLostOpen(false)}
+            />
+          )}
+
+          <article ref={articleRef}>
+            {/* Page number */}
+            <p className="mb-6 text-center text-[11px] tabular-nums text-muted-foreground/60">
+              {pageNumber} / {pageCount}
+            </p>
+
+            {pageQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-11/12" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-10/12" />
+                <Skeleton className="h-4 w-full" />
               </div>
-
-              {pageQuery.isLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 10 }).map((_, index) => (
-                    <Skeleton
-                      key={index}
-                      className="h-4"
-                      style={{ width: `${72 + ((index * 13) % 26)}%` }}
-                    />
-                  ))}
-                </div>
-              ) : paragraphs.length === 0 ? (
-                <p className="font-reading text-muted-foreground">
-                  This page has no extractable text — it may be an image, a blank
-                  page, or a plate.
-                </p>
-              ) : (
-                <div
-                  data-testid="page-text"
-                  className="font-reading text-foreground selection:bg-primary/20 selection:text-foreground"
-                  style={{
-                    fontSize: `${FONT_SIZES[fontSizeIndex]}px`,
-                    lineHeight: 1.82,
-                  }}>
-                  {paragraphs.map((paragraph, index) => (
-                    <p key={index} className="mb-[1.15em] last:mb-0">
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              {/* Page turn */}
-              <div className="mt-14 flex items-center justify-between gap-4 border-t border-border/60 pt-6">
-                <Button
-                  variant="ghost"
-                  className="gap-1.5 pl-2 text-muted-foreground hover:text-foreground"
-                  disabled={(pageNumber ?? 1) <= 1}
-                  onClick={() => goTo((pageNumber ?? 1) - 1)}>
-                  <ChevronLeft className="h-4 w-4" strokeWidth={2} />
-                  Previous
-                </Button>
-
-                <form
-                  className="flex items-center gap-2"
-                  onSubmit={event => {
-                    event.preventDefault();
-                    const target = Number(jumpValue);
-                    if (!Number.isFinite(target) || target < 1 || target > pageCount) {
-                      toast.error(`Enter a page between 1 and ${pageCount}.`);
-                      return;
-                    }
-                    goTo(target);
-                    setJumpValue("");
-                  }}>
-                  <Input
-                    value={jumpValue}
-                    onChange={event => setJumpValue(event.target.value)}
-                    placeholder={String(pageNumber ?? 1)}
-                    inputMode="numeric"
-                    aria-label="Jump to page"
-                    className="h-8 w-16 bg-background text-center text-xs tabular-nums"
-                  />
-                  <span className="text-xs text-muted-foreground">of {pageCount}</span>
-                </form>
-
-                <Button
-                  variant="ghost"
-                  className="gap-1.5 pr-2 text-muted-foreground hover:text-foreground"
-                  disabled={(pageNumber ?? 1) >= pageCount}
-                  onClick={() => goTo((pageNumber ?? 1) + 1)}>
-                  Next
-                  <ChevronRight className="h-4 w-4" strokeWidth={2} />
-                </Button>
-              </div>
-
-              <p className="mt-6 text-center text-[11px] text-muted-foreground/70">
-                Tip: use ← and → to turn pages. Select any sentence to ask your buddy.
+            ) : !pageQuery.data?.content ? (
+              <p className="text-center text-sm text-muted-foreground">
+                No text found on this page.
               </p>
-            </article>
-          </div>
-        </div>
-
-        {/* Buddy panel — inline on desktop, slide-over on mobile */}
-        {buddyOpen && buddyHighlight && (
-          <>
-            <div className="hidden w-[24rem] shrink-0 lg:block">
-              <div className="sticky top-14 h-[calc(100vh-3.5rem)]">
-                <BuddyPanel
-                  bookId={book.id}
-                  pageNumber={pageNumber ?? 1}
-                  highlight={buddyHighlight}
-                  onClose={() => setBuddyOpen(false)}
-                  onHighlightChange={setBuddyHighlight}
-                />
-              </div>
-            </div>
-
-            <div className="fixed inset-0 z-50 flex flex-col justify-end bg-foreground/25 backdrop-blur-[2px] lg:hidden">
+            ) : (
               <div
-                className="absolute inset-0"
-                onClick={() => setBuddyOpen(false)}
-                aria-hidden="true"
-              />
-              <div className="relative h-[78vh] overflow-hidden rounded-t-2xl bg-card shadow-lift">
-                <BuddyPanel
-                  bookId={book.id}
-                  pageNumber={pageNumber ?? 1}
-                  highlight={buddyHighlight}
-                  onClose={() => setBuddyOpen(false)}
-                  onHighlightChange={setBuddyHighlight}
-                />
+                data-testid="page-text"
+                className="font-reading text-foreground selection:bg-primary/20 selection:text-foreground"
+                style={{ fontSize: `${FONT_SIZES[fontSizeIndex]}px`, lineHeight: 1.82 }}>
+                {paragraphs.map((paragraph: string, index: number) => (
+                  <p key={index} className="mb-[1.15em] last:mb-0">
+                    {paragraph}
+                  </p>
+                ))}
               </div>
-            </div>
-          </>
-        )}
-      </div>
+            )}
 
-      {/* Floating selection action */}
+            {/* Inline AI answer card — appears below text, no layout shift */}
+            {answerOpen && activeHighlight && (
+              <InlineAnswerCard
+                highlight={activeHighlight}
+                answer={askMutation.data?.answer ?? ""}
+                mode={activeMode}
+                isLoading={askMutation.isPending}
+                onClose={() => setAnswerOpen(false)}
+                onSave={handleSave}
+                onAskFollowUp={askFollowUp}
+                onSimpler={() => {
+                  setActiveMode("simplify");
+                  askMutation.mutate({
+                    bookId,
+                    pageNumber: pageNumber ?? 1,
+                    highlight: activeHighlight,
+                    mode: "simplify",
+                  });
+                }}
+                onMore={() => {
+                  setActiveMode("context");
+                  askMutation.mutate({
+                    bookId,
+                    pageNumber: pageNumber ?? 1,
+                    highlight: activeHighlight,
+                    mode: "context",
+                  });
+                }}
+                isSaved={isSaved}
+              />
+            )}
+
+            {/* Page navigation */}
+            <div className="mt-14 flex items-center justify-between gap-4 border-t border-border/60 pt-6">
+              <Button
+                variant="ghost"
+                className="gap-1.5 pl-2 text-muted-foreground hover:text-foreground"
+                disabled={(pageNumber ?? 1) <= 1}
+                onClick={() => goTo((pageNumber ?? 1) - 1)}>
+                <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+                Previous
+              </Button>
+              <form
+                className="flex items-center gap-2"
+                onSubmit={event => {
+                  event.preventDefault();
+                  const target = Number(jumpValue);
+                  if (!Number.isFinite(target) || target < 1 || target > pageCount) {
+                    toast.error(`Enter a page between 1 and ${pageCount}.`);
+                    return;
+                  }
+                  goTo(target);
+                  setJumpValue("");
+                }}>
+                <Input
+                  value={jumpValue}
+                  onChange={event => setJumpValue(event.target.value)}
+                  placeholder={String(pageNumber ?? 1)}
+                  inputMode="numeric"
+                  aria-label="Jump to page"
+                  className="h-8 w-16 bg-background text-center text-xs tabular-nums"
+                />
+                <span className="text-xs text-muted-foreground">of {pageCount}</span>
+              </form>
+              <Button
+                variant="ghost"
+                className="gap-1.5 pr-2 text-muted-foreground hover:text-foreground"
+                disabled={(pageNumber ?? 1) >= pageCount}
+                onClick={() => goTo((pageNumber ?? 1) + 1)}>
+                Next
+                <ChevronRight className="h-4 w-4" strokeWidth={2} />
+              </Button>
+            </div>
+          </article>
+        </div>
+      </main>
+
+      {/* Instant selection action bar — appears at selection position */}
       {selection && (
         <div
-          className="fixed z-50 -translate-y-1/2 animate-in fade-in zoom-in-95 duration-150"
-          style={{ left: selection.x, top: selection.y }}>
-          <Button
-            size="sm"
-            className="h-9 gap-1.5 rounded-full px-4 text-xs shadow-lift"
-            onMouseDown={event => event.preventDefault()}
-            onClick={askBuddy}>
-            <Sparkles className="h-3.5 w-3.5" strokeWidth={2.1} />
-            Ask ReadBuddy
-          </Button>
+          data-selection-actions
+          className="fixed z-50 animate-in fade-in zoom-in-95 duration-150"
+          style={{ left: Math.max(8, selection.x - 80), top: selection.y - 8 }}>
+          <div className="flex items-center gap-0.5 rounded-full border border-border/70 bg-card px-1.5 py-1 shadow-lg">
+            <button
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => askBuddy("explain")}
+              className="rounded-full px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent">
+              Explain
+            </button>
+            <button
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => askBuddy("simplify")}
+              className="rounded-full px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent">
+              Simpler
+            </button>
+            <button
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => askBuddy("context")}
+              className="rounded-full px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent">
+              Context
+            </button>
+            {selection.text.trim().split(/\s+/).length <= 4 && (
+              <button
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => askBuddy("who")}
+                className="rounded-full px-3 py-1.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10">
+                Who?
+              </button>
+            )}
+            <button
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => setSelection(null)}
+              className="ml-0.5 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-accent">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
         </div>
+      )}
+
+      {/* "I'm lost" floating button — subtle, always visible */}
+      <div className="fixed bottom-6 right-4 z-40 flex flex-col items-end gap-2 sm:right-6">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleLost}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground shadow-md transition-all hover:border-primary/40 hover:text-primary hover:shadow-lg active:scale-95"
+              aria-label="I'm lost — help me understand where I am">
+              <HelpCircle className="h-4.5 w-4.5" strokeWidth={1.8} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left">I'm lost</TooltipContent>
+        </Tooltip>
+      </div>
+
+      {/* Resume recap card */}
+      {resumeOpen && resumeQuery.data && (
+        <ResumeCard
+          recap={resumeQuery.data.recap}
+          lastPage={resumeQuery.data.lastPage}
+          pageCount={resumeQuery.data.pageCount}
+          onDismiss={() => {
+            setResumeOpen(false);
+            setResumeDismissed(true);
+          }}
+          onContinue={() => {
+            setResumeOpen(false);
+            setResumeDismissed(true);
+            if (resumeQuery.data) goTo(resumeQuery.data.lastPage);
+          }}
+        />
       )}
 
       <footer className="border-t border-border/60 py-4">

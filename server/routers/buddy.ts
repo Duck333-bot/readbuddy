@@ -94,6 +94,7 @@ export const buddyRouter = router({
           input.mode,
           input.highlight,
           answer,
+          input.pageNumber,
         ).catch(e => console.warn("[buddy.ask] memory update failed:", e));
 
         return {

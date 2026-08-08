@@ -43,6 +43,13 @@
       "when": 1786177725615,
       "tag": "0005_third_harry_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1786189272910,
+      "tag": "0006_woozy_firelord",
+      "breakpoints": true
     }
   ]
 }

@@ -145,3 +145,39 @@
 - [x] P0-5: Embed richer text: chapter title + chunk summary + entities + concepts + original chunk text
 - [x] P0-5: Return actual evidence passages (original text) in semanticChunks, not just summaries
 - [x] P0-5: Include page citation in evidence: [p.47] "exact passage text"
+
+## Reader Experience Redesign + Core Features
+
+### Reader Memory Fixes
+- [x] Fix pageFirstAsked: pass actual pageNumber when storing vocab/concepts
+- [x] Fix simplerCount: increment when user uses simplify/even-simpler mode
+- [x] Fill knownConcepts: extract and store concepts from explain/context/why answers
+
+### Who Was This Again?
+- [x] Add "who" mode to BUDDY_MODES in readingBuddy.ts
+- [x] Add character card prompt: name, description, first/last seen page, relationships
+- [x] Add tRPC procedure for who-was-this (uses entity data from bookBrain)
+- [ ] Build inline CharacterCard component: compact, near-text, no sidebar
+- [x] Wire into selection popover: show "Who is this?" when highlight is 1-3 words
+
+### Reader UX Redesign
+- [x] Remove layout shift: AI overlay/drawer instead of fixed 24rem sidebar
+- [x] Instant action buttons on selection: Explain · Simpler · Context · More (no intermediate pill)
+- [x] Compact inline answer card attached near the passage (not full sidebar)
+- [x] Only expand to full panel for follow-ups and deep analysis
+- [ ] Minimal chrome: fade header/footer while reading, show on mouse move/tap
+- [x] Remove "Brain ready" / "Building pass 3/4" technical language from UI
+- [x] Move spoiler settings to reading settings (⚙️ icon), default to "No spoilers"
+- [x] Simplify reader header: just ← title ···, no duplicate title/author/progress
+
+### I'm Lost
+- [x] Add "I'm lost" button (subtle, always visible in reader)
+- [x] Add tRPC procedure: lost() — uses last 5 pages + current chapter + reader history
+- [x] Build LostCard component: "Here's what you need to know before continuing"
+- [x] No highlight required — triggered by button tap
+
+### Resume Recap
+- [x] Detect returning reader (last session > 1 hour ago)
+- [x] Show "Welcome back" card with last page and 20-second recap
+- [x] Add tRPC procedure: getResumeSummary() — uses last page + chapter + recent events
+- [x] Build ResumeCard component: dismissable, shown on library → reader navigation
