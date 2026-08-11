@@ -109,6 +109,31 @@ export type NotebookEntry = typeof notebookEntries.$inferSelect;
 export type InsertNotebookEntry = typeof notebookEntries.$inferInsert;
 
 /**
+ * Product analytics events. Payloads deliberately contain only interaction
+ * metadata — never selected book text, AI answers, or the reader's questions.
+ */
+export const analyticsEvents = mysqlTable(
+  "analyticsEvents",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    bookId: int("bookId").references(() => books.id, { onDelete: "cascade" }),
+    event: varchar("event", { length: 64 }).notNull(),
+    pageNumber: int("pageNumber"),
+    metadata: json("metadata").$type<Record<string, string | number | boolean | null>>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("analyticsEvents_user_created_idx").on(table.userId, table.createdAt),
+    index("analyticsEvents_book_event_idx").on(table.bookId, table.event),
+  ],
+);
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+
+/**
  * Book Brain: structured analysis of a book built by the 4-pass background
  * pipeline. One row per book. `status` tracks which passes have completed.
  *

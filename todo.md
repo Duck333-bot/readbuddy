@@ -227,3 +227,17 @@
 - [x] Show Who? only for known entities (check entity index before showing button)
 - [x] Make evidence page citations tappable: "p.47 · View passage" → jumps to that page
 - [x] Add "Back" action after jumping to evidence passage
+
+## Product Audit Execution — Evidence, Reader Surface, Analytics, and Command Sheet
+
+- [x] Verify GitHub main points to the 83-test Audit Round 3 checkpoint before new work
+- [x] Verify `OPENAI_API_KEY` and real `text-embedding-3-small` vectors (1536 dimensions) activate successfully
+- [x] Add `[[p.N]]` citation format to reading buddy answers and parse it in the reader
+- [x] Render tappable evidence links and provide a return-to-reading-position action after page jumps
+- [x] Improve extracted text rendering: headings, subheadings, quotations, bold, and italics
+- [x] Add reader-only light, sepia, and dark themes plus text size, line spacing, width, and continuous-reading controls
+- [x] Add a privacy-minimal `analyticsEvents` table and track interaction metadata only — never selected passages, questions, or answers
+- [x] Track highlight actions, Explain→Simpler, evidence taps, I’m Lost, saves, chapter-debrief opens/dismisses, and whole-book question usage
+- [x] Add spoiler-aware `buddy.askBook` retrieval using the reader question itself as the retrieval query
+- [x] Add discoverable “Ask this book” command sheet with ⌘K/Ctrl+K and example prompts
+- [x] Run typecheck, full Vitest suite, and production build after all changes

@@ -8,6 +8,7 @@ import {
   InsertNotebookEntry,
   InsertUser,
   notebookEntries,
+  analyticsEvents,
   users,
 } from "../drizzle/schema";
 import {
@@ -37,6 +38,25 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+/** Store a compact interaction signal without selected book text, questions, or AI answers. */
+export async function recordAnalyticsEvent(input: {
+  userId: number;
+  bookId?: number | null;
+  event: string;
+  pageNumber?: number | null;
+  metadata?: Record<string, string | number | boolean | null>;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(analyticsEvents).values({
+    userId: input.userId,
+    bookId: input.bookId ?? null,
+    event: input.event,
+    pageNumber: input.pageNumber ?? null,
+    metadata: input.metadata ?? null,
+  });
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {

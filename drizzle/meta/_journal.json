@@ -64,6 +64,13 @@
       "when": 1786202662202,
       "tag": "0008_volatile_caretaker",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1786465127244,
+      "tag": "0009_colorful_shooting_star",
+      "breakpoints": true
     }
   ]
 }

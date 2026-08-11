@@ -112,6 +112,69 @@ export const buddyRouter = router({
       }
     }),
 
+  /** Ask about the book without selecting a passage. Retrieval remains page-bounded in safe mode. */
+  askBook: protectedProcedure
+    .input(
+      z.object({
+        bookId: z.number().int().positive(),
+        currentPage: z.number().int().positive(),
+        question: z.string().trim().min(3).max(1000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const book = await db.getBookForUser(input.bookId, ctx.user.id);
+      if (!book) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Book not found in your library." });
+      }
+
+      const [settings, memory, page] = await Promise.all([
+        db.getReaderSettings(ctx.user.id, input.bookId).catch(() => null),
+        db.getReaderMemory(ctx.user.id, input.bookId).catch(() => null),
+        db.getBookPage(input.bookId, Math.min(input.currentPage, book.pageCount)),
+      ]);
+      const spoilerMode = settings?.spoilerMode ?? "safe";
+      const brainContext = await buildBrainContext(
+        input.bookId,
+        Math.min(input.currentPage, book.pageCount),
+        spoilerMode,
+        input.question,
+      ).catch(() => null);
+
+      try {
+        const answer = await askReadingBuddy({
+          mode: "ask",
+          // The question itself drives semantic retrieval. The prompt clearly labels it as a whole-book question.
+          highlight: `Whole-book question: ${input.question}`,
+          question: input.question,
+          bookTitle: book.title,
+          bookAuthor: book.author,
+          pageNumber: Math.min(input.currentPage, book.pageCount),
+          pageCount: book.pageCount,
+          pageContext: page?.content ?? "",
+          brainContext,
+          readerMemory: memory
+            ? {
+                knownVocab: (memory.knownVocab ?? []) as { word: string; definition: string; pageFirstAsked: number }[],
+                knownConcepts: (memory.knownConcepts ?? []) as { concept: string; explanation: string; pageFirstAsked: number }[],
+                preferredLevel: memory.preferredLevel,
+              }
+            : null,
+          spoilerMode,
+        });
+        return {
+          answer,
+          brainReady: brainContext?.brainReady ?? false,
+          passCompleted: brainContext?.passCompleted ?? 0,
+        };
+      } catch (error) {
+        console.error("[buddy.askBook] failed:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "ReadBuddy could not answer that question just now. Please try again.",
+        });
+      }
+    }),
+
   /** Get the reader's memory for a book (vocab, concepts, preferred level). */
   getMemory: protectedProcedure
     .input(z.object({ bookId: z.number().int().positive() }))
