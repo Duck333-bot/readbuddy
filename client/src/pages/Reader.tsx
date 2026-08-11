@@ -23,14 +23,18 @@ import { readSelection, type ReaderSelection } from "@/lib/selection";
 import { trpc } from "@/lib/trpc";
 import {
   ArrowLeft,
+  Bookmark,
   BookOpen,
   ChevronLeft,
   ChevronRight,
   HelpCircle,
+  Highlighter,
+  List,
   Moon,
   NotebookPen,
   Palette,
   Settings2,
+  StickyNote,
   Sun,
   X,
 } from "lucide-react";
@@ -88,6 +92,26 @@ function paragraphKind(text: string): "chapter" | "subheading" | "quote" | "body
   }
   if (/^[“"].+[”"]$/.test(compact) || /^—/.test(compact)) return "quote";
   return "body";
+}
+
+type PageAnnotation = { id: number; selectedText: string; color: string; note: string | null };
+const ANNOTATION_STYLES: Record<string, string> = {
+  yellow: "bg-amber-200/70 dark:bg-amber-300/30",
+  blue: "bg-sky-200/70 dark:bg-sky-300/30",
+  pink: "bg-pink-200/70 dark:bg-pink-300/30",
+  green: "bg-emerald-200/70 dark:bg-emerald-300/30",
+};
+
+function formatAnnotatedBookText(text: string, annotations: PageAnnotation[]) {
+  const annotation = annotations.find(item => item.selectedText && text.includes(item.selectedText));
+  if (!annotation) return formatInlineBookText(text);
+  const [before, ...afterParts] = text.split(annotation.selectedText);
+  const after = afterParts.join(annotation.selectedText);
+  return <>{formatInlineBookText(before)}<mark className={`rounded-sm px-0.5 text-inherit ${ANNOTATION_STYLES[annotation.color] ?? ANNOTATION_STYLES.yellow}`}>{formatInlineBookText(annotation.selectedText)}</mark>{formatInlineBookText(after)}</>;
+}
+
+function annotationForText(text: string, annotations: PageAnnotation[]) {
+  return annotations.find(item => item.selectedText && text.includes(item.selectedText));
 }
 
 /**
@@ -366,6 +390,10 @@ export default function Reader() {
   const [isSaved, setIsSaved] = useState(false);
   const [bookAskOpen, setBookAskOpen] = useState(false);
   const [bookQuestion, setBookQuestion] = useState("");
+  const [tocOpen, setTocOpen] = useState(false);
+  const [noteComposerOpen, setNoteComposerOpen] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [annotationColor, setAnnotationColor] = useState<"yellow" | "blue" | "pink" | "green">("yellow");
 
   // "I'm lost" state
   const [lostOpen, setLostOpen] = useState(false);
@@ -430,6 +458,26 @@ export default function Reader() {
   const updateProgress = trpc.books.updateProgress.useMutation();
   const saveEntry = trpc.notebook.save.useMutation();
   const trackEvent = trpc.analytics.track.useMutation();
+  const annotationsQuery = trpc.annotations.listForPage.useQuery(
+    { bookId, pageNumber: pageNumber ?? 1 },
+    { enabled: !!bookId && !!pageNumber },
+  );
+  const bookmarksQuery = trpc.annotations.listBookmarks.useQuery(
+    { bookId },
+    { enabled: !!bookId },
+  );
+  const createAnnotation = trpc.annotations.create.useMutation();
+  const createBookmark = trpc.annotations.bookmark.useMutation();
+  const deleteBookmark = trpc.annotations.removeBookmark.useMutation();
+  const pageAnnotations = (annotationsQuery.data ?? []) as PageAnnotation[];
+  const isCurrentPageBookmarked = (bookmarksQuery.data ?? []).some(bookmark => bookmark.pageNumber === (pageNumber ?? 1));
+
+  useEffect(() => {
+    if (!book?.id || !pageNumber) return;
+    trackEvent.mutate({ event: "reading_open", bookId: book.id, pageNumber });
+    // A book session is counted once per reader-page mount, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [book?.id]);
 
   // AI answer mutation
   const askMutation = trpc.buddy.ask.useMutation();
@@ -608,6 +656,42 @@ export default function Reader() {
     [selection, selectionPage, activeMode, bookId, pageNumber, askMutation, trackEvent],
   );
 
+  const createHighlight = useCallback((note?: string) => {
+    if (!selection?.text) return;
+    const annotationPage = selectionPage ?? pageNumber ?? 1;
+    createAnnotation.mutate(
+      {
+        bookId,
+        pageNumber: annotationPage,
+        selectedText: selection.text,
+        color: annotationColor,
+        note: note?.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          annotationsQuery.refetch();
+          toast.success(note?.trim() ? "Note saved" : "Highlight saved");
+          setSelection(null);
+          setNoteComposerOpen(false);
+          setNoteText("");
+        },
+      },
+    );
+  }, [selection, selectionPage, pageNumber, createAnnotation, bookId, annotationColor, annotationsQuery]);
+
+  const toggleBookmark = useCallback(() => {
+    const current = pageNumber ?? 1;
+    const existing = (bookmarksQuery.data ?? []).find(bookmark => bookmark.pageNumber === current);
+    if (existing) {
+      deleteBookmark.mutate({ bookmarkId: existing.id }, { onSuccess: () => bookmarksQuery.refetch() });
+      return;
+    }
+    createBookmark.mutate(
+      { bookId, pageNumber: current, label: `Page ${current}` },
+      { onSuccess: () => { bookmarksQuery.refetch(); toast.success("Bookmark saved"); } },
+    );
+  }, [pageNumber, bookmarksQuery, deleteBookmark, createBookmark, bookId]);
+
   const askFollowUp = useCallback(
     (question: string) => {
       if (!activeHighlight) return;
@@ -752,16 +836,52 @@ export default function Reader() {
             </p>
           </div>
 
-          <button
-            onClick={() => {
-              setBookAskOpen(true);
-              trackEvent.mutate({ event: "book_question_open", bookId, pageNumber: pageNumber ?? 1 });
-            }}
-            className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:flex">
-            <BookOpen className="h-3.5 w-3.5" />
-            Ask this book
-            <kbd className="ml-1 rounded border border-border/70 px-1 py-0.5 text-[9px] font-medium text-muted-foreground">⌘K</kbd>
-          </button>
+          <Popover open={tocOpen} onOpenChange={setTocOpen}>
+            <PopoverTrigger asChild>
+              <button
+                className="hidden h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:flex"
+                aria-label="Open contents">
+                <List className="h-3.5 w-3.5" /> Contents
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-2">
+              <div className="px-2 py-1.5">
+                <p className="text-xs font-semibold">Contents</p>
+                <p className="text-[10px] text-muted-foreground">Jump to a chapter or saved page.</p>
+              </div>
+              <div className="max-h-72 overflow-y-auto px-1 pb-1">
+                {chapters.length > 0 ? chapters.map(chapter => {
+                  const active = currentChapterInfo?.chapter === chapter.chapter;
+                  return (
+                    <button
+                      key={chapter.chapter}
+                      onClick={() => { goTo(chapter.startPage); setTocOpen(false); }}
+                      className={`mb-0.5 w-full rounded-md px-2 py-2 text-left transition-colors ${active ? "bg-primary/10 text-primary" : "hover:bg-accent"}`}>
+                      <span className="block text-[11px] font-medium">{chapter.title || `Chapter ${chapter.chapter}`}</span>
+                      <span className="mt-0.5 block text-[10px] opacity-65">Page {chapter.startPage}</span>
+                    </button>
+                  );
+                }) : <p className="px-2 py-3 text-xs text-muted-foreground">Chapter navigation will appear as this book finishes processing.</p>}
+              </div>
+              {(bookmarksQuery.data ?? []).length > 0 && (
+                <>
+                  <div className="mx-2 my-1 border-t border-border/60" />
+                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Bookmarks</p>
+                  <div className="max-h-32 overflow-y-auto px-1 pb-1">
+                    {(bookmarksQuery.data ?? []).map(bookmark => (
+                      <button
+                        key={bookmark.id}
+                        onClick={() => { goTo(bookmark.pageNumber); setTocOpen(false); }}
+                        className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-[11px] hover:bg-accent">
+                        <span>{bookmark.label || `Page ${bookmark.pageNumber}`}</span>
+                        <span className="text-[10px] text-muted-foreground">p.{bookmark.pageNumber}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </PopoverContent>
+          </Popover>
 
           <button
             onClick={() => {
@@ -786,6 +906,18 @@ export default function Reader() {
           <span className="hidden text-xs text-muted-foreground sm:inline tabular-nums">
             {percent}%
           </span>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleBookmark}
+                className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${isCurrentPageBookmarked ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+                aria-label={isCurrentPageBookmarked ? "Remove bookmark" : "Bookmark this page"}>
+                <Bookmark className="h-4 w-4" fill={isCurrentPageBookmarked ? "currentColor" : "none"} strokeWidth={1.9} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{isCurrentPageBookmarked ? "Remove bookmark" : "Bookmark this page"}</TooltipContent>
+          </Tooltip>
 
           {/* Reading settings (font size, width, spoiler mode) */}
           <Popover>
@@ -976,6 +1108,46 @@ export default function Reader() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={noteComposerOpen} onOpenChange={setNoteComposerOpen}>
+        <DialogContent className="max-w-md sm:rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Add a personal note</DialogTitle>
+            <DialogDescription>
+              Your thought stays separate from ReadBuddy’s AI explanations.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs italic leading-relaxed text-muted-foreground line-clamp-3">
+              “{selection?.text}”
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium">Highlight</span>
+              {(["yellow", "blue", "pink", "green"] as const).map(color => (
+                <button
+                  key={color}
+                  onClick={() => setAnnotationColor(color)}
+                  aria-label={`${color} highlight`}
+                  className={`h-6 w-6 rounded-full border-2 transition-transform ${ANNOTATION_STYLES[color]} ${annotationColor === color ? "scale-110 border-foreground/60" : "border-transparent"}`}
+                />
+              ))}
+            </div>
+            <textarea
+              value={noteText}
+              onChange={event => setNoteText(event.target.value)}
+              placeholder="Write what you think, question, or want to remember…"
+              className="min-h-28 w-full resize-none rounded-lg border border-input bg-background px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setNoteComposerOpen(false)}>Cancel</Button>
+              <Button onClick={() => createHighlight(noteText)} disabled={createAnnotation.isPending}>
+                Save note
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Reading area — full width, no sidebar */}
       <main className="flex-1 px-4 py-10 sm:px-6">
         <div
@@ -1023,10 +1195,11 @@ export default function Reader() {
                 )}
                 {paragraphs.map((paragraph: string, index: number) => {
                   const kind = paragraphKind(paragraph);
-                  if (kind === "chapter") return <h2 key={index} className="mb-7 mt-10 font-display text-[1.35em] font-semibold leading-tight tracking-tight first:mt-0">{formatInlineBookText(paragraph)}</h2>;
-                  if (kind === "subheading") return <h3 key={index} className="mb-4 mt-8 font-display text-[1.08em] font-semibold leading-snug">{formatInlineBookText(paragraph)}</h3>;
-                  if (kind === "quote") return <blockquote key={index} className="my-7 border-l-2 border-primary/35 pl-5 font-reading italic opacity-85">{formatInlineBookText(paragraph)}</blockquote>;
-                  return <p key={index} className="mb-[1.15em] last:mb-0">{formatInlineBookText(paragraph)}</p>;
+                  const annotation = annotationForText(paragraph, pageAnnotations);
+                  if (kind === "chapter") return <h2 key={index} className="mb-7 mt-10 font-display text-[1.35em] font-semibold leading-tight tracking-tight first:mt-0">{formatAnnotatedBookText(paragraph, pageAnnotations)}</h2>;
+                  if (kind === "subheading") return <h3 key={index} className="mb-4 mt-8 font-display text-[1.08em] font-semibold leading-snug">{formatAnnotatedBookText(paragraph, pageAnnotations)}</h3>;
+                  if (kind === "quote") return <blockquote key={index} className="my-7 border-l-2 border-primary/35 pl-5 font-reading italic opacity-85">{formatAnnotatedBookText(paragraph, pageAnnotations)}</blockquote>;
+                  return <div key={index} className="mb-[1.15em] last:mb-0"><p>{formatAnnotatedBookText(paragraph, pageAnnotations)}</p>{annotation?.note && <aside className="mt-2 flex gap-2 rounded-r-md border-l-2 border-amber-400/60 bg-amber-50/60 px-3 py-2 text-xs leading-relaxed text-amber-950 dark:bg-amber-300/10 dark:text-amber-100"><StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span><strong className="font-semibold">Your note</strong> — {annotation.note}</span></aside>}</div>;
                 })}
               </div>
             )}
@@ -1150,6 +1323,19 @@ export default function Reader() {
               onClick={() => askBuddy("context")}
               className="rounded-full px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent">
               Context
+            </button>
+            <button
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => createHighlight()}
+              disabled={createAnnotation.isPending}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-amber-100 hover:text-amber-900 disabled:opacity-50">
+              <Highlighter className="h-3 w-3" /> Highlight
+            </button>
+            <button
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => setNoteComposerOpen(true)}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent">
+              <StickyNote className="h-3 w-3" /> Note
             </button>
             {selection.text.trim().split(/\s+/).length <= 4 &&
               knownEntityNames.has(selection.text.trim().toLowerCase()) && (

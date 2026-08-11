@@ -31,6 +31,7 @@ import { booksRouter } from "./routers/books";
 import { buddyRouter } from "./routers/buddy";
 import { notebookRouter } from "./routers/notebook";
 import { analyticsRouter } from "./routers/analytics";
+import { annotationsRouter } from "./routers/annotations";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -71,6 +72,7 @@ export const appRouter = router({
   buddy: buddyRouter,
   notebook: notebookRouter,
   analytics: analyticsRouter,
+  annotations: annotationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

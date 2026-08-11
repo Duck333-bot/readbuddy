@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import * as db from "../db";
 
@@ -12,6 +13,7 @@ const eventName = z.enum([
   "chapter_debrief_dismiss",
   "book_question_open",
   "book_question_submit",
+  "reading_open",
 ]);
 
 /** Product signals only. No selected passage, question, or AI answer is collected. */
@@ -35,4 +37,11 @@ export const analyticsRouter = router({
       });
       return { success: true } as const;
     }),
+
+  dashboard: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN" });
+    }
+    return db.getPrivateAnalyticsSummary();
+  }),
 });

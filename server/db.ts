@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   bookPages,
@@ -9,6 +9,8 @@ import {
   InsertUser,
   notebookEntries,
   analyticsEvents,
+  annotations,
+  bookmarks,
   users,
 } from "../drizzle/schema";
 import {
@@ -525,4 +527,87 @@ export async function getRetrievalPassages(bookId: number) {
     .from(retrievalPassages)
     .where(eq(retrievalPassages.bookId, bookId))
     .orderBy(asc(retrievalPassages.startPage));
+}
+
+// ─── Reader annotations and bookmarks ───────────────────────────────────────
+
+export async function listAnnotationsForPage(userId: number, bookId: number, pageNumber: number) {
+  const db = await requireDb();
+  return db.select().from(annotations).where(
+    and(eq(annotations.userId, userId), eq(annotations.bookId, bookId), eq(annotations.pageNumber, pageNumber)),
+  );
+}
+
+export async function createAnnotation(input: {
+  userId: number;
+  bookId: number;
+  pageNumber: number;
+  selectedText: string;
+  color?: string;
+  note?: string | null;
+}) {
+  const db = await requireDb();
+  const result = await db.insert(annotations).values({
+    userId: input.userId,
+    bookId: input.bookId,
+    pageNumber: input.pageNumber,
+    selectedText: input.selectedText,
+    color: input.color ?? "yellow",
+    note: input.note ?? null,
+  });
+  const header = Array.isArray(result) ? result[0] : result;
+  return Number((header as { insertId?: number }).insertId ?? 0);
+}
+
+export async function deleteAnnotationForUser(annotationId: number, userId: number) {
+  const db = await requireDb();
+  await db.delete(annotations).where(and(eq(annotations.id, annotationId), eq(annotations.userId, userId)));
+}
+
+export async function listBookmarksForBook(userId: number, bookId: number) {
+  const db = await requireDb();
+  return db.select().from(bookmarks)
+    .where(and(eq(bookmarks.userId, userId), eq(bookmarks.bookId, bookId)))
+    .orderBy(desc(bookmarks.createdAt));
+}
+
+export async function createBookmark(userId: number, bookId: number, pageNumber: number, label?: string | null) {
+  const db = await requireDb();
+  await db.insert(bookmarks).values({ userId, bookId, pageNumber, label: label ?? null })
+    .onDuplicateKeyUpdate({ set: { label: label ?? null } });
+}
+
+export async function deleteBookmarkForUser(bookmarkId: number, userId: number) {
+  const db = await requireDb();
+  await db.delete(bookmarks).where(and(eq(bookmarks.id, bookmarkId), eq(bookmarks.userId, userId)));
+}
+
+/** Small owner dashboard aggregate based only on real captured interaction events. */
+export async function getPrivateAnalyticsSummary() {
+  const db = await requireDb();
+  const now = Date.now();
+  const dayAgo = new Date(now - 24 * 60 * 60 * 1000);
+  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  const events = await db.select().from(analyticsEvents).where(gte(analyticsEvents.createdAt, weekAgo));
+  const daily = events.filter(event => event.createdAt >= dayAgo);
+  const count = (event: string) => events.filter(item => item.event === event).length;
+  const highlights = count("highlight_action");
+  const evidenceTaps = count("evidence_tap");
+  const saves = count("notebook_save");
+  const actionNames = [
+    "highlight_action", "simpler_after_explain", "evidence_tap", "lost_open", "notebook_save",
+    "chapter_debrief_open", "chapter_debrief_dismiss", "book_question_open", "book_question_submit",
+  ];
+  return {
+    windowDays: 7,
+    activeReaders: new Set(daily.filter(event => event.event === "reading_open").map(event => event.userId)).size,
+    weekReaders: new Set(events.filter(event => event.event === "reading_open").map(event => event.userId)).size,
+    booksOpened: new Set(daily.filter(event => event.event === "reading_open").map(event => event.bookId).filter(Boolean)).size,
+    readingSessions: count("reading_open"),
+    actionCounts: Object.fromEntries(actionNames.map(event => [event, count(event)])),
+    evidenceClickRate: highlights ? Math.round((evidenceTaps / highlights) * 100) : null,
+    saveRate: highlights ? Math.round((saves / highlights) * 100) : null,
+    qualityInstrumented: false,
+    economicsInstrumented: false,
+  };
 }

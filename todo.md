@@ -241,3 +241,16 @@
 - [x] Add spoiler-aware `buddy.askBook` retrieval using the reader question itself as the retrieval query
 - [x] Add discoverable “Ask this book” command sheet with ⌘K/Ctrl+K and example prompts
 - [x] Run typecheck, full Vitest suite, and production build after all changes
+
+## Private Alpha Readiness — Product Priority Reset
+
+- [x] Persistent text highlights that remain visible when the reader returns, without requiring an AI question
+- [x] Personal annotations that are distinct from saved AI answers and attach to a selected passage
+- [x] One-click current-position bookmarks with a simple return path
+- [x] Compact table of contents with chapter jumps, current-chapter state, and bookmark return paths
+- [x] Reader Intelligence v1: recognize repeated vocabulary and concepts with a “You’ve seen this before” moment
+- [x] Reader Intelligence v1: adapt the default explanation level from repeated Simplify behavior
+- [x] Reader Intelligence v1: use known concepts as explicit analogies in explanations
+- [x] Small private analytics dashboard for real retention, reading, and AI usage signals; quality/cost remain explicitly uninstrumented rather than estimated
+- [x] AI quality benchmark foundation covering groundedness, usefulness, concision, retrieval, and spoiler safety
+- [x] Private Alpha readiness checklist for inviting 20–30 active readers

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReadBuddyQualityBenchmarkCase",
+  "type": "object",
+  "required": ["id", "bookId", "sourcePermission", "category", "question", "readerProgressPage", "spoilerMode", "expectedEvidencePages", "rubric"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "bookId": { "type": "string" },
+    "sourcePermission": { "type": "string", "enum": ["public-domain", "publisher-approved", "volunteer-permission", "internal-license"] },
+    "category": { "type": "string" },
+    "question": { "type": "string", "minLength": 3 },
+    "selectedPassageLocator": { "type": "object", "properties": { "page": { "type": "integer", "minimum": 1 }, "start": { "type": "integer", "minimum": 0 }, "end": { "type": "integer", "minimum": 0 } } },
+    "readerProgressPage": { "type": "integer", "minimum": 1 },
+    "spoilerMode": { "type": "string", "enum": ["safe", "full"] },
+    "expectedEvidencePages": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 1 } },
+    "forbiddenEvidencePages": { "type": "array", "items": { "type": "integer", "minimum": 1 } },
+    "rubric": { "type": "string", "minLength": 20 }
+  },
+  "additionalProperties": false
+}

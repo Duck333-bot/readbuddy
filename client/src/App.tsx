@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Library from "./pages/Library";
 import Notebook from "./pages/Notebook";
 import Reader from "./pages/Reader";
+import AlphaDashboard from "./pages/AlphaDashboard";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/library" component={Library} />
       <Route path="/read/:bookId" component={Reader} />
       <Route path="/notebook" component={Notebook} />
+      <Route path="/alpha" component={AlphaDashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -36,4 +38,3 @@ function App() {
 }
 
 export default App;
-

@@ -24,7 +24,9 @@ Rules you always follow:
 - Use Markdown for structure (bold for key terms, lists when helpful). Never wrap your whole answer in a code block.
 - Do not greet the reader or mention that you are an AI. Answer directly.
 - When Book Brain context is provided, USE IT actively — reference characters by name, connect to themes, mention chapter context. This is what makes you smarter than a generic AI.
-- When reader memory is provided, NEVER re-explain vocabulary or concepts the reader already knows. Reference them by name and build on them.`;
+- When reader memory is provided, use it to make the explanation feel continuous. If the selected passage includes a known word or concept, begin with **You've seen this before.** Give a one-sentence reminder, name the earlier page, then explain what is different or important here.
+- If a known concept provides a genuinely useful analogy, say “This is similar to [concept]…” and explain the difference. Do not force irrelevant analogies.
+- Adaptive level matters: when the reader preference is simple, lead with the simplest accurate explanation rather than waiting for them to ask again.`;
 
 const MODE_INSTRUCTIONS: Record<BuddyMode, string> = {
   explain: `Task: EXPLAIN the highlighted passage.
@@ -145,16 +147,31 @@ export async function askReadingBuddy(req: BuddyRequest): Promise<string> {
   const memoryLines: string[] = [];
   if (req.readerMemory) {
     const mem = req.readerMemory;
+    const normalizedHighlight = req.highlight.toLocaleLowerCase();
+    const includesTerm = (term: string) => {
+      const normalizedTerm = term.trim().toLocaleLowerCase();
+      if (!normalizedTerm) return false;
+      return normalizedTerm.includes(" ")
+        ? normalizedHighlight.includes(normalizedTerm)
+        : new RegExp(`\\b${normalizedTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(req.highlight);
+    };
+    const recalledVocab = mem.knownVocab.filter(v => includesTerm(v.word)).slice(-2);
+    const recalledConcepts = mem.knownConcepts.filter(c => includesTerm(c.concept)).slice(-2);
+    if (recalledVocab.length > 0 || recalledConcepts.length > 0) {
+      memoryLines.push("READER RECALL MOMENT: Start the response with **You've seen this before.**");
+      recalledVocab.forEach(v => memoryLines.push(`Earlier vocabulary: “${v.word}” (first asked on p.${v.pageFirstAsked}) — ${v.definition}`));
+      recalledConcepts.forEach(c => memoryLines.push(`Earlier concept: “${c.concept}” (first asked on p.${c.pageFirstAsked}) — ${c.explanation}`));
+    }
     if (mem.knownVocab.length > 0) {
-      const recent = mem.knownVocab.slice(-8).map(v => v.word).join(", ");
+      const recent = mem.knownVocab.slice(-8).map(v => `${v.word} (p.${v.pageFirstAsked})`).join(", ");
       memoryLines.push(
-        `READER'S KNOWN VOCABULARY (do not re-explain these from scratch): ${recent}`,
+        `READER'S PREVIOUS VOCABULARY (use for continuity when relevant): ${recent}`,
       );
     }
     if (mem.knownConcepts.length > 0) {
-      const recent = mem.knownConcepts.slice(-5).map(c => c.concept).join(", ");
+      const recent = mem.knownConcepts.slice(-5).map(c => `${c.concept}: ${c.explanation}`).join(" | ");
       memoryLines.push(
-        `READER'S KNOWN CONCEPTS (reference these by name, they already understand them): ${recent}`,
+        `READER'S KNOWN CONCEPTS (use one as an analogy only if it clarifies the passage): ${recent}`,
       );
     }
     if (mem.preferredLevel === "simple") {

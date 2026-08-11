@@ -71,6 +71,13 @@
       "when": 1786465127244,
       "tag": "0009_colorful_shooting_star",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1786466216838,
+      "tag": "0010_abandoned_doctor_spectrum",
+      "breakpoints": true
     }
   ]
 }

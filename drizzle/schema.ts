@@ -108,6 +108,42 @@ export const notebookEntries = mysqlTable(
 export type NotebookEntry = typeof notebookEntries.$inferSelect;
 export type InsertNotebookEntry = typeof notebookEntries.$inferInsert;
 
+/** A reader-owned highlight or note, kept separate from AI notebook entries. */
+export const annotations = mysqlTable(
+  "annotations",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    bookId: int("bookId").notNull().references(() => books.id, { onDelete: "cascade" }),
+    pageNumber: int("pageNumber").notNull(),
+    selectedText: text("selectedText").notNull(),
+    color: varchar("color", { length: 24 }).notNull().default("yellow"),
+    note: text("note"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("annotations_user_book_page_idx").on(table.userId, table.bookId, table.pageNumber)],
+);
+export type Annotation = typeof annotations.$inferSelect;
+
+/** A saved reading position. Bookmarks never contain private book text. */
+export const bookmarks = mysqlTable(
+  "bookmarks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    bookId: int("bookId").notNull().references(() => books.id, { onDelete: "cascade" }),
+    pageNumber: int("pageNumber").notNull(),
+    label: varchar("label", { length: 180 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("bookmarks_user_book_page_idx").on(table.userId, table.bookId, table.pageNumber),
+    index("bookmarks_user_book_idx").on(table.userId, table.bookId),
+  ],
+);
+export type Bookmark = typeof bookmarks.$inferSelect;
+
 /**
  * Product analytics events. Payloads deliberately contain only interaction
  * metadata — never selected book text, AI answers, or the reader's questions.
