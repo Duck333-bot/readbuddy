@@ -43,7 +43,7 @@ ReadBuddy now treats trust as an architectural constraint rather than a prompt p
 | Grounding / AI safety | `server/citations.ts`, `server/readingBuddy.ts`, `server/routers/buddy.ts`, `server/routers/reader.ts`, `server/readerMemoryVisibility.ts` |
 | Reader / mobile / visual trust | `client/src/pages/Reader.tsx`, `client/src/components/reader/ReaderContent.tsx`, `client/src/components/reader/ReaderParagraph.tsx`, `client/src/components/reader/ReaderSettings.tsx`, `client/src/components/reader/SelectionToolbar.tsx`, `client/src/components/reader/InlineAnswerCard.tsx`, `client/src/components/reader/LostButton.tsx`, `client/src/lib/selection.ts`, `client/src/index.css` |
 | Reader-owned memory | `server/routers/annotations.ts`, `client/src/pages/Notebook.tsx` |
-| Schema / migrations | `drizzle/schema.ts`, `drizzle/0012_clean_wong.sql`, `drizzle/0014_jittery_guardian.sql` |
+| Schema / migrations | `drizzle/schema.ts`, `drizzle/0012_clean_wong.sql`, `drizzle/0014_jittery_guardian.sql`, `drizzle/0015_same_weapon_omega.sql`, `drizzle/0016_kind_johnny_blaze.sql`, `drizzle/0017_neat_ikaris.sql` |
 | Tests | `server/citations.test.ts`, `server/bookStructure.test.ts`, `server/reader.resume.test.ts`, `server/bookBrainVersion.test.ts`, `server/readerMemoryVisibility.test.ts`, `client/src/lib/selection.test.ts` |
 
 ## 5. Schema and migrations
@@ -52,14 +52,16 @@ Migration `0012_clean_wong.sql` adds additive trust fields for PDF outline, firs
 
 ## 6. Book Brain version and reprocessing
 
-`BOOK_BRAIN_VERSION` is now `4`. A Book Brain is stale if it is incomplete or its stored version is below 4. The scheduled handler no longer skips a pass-complete old version. A rebuild writes v4 chunks, entities, embeddings, and retrieval passages beside the active version. Only after all passes succeed does one Book Brain metadata update switch the active version to 4. If a rebuild fails, the old active version remains available and the next retry clears only partial v4 rows. Original PDF and page extraction records are never rewritten.
+`BOOK_BRAIN_VERSION` is now `4`. A Book Brain is stale if it is incomplete or its stored version is below 4. The scheduled handler no longer skips a pass-complete old version. A rebuild writes v4 chunks, entities, embeddings, and retrieval passages beside the active version. Only after all passes succeed does one Book Brain metadata update switch the active version to 4. Original PDF and page extraction records are never rewritten.
+
+The long-book verification exposed an additional production-critical constraint: a 1,200-page book cannot safely be processed as one uninterrupted background request. The pipeline is now **leased and resumable**. It persists a staged v4 structure and chunk queue, processes bounded batches, preserves completed chunks between invocations, and atomically prevents two scheduled runs from working on the same book. If the configured AI provider is temporarily unavailable, it preserves the queue, records a compact operational pause, and retries only after a cooldown rather than repeatedly consuming requests.
 
 ## 7. Tests
 
 | Check | Result |
 |---|---|
 | Previous test count | 104 at sprint start |
-| Current test count | **118 passing** across 17 test files |
+| Current test count | **123 passing** across 17 test files |
 | Typecheck | `pnpm check` passes |
 | Production build | `pnpm build` passes |
 | Added coverage | citation rejection, outline/heading/synthetic structure, resume gate, one-character selections, Book Brain version staleness, spoiler-safe Reader Memory |
@@ -69,7 +71,7 @@ Migration `0012_clean_wong.sql` adds additive trust fields for PDF outline, firs
 | Scenario | Result | Evidence / qualification |
 |---|---|---|
 | A — character-heavy novel | **PARTIALLY VERIFIED** | Existing Charlotte's Web reader opens on readable page text; safe Ask Book request completed on p.7. Who-card first/last-page behaviour still needs an explicit manual selection after a v4 rebuild. |
-| B — 700+ page complex nonfiction | **NOT VERIFIED** | No legal/local 700+ page fixture was available in the current project data. No equivalent result is claimed. |
+| B — 700+ page complex nonfiction | **PARTIALLY VERIFIED** | The user-authorized 1,493-page Dune PDF was uploaded and its stored 1,200 extracted pages were checked. It opened at meaningful narrative page 12 after front matter was correctly skipped. The pipeline created and retained a 105-chunk v4 staged queue; two bounded runs retained completed work (3 then 6 chunks). Full retrieval/evidence verification is blocked because the configured AI provider paused further analysis. |
 | C — ESL memoir workflow | **NOT VERIFIED** | Toolbar code and translation preference were unit/typechecked, but the exact live `estrangement` selection flow was not manually exercised. |
 | D — phone-only student | **PARTIALLY VERIFIED** | Narrow mobile Notebook rendering passed visual review; code exposes mobile Ask Book, return, Lost, spoiler, Define, and Translate. Full live mobile selection/evidence-return interaction remains to be exercised. |
 | E — night reading | **PARTIALLY VERIFIED** | Theme variables were implemented for portals and reader surfaces; no final live dark screenshot was captured after the last theme edit. |
@@ -78,10 +80,10 @@ Migration `0012_clean_wong.sql` adds additive trust fields for PDF outline, firs
 
 ## 9. Remaining known limitations
 
-The implementation is complete, but it has not yet been proven against the required legal/local 700+ page complex-nonfiction fixture or an end-to-end live phone selection workflow. Existing v1 Book Brains will rebuild on their scheduled job; the rebuild logic is tested, but a complete production rebuild of a legacy book was not forced during this sprint to avoid unnecessary model cost and processing of a reader's book. Build still warns that the main client bundle is large because syntax-rendering dependencies are already bundled; that is a performance follow-up, not a trust blocker.
+The implementation is not yet proven through a complete long-book Book Brain. The user-authorized Dune fixture exposed and closed three real blockers: front matter incorrectly selected as the opening page, a monolithic background analysis that could not finish a large book, and unsafe repeated failures when the configured AI provider became unavailable. The long-book queue is now preserved (105 staged chunks; completed work remains intact), but full retrieval, evidence-jump, Who?, and long-book spoiler verification require the provider to resume. The connected browser extension also became unresponsive during later live interaction checks, so those specific browser actions are not claimed as passed. Build still warns that the main client bundle is large because syntax-rendering dependencies are already bundled; that is a performance follow-up, not a trust blocker.
 
 ## 10. Recommendation
 
-**NOT READY — MORE TRUST FIXES REQUIRED**
+**NOT READY — COMPLETE THE PAUSED LONG-BOOK VERIFICATION**
 
-Do not add features. First run Scenarios A–E using legal/local fixtures, especially the 700+ page retrieval test and real mobile evidence-return/selection flows. If those confirm the code-level fixes, then decide whether the evidence supports moving to the next 10–15 real users.
+Do not add features. Wait for the staged Dune Book Brain to resume, then run retrieval/evidence/spoiler tests against it and complete the real mobile selection/evidence-return checks. Only then decide whether the evidence supports moving to the next 10–15 real users.

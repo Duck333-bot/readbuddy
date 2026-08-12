@@ -410,7 +410,7 @@
 ## Authorized Long-Book Verification — Dune PDF
 
 - [x] Inspect the authorized PDF for page count, text availability, outline, and safe upload suitability
-- [ ] Upload the authorized long-book PDF and verify the non-blocking reader plus Book Brain v4 background pipeline
+- [x] Upload the authorized long-book PDF and verify the non-blocking reader plus Book Brain v4 background pipeline
 - [ ] Verify long-book retrieval, safe spoiler boundary, evidence-page jump/back, and multi-highlight persistence
 - [ ] Verify Define/Translate, mobile controls, night surface, conservative text layout, and resume gate on the real book
 - [ ] Update the Trust Before Growth report and readiness recommendation from real long-book evidence
@@ -418,6 +418,6 @@
 ## Dune Verification Blocker
 
 - [x] P0: first-readable-page must skip front matter such as book lists and open at meaningful book text; add a regression fixture from the Dune upload
-- [ ] P0: make scheduled Book Brain work mutually exclusive and resumable for long books; preserve staged v4 progress across runs and add concurrency/progress regressions
-- [ ] P0: when the configured AI provider is unavailable or exhausted, pause Book Brain safely with staged work intact instead of repeatedly failing/retrying chunks
-- [ ] P0: resume a paused Book Brain only after a bounded cooldown, then continue the same staged queue without rebuilding it
+- [x] P0: make scheduled Book Brain work mutually exclusive and resumable for long books; preserve staged v4 progress across runs and add concurrency/progress regressions
+- [x] P0: when the configured AI provider is unavailable or exhausted, pause Book Brain safely with staged work intact instead of repeatedly failing/retrying chunks
+- [x] P0: resume a paused Book Brain only after a bounded cooldown, then continue the same staged queue without rebuilding it
