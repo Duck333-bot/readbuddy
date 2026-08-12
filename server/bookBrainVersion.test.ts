@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOOK_BRAIN_VERSION, isProviderAvailabilityError, needsBookBrainRebuild, shouldInitialiseBookBrainStage } from "./bookBrain";
+import { BOOK_BRAIN_VERSION, isProviderAvailabilityError, needsBookBrainRebuild, shouldInitialiseBookBrainStage, shouldResumeBookBrainAfterPause } from "./bookBrain";
 
 describe("Book Brain versioning", () => {
   it("rebuilds a completed analysis from an older version", () => {
@@ -28,5 +28,10 @@ describe("Book Brain versioning", () => {
   it("recognises provider exhaustion as a safe pause rather than a failed book", () => {
     expect(isProviderAvailabilityError(new Error('Forge API error 412: {"message":"your account has hit a usage exhausted"}'))).toBe(true);
     expect(isProviderAvailabilityError(new Error("malformed model response"))).toBe(false);
+  });
+
+  it("retries a paused pipeline only after its cooldown has elapsed", () => {
+    expect(shouldResumeBookBrainAfterPause(new Date(2_000), 1_999)).toBe(false);
+    expect(shouldResumeBookBrainAfterPause(new Date(2_000), 2_000)).toBe(true);
   });
 });

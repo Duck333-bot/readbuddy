@@ -1,0 +1,1 @@
+ALTER TABLE `bookBrain` ADD `pipelineRetryAfter` timestamp;

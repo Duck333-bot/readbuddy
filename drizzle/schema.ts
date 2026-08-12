@@ -230,6 +230,8 @@ export const bookBrain = mysqlTable(
       .default("idle"),
     /** Compact operational state only; never raw book text or reader questions. */
     pipelineError: text("pipelineError"),
+    /** Earliest safe retry time after a temporary provider pause. */
+    pipelineRetryAfter: timestamp("pipelineRetryAfter"),
     /** Book-level lease that prevents overlapping scheduled runs from erasing each other's staged data. */
     processingLeaseUntil: timestamp("processingLeaseUntil"),
     /** Honest detected/outline structure retained while staged chunks are processed over several runs. */

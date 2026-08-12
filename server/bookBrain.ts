@@ -51,6 +51,11 @@ export function isProviderAvailabilityError(error: unknown): boolean {
   return /usage exhausted|rate limit|too many requests|api error 412|provider unavailable/i.test(message);
 }
 
+export function shouldResumeBookBrainAfterPause(retryAfter: Date | string | null | undefined, now = Date.now()): boolean {
+  if (!retryAfter) return true;
+  return new Date(retryAfter).getTime() <= now;
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -679,6 +684,8 @@ async function initialiseStagedPipeline(bookId: number, pages: { pageNumber: num
   await db.updateBookBrain(bookId, {
     pipelineVersion: BOOK_BRAIN_VERSION,
     pipelineStage: "chunks",
+    pipelineError: null,
+    pipelineRetryAfter: null,
     stagedStructure: { source: structure.source, confidence: structure.confidence, sections: structure.sections },
   });
 }
@@ -769,7 +776,7 @@ async function embedStagedBatch(bookId: number, staged: StagedStructure) {
   await db.updateBookBrain(bookId, {
     chapterSummaries: staged.chapterSummaries ?? [], structureSource: staged.source, structureConfidence: Math.round(staged.confidence * 100),
     overallSummary: staged.synthesis?.overallSummary ?? "", themes: staged.synthesis?.themes ?? [], timeline: staged.synthesis?.timeline ?? [],
-    analysisVersion: BOOK_BRAIN_VERSION, passCompleted: 4, pipelineStage: "complete", stagedStructure: null,
+    analysisVersion: BOOK_BRAIN_VERSION, passCompleted: 4, pipelineStage: "complete", pipelineError: null, pipelineRetryAfter: null, stagedStructure: null,
   });
   return true;
 }
@@ -805,6 +812,20 @@ export async function runBookBrainPipeline(bookId: number): Promise<{
     const staged = brain.stagedStructure as StagedStructure | null;
     if (!staged || brain.pipelineStage === "failed") return { passCompleted: brain.passCompleted, skipped: true };
 
+    if (brain.pipelineStage === "paused") {
+      if (!shouldResumeBookBrainAfterPause(brain.pipelineRetryAfter)) {
+        return { passCompleted: brain.passCompleted, skipped: true };
+      }
+      const stagedChunks = await db.getBookChunks(bookId, BOOK_BRAIN_VERSION);
+      const resumeStage = stagedChunks.some(chunk => chunk.status !== "done")
+        ? "chunks"
+        : !staged.synthesis
+          ? "synthesis"
+          : "embeddings";
+      await db.updateBookBrain(bookId, { pipelineStage: resumeStage, pipelineError: null, pipelineRetryAfter: null });
+      return { passCompleted: brain.passCompleted, skipped: false };
+    }
+
     if (brain.pipelineStage === "chunks") {
       const stagedChunks = await db.getBookChunks(bookId, BOOK_BRAIN_VERSION);
       if (stagedChunks.length === 0) {
@@ -826,9 +847,11 @@ export async function runBookBrainPipeline(bookId: number): Promise<{
     return { passCompleted: brain.passCompleted, skipped: true };
   } catch (error) {
     if (isProviderAvailabilityError(error)) {
+      const retryAfter = new Date(Date.now() + 15 * 60 * 1000);
       await db.updateBookBrain(bookId, {
         pipelineStage: "paused",
         pipelineError: "AI provider temporarily unavailable. Your book and completed analysis are safe; staged processing can resume later.",
+        pipelineRetryAfter: retryAfter,
       });
       return { passCompleted: current?.passCompleted ?? 1, skipped: false };
     }
