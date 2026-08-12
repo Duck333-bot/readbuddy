@@ -113,6 +113,13 @@
       "when": 1786546477842,
       "tag": "0015_same_weapon_omega",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1786549282456,
+      "tag": "0016_kind_johnny_blaze",
+      "breakpoints": true
     }
   ]
 }

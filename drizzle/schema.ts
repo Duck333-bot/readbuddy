@@ -225,9 +225,11 @@ export const bookBrain = mysqlTable(
     /** Version currently being prepared beside the active analysis. */
     pipelineVersion: int("pipelineVersion").notNull().default(0),
     /** Bounded stage for resumable Book Brain work. The active analysis remains unchanged until complete. */
-    pipelineStage: mysqlEnum("pipelineStage", ["idle", "chunks", "synthesis", "embeddings", "complete", "failed"])
+    pipelineStage: mysqlEnum("pipelineStage", ["idle", "chunks", "synthesis", "embeddings", "complete", "paused", "failed"])
       .notNull()
       .default("idle"),
+    /** Compact operational state only; never raw book text or reader questions. */
+    pipelineError: text("pipelineError"),
     /** Book-level lease that prevents overlapping scheduled runs from erasing each other's staged data. */
     processingLeaseUntil: timestamp("processingLeaseUntil"),
     /** Honest detected/outline structure retained while staged chunks are processed over several runs. */

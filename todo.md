@@ -419,3 +419,4 @@
 
 - [x] P0: first-readable-page must skip front matter such as book lists and open at meaningful book text; add a regression fixture from the Dune upload
 - [ ] P0: make scheduled Book Brain work mutually exclusive and resumable for long books; preserve staged v4 progress across runs and add concurrency/progress regressions
+- [ ] P0: when the configured AI provider is unavailable or exhausted, pause Book Brain safely with staged work intact instead of repeatedly failing/retrying chunks

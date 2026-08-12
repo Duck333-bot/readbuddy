@@ -45,6 +45,12 @@ export function shouldInitialiseBookBrainStage(
   return pipelineVersion !== BOOK_BRAIN_VERSION || pipelineStage === "idle" || !pipelineStage;
 }
 
+/** Provider limits are operational pauses, not failed book analysis. Keep staged evidence intact. */
+export function isProviderAvailabilityError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /usage exhausted|rate limit|too many requests|api error 412|provider unavailable/i.test(message);
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -713,6 +719,10 @@ async function processChunkBatch(bookId: number) {
       const entityEvidence = normalizeChunkEntities(analysis.entities, validPages);
       await db.updateBookChunkAnalysis(chunk.id, { summary: analysis.summary, entities: entityEvidence.map(entity => entity.name), entityEvidence, concepts: analysis.concepts, keyPassages: analysis.keyPassages, status: "done" });
     } catch (error) {
+      if (isProviderAvailabilityError(error)) {
+        await db.updateBookChunkAnalysis(chunk.id, { status: "pending", lastError: "AI provider temporarily unavailable; staged work is preserved." });
+        throw error;
+      }
       await db.updateBookChunkAnalysis(chunk.id, { status: "failed", lastError: error instanceof Error ? error.message.slice(0, 1000) : String(error).slice(0, 1000) });
     }
   }
@@ -796,6 +806,11 @@ export async function runBookBrainPipeline(bookId: number): Promise<{
     if (!staged || brain.pipelineStage === "failed") return { passCompleted: brain.passCompleted, skipped: true };
 
     if (brain.pipelineStage === "chunks") {
+      const stagedChunks = await db.getBookChunks(bookId, BOOK_BRAIN_VERSION);
+      if (stagedChunks.length === 0) {
+        await initialiseStagedPipeline(bookId, pages);
+        return { passCompleted: brain.passCompleted, skipped: false };
+      }
       const chunksComplete = await processChunkBatch(bookId);
       if (chunksComplete) await db.updateBookBrain(bookId, { pipelineStage: "synthesis" });
       return { passCompleted: brain.passCompleted, skipped: false };
@@ -809,6 +824,15 @@ export async function runBookBrainPipeline(bookId: number): Promise<{
       return { passCompleted: complete ? 4 : brain.passCompleted, skipped: false };
     }
     return { passCompleted: brain.passCompleted, skipped: true };
+  } catch (error) {
+    if (isProviderAvailabilityError(error)) {
+      await db.updateBookBrain(bookId, {
+        pipelineStage: "paused",
+        pipelineError: "AI provider temporarily unavailable. Your book and completed analysis are safe; staged processing can resume later.",
+      });
+      return { passCompleted: current?.passCompleted ?? 1, skipped: false };
+    }
+    throw error;
   } finally {
     await db.releaseBookBrainLease(bookId);
   }

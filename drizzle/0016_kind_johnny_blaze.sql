@@ -1,0 +1,2 @@
+ALTER TABLE `bookBrain` MODIFY COLUMN `pipelineStage` enum('idle','chunks','synthesis','embeddings','complete','paused','failed') NOT NULL DEFAULT 'idle';--> statement-breakpoint
+ALTER TABLE `bookBrain` ADD `pipelineError` text;
