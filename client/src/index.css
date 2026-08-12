@@ -66,6 +66,14 @@
   --rb-success-surface: #dff4eb;
   --rb-evidence: #6557e8;
   --rb-evidence-surface: #ebe8ff;
+  --rb-reader-paper: #fcfaf5;
+  --rb-reader-sepia: #f5f0e8;
+  --rb-reader-sepia-ink: #3b2f1e;
+  --rb-reader-sepia-chrome: #f4eddf;
+  --rb-reader-sepia-border: #cbbd9d;
+  --rb-reader-night: #1a1a1a;
+  --rb-reader-night-ink: #e8e0d0;
+  --rb-reader-night-chrome: #171a24;
   --radius: 1.125rem;
   --background: var(--rb-paper);
   --foreground: var(--rb-ink);

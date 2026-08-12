@@ -68,8 +68,8 @@ const LINE_HEIGHTS = [1.6, 1.75, 1.9, 2.1];
 const LINE_HEIGHT_LABELS = ["Tight", "Normal", "Relaxed", "Spacious"];
 const THEME_STYLES: Record<ReadingTheme, { bg: string; text: string; label: string }> = {
   light: { bg: "bg-background", text: "text-foreground", label: "Light" },
-  sepia: { bg: "bg-[#f5f0e8]", text: "text-[#3b2f1e]", label: "Sepia" },
-  dark: { bg: "bg-[#1a1a1a]", text: "text-[#e8e0d0]", label: "Dark" },
+  sepia: { bg: "bg-[var(--rb-reader-sepia)]", text: "text-[var(--rb-reader-sepia-ink)]", label: "Sepia" },
+  dark: { bg: "bg-[var(--rb-reader-night)]", text: "text-[var(--rb-reader-night-ink)]", label: "Dark" },
 };
 
 function formatInlineBookText(text: string) {
@@ -878,7 +878,7 @@ export default function Reader() {
   return (
     <div onMouseMove={revealChrome} onTouchStart={revealChrome} className={`reader-surface flex min-h-screen flex-col transition-colors duration-300 ${THEME_STYLES[readingTheme].bg} ${THEME_STYLES[readingTheme].text}`}>
       {/* Minimal sticky header */}
-      <header className={`reader-chrome fixed inset-x-0 top-0 z-30 border-b backdrop-blur-md ${chromeVisible ? "" : "reader-chrome-hidden"} ${readingTheme === "dark" ? "border-white/10 bg-[#171a24]/88" : readingTheme === "sepia" ? "border-[#cbbd9d]/60 bg-[#f4eddf]/88" : "border-border/60 bg-[#fcfaf5]/88"}`}>
+      <header className={`reader-chrome fixed inset-x-0 top-0 z-30 border-b backdrop-blur-md ${chromeVisible ? "" : "reader-chrome-hidden"} ${readingTheme === "dark" ? "border-white/10 bg-[color-mix(in_srgb,var(--rb-reader-night-chrome)_88%,transparent)]" : readingTheme === "sepia" ? "border-[color-mix(in_srgb,var(--rb-reader-sepia-border)_60%,transparent)] bg-[color-mix(in_srgb,var(--rb-reader-sepia-chrome)_88%,transparent)]" : "border-border/60 bg-[color-mix(in_srgb,var(--rb-reader-paper)_88%,transparent)]"}`}>
         <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
           <Tooltip>
             <TooltipTrigger asChild>

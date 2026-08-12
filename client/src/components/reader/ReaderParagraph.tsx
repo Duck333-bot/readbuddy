@@ -40,7 +40,6 @@ export function ReaderParagraph({ text, annotations = [] }: { text: string; anno
   const content = annotatedText(text, annotation);
   if (kind === "chapter") return <h2 className="mb-8 mt-12 font-display text-[1.35em] font-semibold leading-[1.15] tracking-tight first:mt-0">{content}</h2>;
   if (kind === "subheading") return <h3 className="mb-5 mt-9 font-display text-[1.08em] font-semibold leading-snug">{content}</h3>;
-  if (kind === "quote") return <blockquote className="my-8 border-l-2 border-[#8a85c9]/55 pl-5 font-reading italic opacity-85">{content}</blockquote>;
-  return <div className="mb-[1.2em] last:mb-0"><p>{content}</p>{annotation?.note && <aside className="mt-2 flex gap-2 rounded-r-md border-l-2 border-[#8a85c9]/65 bg-[#8a85c9]/[0.08] px-3 py-2 text-xs leading-relaxed text-current"><StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#6f6ab2]" /><span><strong className="font-semibold">Your note</strong> — {annotation.note}</span></aside>}</div>;
+  if (kind === "quote") return <blockquote className="my-8 border-l-2 border-[var(--rb-evidence)] pl-5 font-reading italic opacity-85">{content}</blockquote>;
+  return <div className="mb-[1.2em] last:mb-0"><p>{content}</p>{annotation?.note && <aside className="mt-2 flex gap-2 rounded-r-md border-l-2 border-[var(--rb-evidence)] bg-[var(--rb-evidence-surface)] px-3 py-2 text-xs leading-relaxed text-current"><StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--rb-evidence)]" /><span><strong className="font-semibold">Your note</strong> — {annotation.note}</span></aside>}</div>;
 }
-

@@ -142,7 +142,7 @@ export function UploadBookDialog({
       <DialogContent className="h-[100dvh] w-screen max-w-none overflow-hidden rounded-none border-0 bg-background p-0 sm:h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:rounded-[2rem] sm:border sm:border-border">
         <div className="grid h-full overflow-y-auto lg:grid-cols-[0.92fr_1.08fr]">
           <section className="relative flex min-h-[18rem] flex-col justify-between overflow-hidden bg-[var(--rb-night)] p-7 text-[var(--rb-paper)] sm:p-10 lg:min-h-0 lg:p-14">
-            <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_76%_30%,rgba(101,87,232,.34),transparent_27%),radial-gradient(circle_at_32%_74%,rgba(70,184,232,.14),transparent_32%)]" />
+            <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_76%_30%,color-mix(in_srgb,var(--rb-violet)_34%,transparent),transparent_27%),radial-gradient(circle_at_32%_74%,color-mix(in_srgb,var(--rb-sky)_14%,transparent),transparent_32%)]" />
             <div className="relative">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--rb-sun)]">ReadBuddy / Book Brain</p>
               <h2 className="mt-5 max-w-sm font-display text-4xl font-semibold leading-[0.95] tracking-[-0.055em] sm:text-5xl">
@@ -155,7 +155,7 @@ export function UploadBookDialog({
               </p>
             </div>
             <div className="relative mt-8 hidden lg:block">
-              <div className="relative mx-auto h-44 w-32 rotate-[-5deg] rounded-[0.65rem] border border-white/20 bg-[var(--rb-night-raised)] shadow-[16px_18px_0_rgba(255,210,105,.18)]">
+              <div className="relative mx-auto h-44 w-32 rotate-[-5deg] rounded-[0.65rem] border border-white/20 bg-[var(--rb-night-raised)] shadow-lift">
                 <span className="absolute inset-x-5 top-8 h-px bg-white/30" />
                 <span className="absolute inset-x-5 top-12 h-px bg-white/20" />
                 <span className="absolute inset-x-5 top-16 h-px bg-white/20" />
@@ -199,8 +199,8 @@ export function UploadBookDialog({
 
               {stage === "ready" && readyBook && (
                 <div className="space-y-7">
-                  <div className="border-b border-[#e5decf] pb-6"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#6557e8]">Ready to read</p><h3 className="mt-3 font-display text-4xl font-semibold tracking-[-.05em] text-[#131c38]">{readyBook.title}</h3><p className="mt-3 text-sm leading-relaxed text-[#68708a]">{readyBook.pageCount} pages are ready. ReadBuddy is still getting to know the whole book.</p><Button className="mt-6 h-12 rounded-xl bg-[#131c38] px-6 text-[#fff9ef] hover:bg-[#24335e]" onClick={beginReading}>Start reading <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
-                  <div><div className="flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#68708a]">Book Brain continues</p>{fullyUnderstood && <span className="text-xs font-semibold text-[#26866b]">I know this book now.</span>}</div><div className="mt-4 space-y-3">{BRAIN_STEPS.map((step, index) => { const stepState = getBrainStepState(passCompleted, index); const complete = stepState === "complete"; const active = stepState === "active"; return <div key={step} className="flex items-center gap-3 text-sm"><span className={`flex h-5 w-5 items-center justify-center rounded-full ${complete ? "bg-[#dff4eb] text-[#26866b]" : active ? "bg-[#ebe8ff] text-[#6557e8]" : "bg-[#f2ecdf] text-[#9ba3b5]"}`}>{complete ? <Check className="h-3 w-3" /> : active ? <Loader2 className="h-3 w-3 animate-spin" /> : <span className="text-[10px]">•</span>}</span><span className={complete ? "text-[#3c4f69]" : "text-[#68708a]"}>{step}</span></div>; })}</div></div>
+                  <div className="border-b border-border pb-6"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[var(--rb-evidence)]">Ready to read</p><h3 className="mt-3 font-display text-4xl font-semibold tracking-[-.05em] text-foreground">{readyBook.title}</h3><p className="mt-3 text-sm leading-relaxed text-muted-foreground">{readyBook.pageCount} pages are ready. ReadBuddy is still getting to know the whole book.</p><Button className="mt-6 h-12 rounded-xl bg-primary px-6 text-primary-foreground hover:opacity-90" onClick={beginReading}>Start reading <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
+                  <div><div className="flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-muted-foreground">Book Brain continues</p>{fullyUnderstood && <span className="text-xs font-semibold text-[var(--rb-success)]">I know this book now.</span>}</div><div className="mt-4 space-y-3">{BRAIN_STEPS.map((step, index) => { const stepState = getBrainStepState(passCompleted, index); const complete = stepState === "complete"; const active = stepState === "active"; return <div key={step} className="flex items-center gap-3 text-sm"><span className={`flex h-5 w-5 items-center justify-center rounded-full ${complete ? "bg-[var(--rb-success-surface)] text-[var(--rb-success)]" : active ? "bg-[var(--rb-evidence-surface)] text-[var(--rb-evidence)]" : "bg-muted text-muted-foreground"}`}>{complete ? <Check className="h-3 w-3" /> : active ? <Loader2 className="h-3 w-3 animate-spin" /> : <span className="text-[10px]">•</span>}</span><span className={complete ? "text-foreground" : "text-muted-foreground"}>{step}</span></div>; })}</div></div>
                 </div>
               )}
               <input ref={inputRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={event => acceptFile(event.target.files?.[0])} />

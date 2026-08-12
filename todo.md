@@ -330,7 +330,7 @@
 
 ## Alpha Experience Integrity — No New Features
 
-- [ ] Audit and purge raw component colors across Upload, Library, Landing, Notebook, Analytics, reader auxiliaries, and empty/error/loading states
+- [x] Audit and purge raw component colors across Upload, Library, Landing, Notebook, Analytics, reader auxiliaries, and empty/error/loading states
 - [x] Verify and update all public positioning copy so it states whole-book understanding, reader memory, and spoiler-safe explanations
 - [x] Verify current-journey library hierarchy, 3–4 desktop cover columns, and non-SaaS empty/loading states
 - [x] Instrument first-reading funnel events: landing, start click, auth, library, upload open, PDF select, upload start, ready, start reading, reader open, meaningful session, highlight, answer, evidence, continued reading, return
