@@ -273,3 +273,18 @@
 - [x] Build a touch-first phone design with selection actions and AI help in bottom sheets
 - [x] Verify keyboard navigation, focus visibility, contrast, touch targets, responsive zoom resilience, and dark-theme readability
 - [x] Add reader UI interaction tests and retain all existing regression tests
+
+## ReadBuddy Design v1 — Dreamy Intellectual Product Experience
+
+- [x] Freeze net-new product features during this visual-product sprint
+- [x] Establish a unified visual system: warm cream, midnight navy, soft lavender, celestial blue, muted coral, and rare gold highlights
+- [x] Define distinct experience modes: expressive, magical product surfaces outside the reader; calm, book-first reading surface inside
+- [x] Redesign the landing page around the promise “Read difficult books with an AI that has already read the whole book”
+- [x] Add a scroll-storytelling Book → Chapters → Characters → Concepts → Reader memory journey without technical jargon
+- [x] Add original dreamy illustration assets: floating books, constellations, reader memory, and idea connections
+- [x] Redesign the library as a personal bookshelf with a featured continue-reading moment, premium covers, and warm hover motion
+- [x] Redesign upload and Book Brain processing as a reassuring “I’m reading your book…” progressive experience
+- [x] Ensure the reader remains calm: no permanent sidebar, no permanent large toolbar, and motion only when it supports reading
+- [x] Add a subtle reader-intelligence margin cue for recognised concepts with an earlier-passage jump path
+- [x] Apply consistent, restrained motion to landing, library, upload, and reader interactions with reduced-motion support
+- [x] Verify desktop, tablet, and mobile Design v1 consistency plus existing feature regression coverage

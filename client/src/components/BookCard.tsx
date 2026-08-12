@@ -16,7 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatRelativeTime, progressPercent } from "@/lib/format";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { ArrowUpRight, MoreHorizontal, Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useState } from "react";
 import { Link } from "wouter";
 
@@ -54,13 +55,13 @@ export function BookCard({
   const hue = tintFor(book.title);
 
   return (
-    <div className="group relative">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="group relative">
       <Link
         href={`/read/${book.id}`}
         className="block no-underline"
         aria-label={`Open ${book.title}`}>
         {/* Cover */}
-        <div className="relative aspect-[3/4] overflow-hidden rounded-lg border border-border/80 bg-muted shadow-book transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-lift">
+        <div className="relative aspect-[3/4] overflow-hidden rounded-[1.1rem] border border-[#17213e]/12 bg-muted shadow-[0_12px_22px_rgba(23,33,62,.13)] transition-all duration-300 group-hover:-translate-y-2 group-hover:rotate-[-1deg] group-hover:shadow-[0_22px_34px_rgba(23,33,62,.22)]">
           {book.coverUrl ? (
             <img
               src={book.coverUrl}
@@ -72,10 +73,10 @@ export function BookCard({
             <div
               className="flex h-full w-full flex-col justify-between p-4"
               style={{
-                background: `linear-gradient(160deg, oklch(0.93 0.045 ${hue}), oklch(0.87 0.06 ${hue}))`,
+                background: `linear-gradient(150deg, oklch(0.93 0.045 ${hue}), oklch(0.82 0.08 ${hue}))`,
               }}>
               <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-foreground/45">
-                PDF
+                Your copy
               </span>
               <span className="font-display text-[1.05rem] font-semibold leading-tight text-foreground/80">
                 {book.title.slice(0, 60)}
@@ -88,7 +89,7 @@ export function BookCard({
             <div className="absolute inset-x-0 bottom-0">
               <div className="h-1 w-full bg-foreground/12">
                 <div
-                  className="h-full bg-primary transition-[width] duration-300"
+                  className="h-full bg-[#f2cc70] transition-[width] duration-300"
                   style={{ width: `${percent}%` }}
                 />
               </div>
@@ -98,7 +99,7 @@ export function BookCard({
 
         {/* Meta */}
         <div className="mt-3 pr-7">
-          <h3 className="line-clamp-2 font-display text-[0.98rem] font-semibold leading-snug text-foreground">
+          <h3 className="line-clamp-2 font-display text-[1.05rem] font-semibold leading-snug text-[#17213e]">
             {book.title}
           </h3>
           {book.author && (
@@ -107,12 +108,12 @@ export function BookCard({
           <p className="mt-1.5 text-xs text-muted-foreground">
             {started ? (
               <>
-                <span className="font-medium text-primary">{percent}%</span>
+                <span className="font-medium text-[#716cc0]">{percent}% read</span>
                 <span className="mx-1.5 text-border">·</span>
                 page {book.lastPage} of {book.pageCount}
               </>
             ) : (
-              <>Not started · {book.pageCount} pages</>
+              <>Waiting to be opened · {book.pageCount} pages</>
             )}
           </p>
           {book.lastOpenedAt && (
@@ -122,6 +123,7 @@ export function BookCard({
           )}
         </div>
       </Link>
+      <span className="pointer-events-none absolute right-2 top-[calc(75%-1rem)] flex h-7 w-7 items-center justify-center rounded-full bg-[#fffaf1]/90 text-[#716cc0] opacity-0 shadow-sm transition-opacity group-hover:opacity-100"><ArrowUpRight className="h-3.5 w-3.5" /></span>
 
       {/* Overflow menu */}
       <div className="absolute right-0 top-[calc(100%-4.6rem)] sm:top-auto sm:bottom-auto">
@@ -166,7 +168,7 @@ export function BookCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </motion.div>
   );
 }
 

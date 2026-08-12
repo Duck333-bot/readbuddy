@@ -822,6 +822,16 @@ export default function Reader() {
       .map((part: string) => part.trim())
       .filter(Boolean);
   }, [nextPageQuery.data?.content]);
+  const earlierEntityCue = useMemo(() => {
+    const currentPage = pageNumber ?? 1;
+    const pageText = (pageQuery.data?.content ?? "").toLowerCase();
+    if (!pageText || currentPage <= 1) return null;
+    const entity = (brainQuery.data?.entities ?? []).find((candidate: { name: string; firstPage?: number }) => {
+      const firstPage = candidate.firstPage ?? currentPage;
+      return firstPage < currentPage && candidate.name.length > 2 && pageText.includes(candidate.name.toLowerCase());
+    }) as { name: string; firstPage?: number } | undefined;
+    return entity?.firstPage ? { name: entity.name, firstPage: entity.firstPage } : null;
+  }, [brainQuery.data?.entities, pageNumber, pageQuery.data?.content]);
 
   if (authLoading || (bookQuery.isLoading && !book)) {
     return (
@@ -1075,6 +1085,8 @@ export default function Reader() {
               lineHeight={LINE_HEIGHTS[lineHeightIndex]}
               textClassName={THEME_STYLES[readingTheme].text}
               isLoading={pageQuery.isLoading}
+              intelligenceCue={earlierEntityCue}
+              onOpenEarlierPassage={handleJumpToEvidence}
             />
 
             {/* Inline AI answer card — appears below text, no layout shift */}

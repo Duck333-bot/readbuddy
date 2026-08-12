@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { buildPdfPreview, fileToBase64 } from "@/lib/pdfClient";
 import { formatBytes } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
-import { FileText, Loader2, UploadCloud, X } from "lucide-react";
+import { BrainCircuit, Check, FileText, Loader2, Sparkles, UploadCloud, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -23,10 +23,12 @@ type Stage = "idle" | "reading" | "uploading" | "done";
 
 const STAGE_COPY: Record<Stage, string> = {
   idle: "",
-  reading: "Reading the PDF and rendering the cover…",
-  uploading: "Extracting text page by page…",
-  done: "Finished",
+  reading: "I’m opening your book…",
+  uploading: "I’m getting it ready to read together…",
+  done: "Ready to read together.",
 };
+
+const BRAIN_STEPS = ["Understanding the chapters", "Meeting the characters", "Connecting the ideas", "Remembering important moments"];
 
 export function UploadBookDialog({
   open,
@@ -128,12 +130,12 @@ export function UploadBookDialog({
         onOpenChange(next);
         if (!next) reset();
       }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="overflow-hidden border-[#716cc0]/15 bg-[#fffaf1] sm:max-w-lg">
+        <div className="pointer-events-none absolute -right-14 -top-14 h-44 w-44 rounded-full bg-[#ece6ff] blur-2xl" />
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">Add a book</DialogTitle>
+          <DialogTitle className="relative font-display text-2xl text-[#17213e]">Bring a book into your world</DialogTitle>
           <DialogDescription>
-            Upload a PDF with selectable text. Scanned books, where the pages are
-            images, cannot be read yet.
+            Drop in a text-based PDF. ReadBuddy will get to know it while you start reading.
           </DialogDescription>
         </DialogHeader>
 
@@ -151,22 +153,21 @@ export function UploadBookDialog({
               setDragging(false);
               acceptFile(event.dataTransfer.files?.[0]);
             }}
-            className={`flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-11 text-center transition-colors duration-150 ${
+            className={`relative flex w-full flex-col items-center gap-3 overflow-hidden rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-all duration-300 ${
               dragging
-                ? "border-primary bg-primary/[0.06]"
-                : "border-border bg-muted/35 hover:border-primary/50 hover:bg-muted/55"
+                ? "border-[#716cc0] bg-[#ece6ff]/70"
+                : "border-[#cfc7ee] bg-white/70 hover:-translate-y-0.5 hover:border-[#8e85ce] hover:bg-[#f8f5ff]"
             }`}>
-            <UploadCloud className="h-8 w-8 text-muted-foreground" strokeWidth={1.6} />
-            <span className="text-sm font-medium text-foreground">
-              Drop a PDF here, or click to choose one
-            </span>
-            <span className="text-xs text-muted-foreground">Up to 40 MB</span>
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#18243d] text-[#f7d77e] shadow-[0_10px_22px_rgba(24,36,61,.18)]"><UploadCloud className="h-6 w-6" strokeWidth={1.7} /></span>
+            <span className="font-display text-xl font-semibold text-[#17213e]">Drop a book here</span>
+            <span className="max-w-xs text-sm leading-relaxed text-[#65718b]">or choose a PDF from your computer. Selectable text works best.</span>
+            <span className="rounded-full bg-[#f5d9cf] px-3 py-1 text-[10px] font-semibold uppercase tracking-[.14em] text-[#9d5548]">Up to 40 MB</span>
           </button>
         ) : (
           <div className="space-y-5">
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3.5">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/12">
-                <FileText className="h-4.5 w-4.5 text-primary" strokeWidth={1.8} />
+            <div className="flex items-center gap-3 rounded-2xl border border-[#716cc0]/15 bg-white/75 p-3.5">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#ece6ff]">
+                <FileText className="h-5 w-5 text-[#625cad]" strokeWidth={1.8} />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{file.name}</p>
@@ -204,15 +205,7 @@ export function UploadBookDialog({
               </p>
             </div>
 
-            {busy && (
-              <div className="space-y-2">
-                <Progress value={progress} className="h-1.5" />
-                <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
-                  {STAGE_COPY[stage]}
-                </p>
-              </div>
-            )}
+            {busy && (<div className="rounded-2xl border border-[#716cc0]/15 bg-[#f7f4ff] p-4"><p className="flex items-center gap-2 font-display text-lg font-semibold text-[#28365a]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#716cc0] text-white"><BrainCircuit className="h-3.5 w-3.5" /></span>{STAGE_COPY[stage]}</p><p className="mt-2 text-xs leading-relaxed text-[#68728a]">You can begin reading as soon as the text is ready. The deeper connections continue quietly in the background.</p><Progress value={progress} className="mt-4 h-1.5 bg-[#ded9f2]" /> <div className="mt-4 grid gap-2 sm:grid-cols-2">{BRAIN_STEPS.map((step, index) => { const complete = progress >= 38 + index * 16; const active = !complete && index === Math.min(3, Math.floor(Math.max(0, progress - 38) / 16)); return <div key={step} className={`flex items-center gap-2 text-xs ${complete ? "text-[#5d579f]" : active ? "text-[#28365a]" : "text-[#8c93a5]"}`}>{complete ? <Check className="h-3.5 w-3.5" /> : active ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}{step}</div>; })}</div></div>)}
           </div>
         )}
 
