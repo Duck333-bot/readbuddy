@@ -288,3 +288,16 @@
 - [x] Add a subtle reader-intelligence margin cue for recognised concepts with an earlier-passage jump path
 - [x] Apply consistent, restrained motion to landing, library, upload, and reader interactions with reduced-motion support
 - [x] Verify desktop, tablet, and mobile Design v1 consistency plus existing feature regression coverage
+
+## Living Library Visual Identity & Product Shell v2 — Design Only
+
+- [ ] Freeze all production UI and feature changes until the visual direction is approved
+- [x] Audit current visual-token drift, component-library leakage, and GitHub main sync status
+- [x] Define final semantic color roles: Ink, Paper, Night, Violet, Sky, Sun, Coral, Mint, plus background/surface/text/AI/evidence/highlight/success/danger mappings
+- [x] Define final typography scales, three type roles, spacing scale, shape rules, shadow rules, and 4-motion system (Reveal, Lift, Thread, Focus)
+- [x] Design the proprietary Living Library thread/constellation motif and original ReadBuddy symbol/icon language
+- [x] Create high-fidelity desktop and mobile Landing mockups with story-led whole-book intelligence demonstration
+- [x] Create high-fidelity desktop and mobile Library mockups with a living reading-history world rather than a database grid
+- [x] Create high-fidelity desktop and mobile full-screen Upload / “Read the Book” mockups
+- [x] Create high-fidelity desktop and mobile Reader mockups with silent reading and a distinctive margin-thread evidence interaction
+- [x] Create a visual acceptance checklist and implementation order; request approval before production changes
