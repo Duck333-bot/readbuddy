@@ -338,3 +338,12 @@
 - [x] Add first-session event coverage and regression tests for the non-blocking upload/readiness path
 - [x] Run desktop/mobile visual regression and create five-reader task script, observation scorecard, and post-session questions
 - [x] Publish the Alpha Experience Integrity checkpoint and prepare the five-reader invite packet
+
+## Final Visual and Interaction Quality Audit — No New Features
+
+- [x] Map the provided world-class design criteria to Landing, Library, Upload, Reader, selection, answer, evidence, Who, Lost, and resume states
+- [x] Capture post-load desktop and mobile references for Landing, Library, Upload, and Reader; run the hidden-logo consistency test
+- [x] Remove any remaining generic dashboard, card-grid, Shadcn, or generic-modal visual cues discovered in the reference audit
+- [x] Verify typography hierarchy, whitespace, semantic color composition, Thread restraint, motion purpose, and silent-reader discipline on every primary screen
+- [x] Verify non-blocking upload and every protected reading interaction remains functionally intact after refinements
+- [x] Run final typecheck, tests, production build, and visual acceptance before release checkpoint
