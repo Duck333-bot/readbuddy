@@ -104,7 +104,7 @@ describe("readSelection", () => {
       container,
       geometry,
     );
-    expect(result).toEqual({ text: "the division of labour", x: 614, y: 311 });
+    expect(result).toEqual({ text: "the division of labour", x: 614, y: 311, startOffset: null, endOffset: null });
   });
 
   it("ignores a collapsed caret (a plain click)", () => {
@@ -121,13 +121,13 @@ describe("readSelection", () => {
     expect(result).toBeNull();
   });
 
-  it("ignores a one-character selection", () => {
+  it("keeps a one-character word actionable instead of failing silently", () => {
     const result = readSelection(
       fakeSelection({ text: "a", start: textNode, end: textNode }),
       container,
       geometry,
     );
-    expect(result).toBeNull();
+    expect(result?.text).toBe("a");
   });
 
   it("ignores selections outside the page body", () => {

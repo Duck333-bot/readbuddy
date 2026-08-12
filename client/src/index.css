@@ -243,7 +243,40 @@
     --reader-paper: #fffdf8;
     --reader-sepia: #f4eddf;
     --reader-night: var(--rb-night);
+    --reader-highlight-yellow: color-mix(in oklab, #facc15 42%, transparent);
+    --reader-highlight-blue: color-mix(in oklab, #38bdf8 35%, transparent);
+    --reader-highlight-pink: color-mix(in oklab, #f472b6 32%, transparent);
+    --reader-highlight-green: color-mix(in oklab, #34d399 32%, transparent);
     min-height: 100vh;
+  }
+
+  /* The reader has its own theme independent of the app shell. Values are set
+     on <html> while Reader is mounted so portalled dialogs/popovers follow it. */
+  html[data-readbuddy-reader-theme="dark"] {
+    --background: #1a1a1a;
+    --foreground: #e8e0d0;
+    --card: #242323;
+    --card-foreground: #e8e0d0;
+    --popover: #242323;
+    --popover-foreground: #e8e0d0;
+    --secondary: #2b2a29;
+    --secondary-foreground: #e8e0d0;
+    --muted: #2c2b2a;
+    --muted-foreground: #c2b9ab;
+    --accent: #3a3548;
+    --accent-foreground: #eee7f8;
+    --border: #47423d;
+    --input: #574f48;
+    --primary: #d5c6ff;
+    --primary-foreground: #24202c;
+    --rb-evidence: #cfc2ff;
+    --rb-evidence-surface: #37314b;
+    --rb-success: #73d8b7;
+    --rb-success-surface: #20483e;
+    --reader-highlight-yellow: color-mix(in oklab, #eab308 39%, transparent);
+    --reader-highlight-blue: color-mix(in oklab, #38bdf8 35%, transparent);
+    --reader-highlight-pink: color-mix(in oklab, #f472b6 33%, transparent);
+    --reader-highlight-green: color-mix(in oklab, #34d399 33%, transparent);
   }
   .reader-surface :focus-visible {
     outline: 2px solid var(--reader-accent);

@@ -4,6 +4,8 @@ import * as db from "../db";
 import { askReadingBuddy, BUDDY_MODES, updateReaderMemoryFromAnswer } from "../readingBuddy";
 import { protectedProcedure, router } from "../_core/trpc";
 import { buildBrainContext } from "../bookBrain";
+import { collectAllowedPages, validateCitations } from "../citations";
+import { memoryVisibleAtPage } from "../readerMemoryVisibility";
 
 const modeSchema = z.enum(BUDDY_MODES);
 
@@ -71,21 +73,51 @@ export const buddyRouter = router({
           brainContext: finalBrainCtx,
           readerMemory: memory
             ? {
-                knownVocab: (memory.knownVocab ?? []) as {
+                knownVocab: memoryVisibleAtPage(((memory.knownVocab ?? []) as {
                   word: string;
                   definition: string;
                   pageFirstAsked: number;
-                }[],
-                knownConcepts: (memory.knownConcepts ?? []) as {
+                }[]), input.pageNumber, spoilerMode),
+                knownConcepts: memoryVisibleAtPage(((memory.knownConcepts ?? []) as {
                   concept: string;
                   explanation: string;
                   pageFirstAsked: number;
-                }[],
+                }[]), input.pageNumber, spoilerMode),
                 preferredLevel: memory.preferredLevel,
               }
             : null,
           spoilerMode,
         });
+
+        // A citation is a promise the reader can click. Verify every page before
+        // it reaches them: no future pages in safe mode, no pages we never supplied.
+        const allowedPages = new Set<number>(finalBrainCtx?.allowedPages ?? []);
+        collectAllowedPages([
+          finalBrainCtx?.evidencePassages,
+          finalBrainCtx?.semanticChunks,
+          finalBrainCtx?.keyPassagesNearby,
+          finalBrainCtx?.relevantEntities,
+        ]).forEach(page => allowedPages.add(page));
+        for (const entity of finalBrainCtx?.entityEvidence ?? []) {
+          if (entity.firstSeen !== null) allowedPages.add(entity.firstSeen);
+          if (entity.lastSeen !== null) allowedPages.add(entity.lastSeen);
+          entity.relationships.forEach(rel => {
+            if (typeof rel.page === "number") allowedPages.add(rel.page);
+          });
+        }
+
+        const validated = validateCitations(answer, {
+          allowedPages,
+          currentPage: input.pageNumber,
+          spoilerMode,
+          pageCount: book.pageCount,
+        });
+        if (validated.futurePages.length > 0 || validated.unsupportedPages.length > 0) {
+          console.warn(
+            `[buddy.ask] removed invalid citations (book ${book.id}, mode ${input.mode}):`,
+            { future: validated.futurePages, unsupported: validated.unsupportedPages },
+          );
+        }
 
         // Update reader memory asynchronously — never block the response.
         updateReaderMemoryFromAnswer(
@@ -93,15 +125,18 @@ export const buddyRouter = router({
           input.bookId,
           input.mode,
           input.highlight,
-          answer,
+          validated.text,
           input.pageNumber,
         ).catch(e => console.warn("[buddy.ask] memory update failed:", e));
 
         return {
-          answer,
+          answer: validated.text,
           mode: input.mode,
           brainReady: finalBrainCtx?.brainReady ?? false,
           passCompleted: finalBrainCtx?.passCompleted ?? 0,
+          citedPages: validated.validPages,
+          /** True when the AI may safely refer to numbered chapters. */
+          chapterClaimsAllowed: finalBrainCtx?.chapterClaimsAllowed ?? false,
         };
       } catch (error) {
         console.error("[buddy.ask] failed:", error);
@@ -154,17 +189,40 @@ export const buddyRouter = router({
           brainContext,
           readerMemory: memory
             ? {
-                knownVocab: (memory.knownVocab ?? []) as { word: string; definition: string; pageFirstAsked: number }[],
-                knownConcepts: (memory.knownConcepts ?? []) as { concept: string; explanation: string; pageFirstAsked: number }[],
+                knownVocab: memoryVisibleAtPage((memory.knownVocab ?? []) as { word: string; definition: string; pageFirstAsked: number }[], input.currentPage, spoilerMode),
+                knownConcepts: memoryVisibleAtPage((memory.knownConcepts ?? []) as { concept: string; explanation: string; pageFirstAsked: number }[], input.currentPage, spoilerMode),
                 preferredLevel: memory.preferredLevel,
               }
             : null,
           spoilerMode,
         });
+        const currentPage = Math.min(input.currentPage, book.pageCount);
+        const allowedPages = new Set<number>(brainContext?.allowedPages ?? []);
+        collectAllowedPages([
+          brainContext?.evidencePassages,
+          brainContext?.semanticChunks,
+          brainContext?.keyPassagesNearby,
+          brainContext?.relevantEntities,
+        ]).forEach(pageNumber => allowedPages.add(pageNumber));
+        for (const entity of brainContext?.entityEvidence ?? []) {
+          if (entity.firstSeen !== null) allowedPages.add(entity.firstSeen);
+          if (entity.lastSeen !== null) allowedPages.add(entity.lastSeen);
+          entity.relationships.forEach(rel => {
+            if (typeof rel.page === "number") allowedPages.add(rel.page);
+          });
+        }
+        const validated = validateCitations(answer, {
+          allowedPages,
+          currentPage,
+          spoilerMode,
+          pageCount: book.pageCount,
+        });
         return {
-          answer,
+          answer: validated.text,
           brainReady: brainContext?.brainReady ?? false,
           passCompleted: brainContext?.passCompleted ?? 0,
+          citedPages: validated.validPages,
+          chapterClaimsAllowed: brainContext?.chapterClaimsAllowed ?? false,
         };
       } catch (error) {
         console.error("[buddy.askBook] failed:", error);

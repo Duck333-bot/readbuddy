@@ -7,6 +7,9 @@ export type ReaderSelection = {
   text: string;
   x: number;
   y: number;
+  /** Character range inside one rendered reader page. */
+  startOffset: number | null;
+  endOffset: number | null;
 };
 
 export type SelectionGeometry = {
@@ -16,8 +19,11 @@ export type SelectionGeometry = {
   viewportHeight: number;
 };
 
-/** Minimum characters before the ask-buddy pill is worth showing. */
-export const MIN_SELECTION_LENGTH = 2;
+/**
+ * A single word — including a one-character word — is a valid reading request.
+ * Silence after a real selection makes readers think touch selection failed.
+ */
+export const MIN_SELECTION_LENGTH = 1;
 /** Hard cap so a runaway selection cannot blow up the prompt. */
 export const MAX_SELECTION_LENGTH = 3500;
 
@@ -28,6 +34,25 @@ export const MAX_SELECTION_LENGTH = 3500;
 function toElement(node: Node | null): Node | null {
   if (!node) return null;
   return node.nodeType === 3 /* Node.TEXT_NODE */ ? node.parentNode : node;
+}
+
+function closestPageBody(node: Node | null): HTMLElement | null {
+  const element = toElement(node);
+  return typeof HTMLElement !== "undefined" && element instanceof HTMLElement
+    ? element.closest<HTMLElement>("[data-reader-page-body]")
+    : null;
+}
+
+/** Count characters from the start of the rendered page body to a range boundary. */
+function offsetFromPageStart(root: HTMLElement, node: Node, offset: number): number | null {
+  try {
+    const before = document.createRange();
+    before.selectNodeContents(root);
+    before.setEnd(node, offset);
+    return before.toString().length;
+  } catch {
+    return null;
+  }
 }
 
 /** True when both ends of the range sit inside the reader's article element. */
@@ -78,7 +103,8 @@ export function readSelection(
   geometry: SelectionGeometry,
 ): ReaderSelection | null {
   if (!selection || !container) return null;
-  const text = selection.toString().trim();
+  const rawText = selection.toString();
+  const text = rawText.trim();
   if (text.length < MIN_SELECTION_LENGTH) return null;
   if (selection.rangeCount === 0) return null;
   const range = selection.getRangeAt(0);
@@ -87,5 +113,18 @@ export function readSelection(
   const rect = range.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) return null;
   const { x, y } = clampPillPosition(rect, geometry);
-  return { text: text.slice(0, MAX_SELECTION_LENGTH), x, y };
+  const startBody = closestPageBody(range.startContainer);
+  const endBody = closestPageBody(range.endContainer);
+  let startOffset: number | null = null;
+  let endOffset: number | null = null;
+  if (startBody && startBody === endBody) {
+    const rawStart = offsetFromPageStart(startBody, range.startContainer, range.startOffset);
+    if (rawStart !== null) {
+      // Persist the trimmed portion because selectedText is trimmed by the API.
+      const leadingWhitespace = rawText.length - rawText.trimStart().length;
+      startOffset = rawStart + leadingWhitespace;
+      endOffset = startOffset + text.length;
+    }
+  }
+  return { text: text.slice(0, MAX_SELECTION_LENGTH), x, y, startOffset, endOffset };
 }

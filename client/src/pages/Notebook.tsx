@@ -23,21 +23,24 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRelativeTime, MODE_LABELS } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
-import { BookOpen, NotebookPen, Search, Trash2 } from "lucide-react";
+import { BookOpen, Highlighter, NotebookPen, Search, StickyNote, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { Streamdown } from "streamdown";
 
 const ALL_BOOKS = "all";
+type MemoryView = "all" | "highlights" | "notes" | "answers";
 
 export default function Notebook() {
   const { isAuthenticated, loading } = useAuth({ redirectOnUnauthenticated: true });
   const [bookFilter, setBookFilter] = useState<string>(ALL_BOOKS);
   const [query, setQuery] = useState("");
+  const [memoryView, setMemoryView] = useState<MemoryView>("all");
   const utils = trpc.useUtils();
 
   const entriesQuery = trpc.notebook.list.useQuery(undefined, { enabled: isAuthenticated });
+  const annotationsQuery = trpc.annotations.listForUser.useQuery(undefined, { enabled: isAuthenticated });
   const booksQuery = trpc.books.list.useQuery(undefined, { enabled: isAuthenticated });
 
   const removeMutation = trpc.notebook.remove.useMutation({
@@ -60,6 +63,7 @@ export default function Notebook() {
   });
 
   const entries = entriesQuery.data ?? [];
+  const annotations = annotationsQuery.data ?? [];
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -95,6 +99,22 @@ export default function Notebook() {
     return Array.from(map.values());
   }, [filtered]);
 
+  const filteredAnnotations = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return annotations.filter(annotation => {
+      if (bookFilter !== ALL_BOOKS && String(annotation.bookId) !== bookFilter) return false;
+      if (memoryView === "notes" && !annotation.note) return false;
+      if (memoryView === "answers") return false;
+      if (!needle) return true;
+      return annotation.selectedText.toLowerCase().includes(needle) || (annotation.note ?? "").toLowerCase().includes(needle) || (annotation.bookTitle ?? "").toLowerCase().includes(needle);
+    });
+  }, [annotations, bookFilter, query, memoryView]);
+
+  const showAnswers = memoryView === "all" || memoryView === "answers";
+  const showAnnotations = memoryView !== "answers";
+  const hasAnyMemory = entries.length + annotations.length > 0;
+  const hasFilteredMemory = (showAnswers && filtered.length > 0) || (showAnnotations && filteredAnnotations.length > 0);
+
   return (
     <AppShell>
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
@@ -104,13 +124,13 @@ export default function Notebook() {
               Notebook
             </h1>
             <p className="mt-1.5 text-muted-foreground">
-              Every sentence you asked about, with the answer you got.
+              Your highlights, personal notes, and saved explanations — all linked back to the book.
             </p>
           </div>
         </div>
 
         {/* Filters */}
-        {entries.length > 0 && (
+        {hasAnyMemory && (
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <div className="relative min-w-[14rem] flex-1">
               <Search
@@ -140,9 +160,11 @@ export default function Notebook() {
           </div>
         )}
 
+        {hasAnyMemory && <div className="mt-4 inline-flex rounded-xl border border-border bg-muted/30 p-1" role="tablist" aria-label="Notebook memory type">{([{ key: "all", label: "All" }, { key: "highlights", label: "Highlights" }, { key: "notes", label: "My notes" }, { key: "answers", label: "AI explanations" }] as { key: MemoryView; label: string }[]).map(tab => <button key={tab.key} role="tab" aria-selected={memoryView === tab.key} onClick={() => setMemoryView(tab.key)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${memoryView === tab.key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{tab.label}</button>)}</div>}
+
         {/* Entries */}
         <div className="mt-9">
-          {loading || entriesQuery.isLoading ? (
+          {loading || entriesQuery.isLoading || annotationsQuery.isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, index) => (
                 <div key={index} className="rounded-xl border border-border/80 p-5">
@@ -154,7 +176,7 @@ export default function Notebook() {
                 </div>
               ))}
             </div>
-          ) : entries.length === 0 ? (
+          ) : !hasAnyMemory ? (
             <div className="rounded-2xl border border-dashed border-border bg-muted/25 px-6 py-16 text-center">
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                 <NotebookPen className="h-5 w-5 text-primary" strokeWidth={1.7} />
@@ -163,21 +185,23 @@ export default function Notebook() {
                 Nothing saved yet
               </h2>
               <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
-                While reading, highlight a sentence, ask your buddy about it, then
-                press <strong>Save to notebook</strong>. Everything you keep shows up
-                here, grouped by book.
+                While reading, use <strong>Highlight</strong>, add a personal note, or save an AI explanation. What you keep will show up here, grouped by book.
               </p>
               <Button className="mt-6" asChild>
                 <Link href="/library">Go to library</Link>
               </Button>
             </div>
-          ) : filtered.length === 0 ? (
+          ) : !hasFilteredMemory ? (
             <p className="py-14 text-center text-sm text-muted-foreground">
               No notes match that search.
             </p>
           ) : (
             <div className="space-y-10">
-              {grouped.map(group => (
+              {showAnnotations && filteredAnnotations.length > 0 && <section>
+                <div className="mb-4 flex items-center gap-2.5"><Highlighter className="h-4 w-4 text-[var(--rb-evidence)]" strokeWidth={1.9} /><h2 className="font-display text-lg font-semibold">{memoryView === "notes" ? "My notes" : "Highlights and notes"}</h2><span className="text-xs text-muted-foreground">{filteredAnnotations.length}</span></div>
+                <div className="space-y-3">{filteredAnnotations.map(annotation => <article key={annotation.id} className="rounded-xl border border-border/80 bg-card/60 p-4"><div className="flex items-center gap-2"><span className="rounded-full bg-[var(--rb-evidence-surface)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--rb-evidence)]">Highlight</span><span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{annotation.bookTitle ?? "Removed book"}</span><Link href={`/read/${annotation.bookId}?page=${annotation.pageNumber}`} className="text-xs text-muted-foreground no-underline hover:text-primary hover:underline">page {annotation.pageNumber}</Link></div><blockquote className="mt-3 border-l-2 border-[var(--rb-evidence)]/45 pl-3 font-reading text-[0.95rem] italic leading-relaxed text-foreground/85">{annotation.selectedText}</blockquote>{annotation.note && <div className="mt-3 flex gap-2 rounded-lg bg-[var(--rb-evidence-surface)] px-3 py-2 text-sm leading-relaxed text-foreground"><StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--rb-evidence)]" /><span>{annotation.note}</span></div>}</article>)}</div>
+              </section>}
+              {showAnswers && grouped.map(group => (
                 <section key={group.bookId}>
                   <div className="mb-4 flex items-center gap-2.5">
                     <BookOpen className="h-4 w-4 text-primary" strokeWidth={1.9} />

@@ -16,6 +16,26 @@
 import * as db from "./db";
 import { llmCall, llmEmbed } from "./llm/router";
 import { embed as llmEmbedWithMeta } from "./llm/embeddings";
+import {
+  canMakeChapterClaims,
+  resolveBookStructure,
+  type BookSection,
+  type BookStructure,
+  type HeadingCandidate,
+} from "./bookStructure";
+
+/**
+ * Analysis pipeline version. Bump this whenever chapter, entity, or embedding
+ * generation changes in a way that makes older derived data untrustworthy.
+ * Books stored below this version are treated as stale and rebuilt in the
+ * background; the PDF and extracted pages are never touched.
+ */
+export const BOOK_BRAIN_VERSION = 4;
+
+/** An older completed analysis is stale even if all of its old passes finished. */
+export function needsBookBrainRebuild(analysisVersion: number | null | undefined, passCompleted: number | null | undefined): boolean {
+  return (passCompleted ?? 0) < 4 || (analysisVersion ?? 0) < BOOK_BRAIN_VERSION;
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                   */
@@ -40,83 +60,38 @@ function estimateTokens(text: string): number {
 }
 
 /**
- * Detect chapter boundaries in a list of pages.
- * Uses multiple heuristics in order of reliability:
- * 1. First non-empty line matches chapter heading patterns
- * 2. First several lines of the page contain heading patterns
- * 3. ALL CAPS short line at the top of a page
- * 4. Numbered headings (1., 1.1, etc.)
- * 5. Fallback: synthetic sections based on token count
+ * Ask a cheap model to classify ambiguous heading candidates. Only the candidate
+ * lines and their page numbers are sent — never the book text.
  */
-function isChapterBoundary(page: { content: string }): boolean {
-  const lines = page.content.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-  if (lines.length === 0) return false;
+async function validateHeadingCandidates(candidates: HeadingCandidate[]): Promise<HeadingCandidate[]> {
+  const listed = candidates
+    .slice(0, 120)
+    .map((candidate, index) => `${index}. p.${candidate.pageNumber}: ${candidate.line}`)
+    .join("\n");
 
-  // Check first 5 non-empty lines for heading patterns
-  const headingLines = lines.slice(0, 5);
-  for (const line of headingLines) {
-    // Standard chapter/part headings
-    if (/^chapter\s+(\d+|[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten)/i.test(line)) return true;
-    if (/^part\s+(\d+|[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten)/i.test(line)) return true;
-    if (/^(epilogue|prologue|introduction|preface|foreword|afterword|appendix|conclusion|acknowledgements?)$/i.test(line)) return true;
-    // Roman numeral chapters: "I", "II", "III", "IV", "V", etc. (standalone)
-    if (/^[IVXLCDM]{1,6}$/.test(line) && line.length <= 6) return true;
-    // Numbered headings: "1.", "2.", "Chapter 1:", "CHAPTER ONE"
-    if (/^\d+\.?\s*$/.test(line)) return true;
-    // ALL CAPS short lines (likely section headings): e.g., "THE BEGINNING", "PART ONE"
-    if (line === line.toUpperCase() && line.length >= 3 && line.length <= 60 && /[A-Z]/.test(line)) return true;
-  }
-  return false;
-}
+  const prompt = `These lines were taken from the top of pages in a book. Classify each one.
 
-function detectChapterGroups(
-  pages: { pageNumber: number; content: string }[],
-): { chapterNumber: number; pages: { pageNumber: number; content: string }[] }[] {
-  const groups: { chapterNumber: number; pages: { pageNumber: number; content: string }[] }[] = [];
-  let currentChapter = 0;
-  let currentPages: { pageNumber: number; content: string }[] = [];
+Valid labels: "chapter" (a real chapter or part boundary), "section" (a subheading inside a chapter), "running_header" (a repeated header or the book title), "front_matter" (contents, dedication, copyright), "uncertain".
 
-  for (const page of pages) {
-    const isStart = isChapterBoundary(page);
-    if (isStart && currentPages.length > 0) {
-      groups.push({ chapterNumber: currentChapter, pages: currentPages });
-      currentChapter++;
-      currentPages = [];
-    }
-    currentPages.push(page);
-  }
+Return ONLY a JSON array like [{"i":0,"label":"chapter"}, ...].
 
-  if (currentPages.length > 0) {
-    groups.push({ chapterNumber: currentChapter, pages: currentPages });
-  }
+LINES:
+${listed}`;
 
-  // If no chapter headings detected, create synthetic sections of ~3,000 tokens each
-  if (groups.length <= 1 && pages.length > 10) {
-    const syntheticGroups: typeof groups = [];
-    let currentGroup: typeof pages = [];
-    let currentTokens = 0;
-    let chapterNum = 0;
-    const TARGET_TOKENS = 3000;
+  const res = await llmCall("chunk_analysis", {
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0,
+    max_tokens: 1200,
+  });
 
-    for (const page of pages) {
-      const pageTokens = estimateTokens(page.content);
-      // Start a new section if we would exceed the target
-      if (currentTokens + pageTokens > TARGET_TOKENS && currentGroup.length > 0) {
-        syntheticGroups.push({ chapterNumber: chapterNum, pages: currentGroup });
-        chapterNum++;
-        currentGroup = [];
-        currentTokens = 0;
-      }
-      currentGroup.push(page);
-      currentTokens += pageTokens;
-    }
-    if (currentGroup.length > 0) {
-      syntheticGroups.push({ chapterNumber: chapterNum, pages: currentGroup });
-    }
-    return syntheticGroups;
-  }
+  const labels = parseJson(res.text, [] as { i: number; label: string }[]);
+  if (!Array.isArray(labels) || labels.length === 0) return candidates;
 
-  return groups;
+  const keep = new Set(
+    labels.filter(item => item.label === "chapter" || item.label === "front_matter").map(item => item.i),
+  );
+  const filtered = candidates.filter((_, index) => keep.has(index));
+  return filtered.length >= 3 ? filtered : candidates;
 }
 
 /**
@@ -168,19 +143,52 @@ function chunkPages(
 async function runPass2(
   bookId: number,
   pages: { pageNumber: number; content: string }[],
-): Promise<void> {
+  analysisVersion: number,
+): Promise<{
+  chapterSummaries: {
+    chapter: number;
+    title: string;
+    summary: string;
+    startPage: number;
+    endPage: number;
+    authorDefined: boolean;
+  }[];
+  structure: BookStructure;
+}> {
   // Clear any existing chunks (idempotent retry)
-  await db.deleteBookChunks(bookId);
+  await db.deleteBookChunks(bookId, analysisVersion);
 
-  const chapterGroups = detectChapterGroups(pages);
-  const chapterSummaries: { chapter: number; title: string; summary: string; startPage: number }[] = [];
+  const book = await db.getBookById(bookId);
+  const structure: BookStructure = await resolveBookStructure(pages, {
+    outline: (book?.pdfOutline as { title: string; page: number; level: number }[] | null) ?? undefined,
+    bookTitle: book?.title ?? null,
+    validate: validateHeadingCandidates,
+  });
 
-  for (const group of chapterGroups) {
-    const chunks = chunkPages(group.pages);
+  const pageByNumber = new Map(pages.map(page => [page.pageNumber, page]));
+  const chapterSummaries: {
+    chapter: number;
+    title: string;
+    summary: string;
+    startPage: number;
+    endPage: number;
+    authorDefined: boolean;
+  }[] = [];
+  const entityEvidence = new Map<
+    string,
+    { name: string; type: string; pages: Set<number>; relationships: { name: string; relation: string; page: number }[] }
+  >();
+
+  for (const section of structure.sections) {
+    const sectionPages: { pageNumber: number; content: string }[] = [];
+    for (let pageNumber = section.startPage; pageNumber <= section.endPage; pageNumber++) {
+      const page = pageByNumber.get(pageNumber);
+      if (page) sectionPages.push(page);
+    }
+    if (sectionPages.length === 0) continue;
+
+    const chunks = chunkPages(sectionPages);
     const chunkSummaries: string[] = [];
-    const allEntities = new Set<string>();
-    const allConcepts = new Set<string>();
-    const allKeyPassages: { text: string; reason: string }[] = [];
 
     for (let seq = 0; seq < chunks.length; seq++) {
       const chunk = chunks[seq]!;
@@ -191,12 +199,20 @@ async function runPass2(
       const prompt = `Analyze this book section (pages ${startPage}–${endPage}) and return ONLY valid JSON:
 {
   "summary": "2-3 sentence summary of what happens/is argued in this section",
-  "entities": ["person/place/concept name", ...],
+  "entities": [
+    {
+      "name": "person/place/concept name",
+      "type": "person|place|concept|term|other",
+      "pages": [page numbers where it appears, taken from the [Page N] markers],
+      "relationships": [{"name": "other entity", "relation": "short description", "page": page number}]
+    }
+  ],
   "concepts": ["main idea or theme", ...],
   "keyPassages": [{"text": "short quote (max 120 chars)", "reason": "why it matters"}, ...]
 }
 
 Rules: entities max 10, concepts max 5, keyPassages max 3, be specific not generic.
+Every page number MUST come from the [Page N] markers in the text below. Never guess a page number.
 
 TEXT:
 ${chunkText}`;
@@ -204,44 +220,47 @@ ${chunkText}`;
       const res = await llmCall("chunk_analysis", {
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
-        max_tokens: 800,
+        max_tokens: 1100,
       });
 
       const analysis = parseJson(res.text, {
         summary: "",
-        entities: [] as string[],
+        entities: [] as ChunkEntity[],
         concepts: [] as string[],
         keyPassages: [] as { text: string; reason: string }[],
       });
 
+      const validPages = new Set(chunk.map(p => p.pageNumber));
+      const chunkEntities = normalizeChunkEntities(analysis.entities, validPages);
+
       // Store chunk in DB
       await db.insertBookChunk({
         bookId,
-        chapterNumber: group.chapterNumber,
+        chapterNumber: section.index - 1,
         chunkSequence: seq,
         startPage,
         endPage,
         text: chunkText,
         summary: analysis.summary,
-        entities: analysis.entities as string[],
+        entities: chunkEntities.map(entity => entity.name),
         concepts: analysis.concepts,
         keyPassages: analysis.keyPassages,
+        analysisVersion,
       });
 
       chunkSummaries.push(analysis.summary);
-      analysis.entities.forEach((e: string) => allEntities.add(e));
-      analysis.concepts.forEach((c: string) => allConcepts.add(c));
-      allKeyPassages.push(...analysis.keyPassages);
+      mergeEntityEvidence(entityEvidence, chunkEntities);
     }
 
     // Synthesize chunk summaries into a chapter summary
     let chapterSummary = chunkSummaries.join(" ");
     if (chunkSummaries.length > 1) {
-      const synthPrompt = `Combine these section summaries from a single chapter into one coherent paragraph (3-4 sentences):
+      const unitWord = section.authorDefined ? "chapter" : "reading section";
+      const synthPrompt = `Combine these part summaries from a single ${unitWord} into one coherent paragraph (3-4 sentences):
 
 ${chunkSummaries.map((s, i) => `Section ${i + 1}: ${s}`).join("\n")}
 
-Write a single paragraph that captures the chapter's key events, arguments, and significance.`;
+Write a single paragraph that captures the key events, arguments, and significance.`;
 
       const synthRes = await llmCall("chapter_synthesis", {
         messages: [{ role: "user", content: synthPrompt }],
@@ -251,41 +270,155 @@ Write a single paragraph that captures the chapter's key events, arguments, and 
       chapterSummary = synthRes.text.trim();
     }
 
-    const startPage = group.pages[0]!.pageNumber;
-    const chapterTitle = `Chapter ${group.chapterNumber + 1}`;
     chapterSummaries.push({
-      chapter: group.chapterNumber + 1,
-      title: chapterTitle,
+      chapter: section.index,
+      title: section.title,
       summary: chapterSummary,
-      startPage,
+      startPage: section.startPage,
+      endPage: section.endPage,
+      authorDefined: section.authorDefined,
     });
   }
 
-  // Store chapter summaries in bookBrain
-  await db.upsertBookBrain(bookId, {
-    chapterSummaries,
-    passCompleted: 2,
-  });
+  // Persist entity page evidence now, while we still have per-chunk page markers.
+  await db.deleteBookEntities(bookId, analysisVersion);
+  const aggregated = Array.from(entityEvidence.values())
+    .filter(entity => entity.name.length > 1)
+    .sort((a, b) => b.pages.size - a.pages.size)
+    .slice(0, 60);
+  if (aggregated.length > 0) {
+    await db.insertBookEntities(
+      aggregated.map(entity => ({
+        bookId,
+        type: entity.type as "person" | "place" | "concept" | "term" | "other",
+        name: entity.name.slice(0, 255),
+        description: "",
+        pages: Array.from(entity.pages).sort((a, b) => a - b),
+        relationships: dedupeRelationships(entity.relationships),
+        analysisVersion,
+      })),
+    );
+  }
+
+  return { chapterSummaries, structure };
+}
+
+type ChunkEntity = {
+  name?: unknown;
+  type?: unknown;
+  pages?: unknown;
+  relationships?: unknown;
+};
+
+const ENTITY_TYPES = new Set(["person", "place", "concept", "term", "other"]);
+
+/** Normalize a name so aliases with different spacing/case merge safely. */
+export function normalizeEntityKey(name: string): string {
+  return name.replace(/\s+/g, " ").trim().toLowerCase().replace(/^(the|a|an)\s+/, "");
+}
+
+/**
+ * Accept only page numbers that actually exist in the analyzed chunk. This is
+ * what stops the model from inventing a page and turning Who? into a fake fact.
+ */
+export function normalizeChunkEntities(
+  raw: unknown,
+  validPages: Set<number>,
+): { name: string; type: string; pages: number[]; relationships: { name: string; relation: string; page: number }[] }[] {
+  if (!Array.isArray(raw)) return [];
+  const result: { name: string; type: string; pages: number[]; relationships: { name: string; relation: string; page: number }[] }[] = [];
+
+  for (const rawItem of raw as unknown[]) {
+    // Tolerate the older shape where entities were plain strings.
+    if (typeof rawItem === "string") {
+      const name = rawItem.replace(/\s+/g, " ").trim();
+      if (name) result.push({ name, type: "other", pages: [], relationships: [] });
+      continue;
+    }
+    if (!rawItem || typeof rawItem !== "object") continue;
+    const item = rawItem as ChunkEntity;
+    const name = typeof item.name === "string" ? item.name.replace(/\s+/g, " ").trim() : "";
+    if (!name) continue;
+    const type = typeof item.type === "string" && ENTITY_TYPES.has(item.type) ? item.type : "other";
+    const pages = Array.isArray(item.pages)
+      ? Array.from(
+          new Set(
+            item.pages
+              .map(page => (typeof page === "number" ? page : Number(page)))
+              .filter(page => Number.isInteger(page) && validPages.has(page)),
+          ),
+        ).sort((a, b) => a - b)
+      : [];
+    const relationships = Array.isArray(item.relationships)
+      ? (item.relationships as { name?: unknown; relation?: unknown; page?: unknown }[])
+          .map(rel => ({
+            name: typeof rel?.name === "string" ? rel.name.replace(/\s+/g, " ").trim() : "",
+            relation: typeof rel?.relation === "string" ? rel.relation.trim().slice(0, 160) : "",
+            page: typeof rel?.page === "number" ? rel.page : Number(rel?.page),
+          }))
+          .filter(rel => rel.name && rel.relation && Number.isInteger(rel.page) && validPages.has(rel.page))
+      : [];
+    result.push({ name, type, pages, relationships });
+  }
+  return result;
+}
+
+function mergeEntityEvidence(
+  store: Map<string, { name: string; type: string; pages: Set<number>; relationships: { name: string; relation: string; page: number }[] }>,
+  entities: { name: string; type: string; pages: number[]; relationships: { name: string; relation: string; page: number }[] }[],
+) {
+  for (const entity of entities) {
+    const key = normalizeEntityKey(entity.name);
+    if (!key) continue;
+    const existing = store.get(key);
+    if (existing) {
+      entity.pages.forEach(page => existing.pages.add(page));
+      existing.relationships.push(...entity.relationships);
+      // Prefer the longer surface form ("Elizabeth Bennet" over "Elizabeth").
+      if (entity.name.length > existing.name.length) existing.name = entity.name;
+      if (existing.type === "other" && entity.type !== "other") existing.type = entity.type;
+    } else {
+      store.set(key, {
+        name: entity.name,
+        type: entity.type,
+        pages: new Set(entity.pages),
+        relationships: [...entity.relationships],
+      });
+    }
+  }
+}
+
+function dedupeRelationships(relationships: { name: string; relation: string; page: number }[]) {
+  const seen = new Set<string>();
+  const result: { name: string; relation: string; page: number }[] = [];
+  for (const rel of relationships.sort((a, b) => a.page - b.page)) {
+    const key = `${normalizeEntityKey(rel.name)}|${rel.relation.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(rel);
+    if (result.length >= 12) break;
+  }
+  return result;
 }
 
 /* -------------------------------------------------------------------------- */
 /*  Pass 3 — Whole-Book Synthesis                                            */
 /* -------------------------------------------------------------------------- */
 
-async function runPass3(bookId: number): Promise<void> {
-  const brain = await db.getBookBrain(bookId);
-  const chapters = (brain?.chapterSummaries ?? []) as {
-    chapter: number; title: string; summary: string; startPage: number;
-  }[];
+async function runPass3(
+  bookId: number,
+  chapters: { chapter: number; title: string; summary: string; startPage: number; endPage: number; authorDefined: boolean }[],
+  analysisVersion: number,
+): Promise<{ overallSummary: string; themes: string[]; timeline: { event: string; page: number }[] }> {
 
-  if (chapters.length === 0) return;
+  if (chapters.length === 0) return { overallSummary: "", themes: [], timeline: [] };
 
   // Synthesize all chapter summaries into a whole-book brain
   const chapterList = chapters
-    .map(c => `Chapter ${c.chapter} (starts p.${c.startPage}): ${c.summary}`)
+    .map(c => `${c.authorDefined ? `Chapter ${c.chapter}` : `Reading section ${c.chapter}`} (starts p.${c.startPage}): ${c.summary}`)
     .join("\n\n");
 
-  const prompt = `You have read a complete book. Here is a summary of every chapter:
+  const prompt = `You have read a complete book. Here is a summary of every author-defined chapter or synthetic reading section:
 
 ${chapterList}
 
@@ -311,24 +444,14 @@ Rules: themes 3-7 items, timeline up to 20 key events in chronological order.`;
   });
 
   // Extract entities from all chunks and deduplicate
-  const allChunks = await db.getBookChunks(bookId);
-  const entityMap = new Map<string, number>();
-  for (const chunk of allChunks) {
-    const entities = (chunk.entities as string[] | null) ?? [];
-    for (const e of entities) {
-      entityMap.set(e, (entityMap.get(e) ?? 0) + 1);
-    }
-  }
+  // Pass 2 already stored entities WITH page evidence. Pass 3 only adds a short
+  // description; it must never overwrite or discard the page evidence.
+  const storedEntities = await db.getBookEntities(bookId, analysisVersion);
+  const describable = storedEntities.slice(0, 40);
 
-  // Keep the top 40 most-mentioned entities and ask the LLM to describe them
-  const topEntities = Array.from(entityMap.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 40)
-    .map(([name]) => name);
-
-  if (topEntities.length > 0) {
+  if (describable.length > 0) {
     const entityPrompt = `Based on this book (summary: ${synthesis.overallSummary}), describe these entities:
-${topEntities.join(", ")}
+${describable.map(entity => entity.name).join(", ")}
 
 Return ONLY valid JSON array:
 [{"name": "...", "type": "person|place|concept|term|other", "description": "1-2 sentence description"}, ...]`;
@@ -340,28 +463,25 @@ Return ONLY valid JSON array:
     });
 
     const entities = parseJson(entityRes.text, [] as { name: string; type: string; description: string }[]);
-
-    await db.deleteBookEntities(bookId);
     if (Array.isArray(entities) && entities.length > 0) {
-      await db.insertBookEntities(
-        entities.slice(0, 40).map(e => ({
-          bookId,
-          type: (e.type ?? "other") as "person" | "place" | "concept" | "term" | "other",
-          name: String(e.name ?? "").slice(0, 255),
-          description: String(e.description ?? ""),
-          pages: [],
-          relationships: [],
-        })),
+      const describedByKey = new Map(
+        entities
+          .filter(entity => typeof entity?.name === "string")
+          .map(entity => [normalizeEntityKey(String(entity.name)), entity]),
       );
+      for (const stored of describable) {
+        const described = describedByKey.get(normalizeEntityKey(stored.name));
+        if (!described?.description) continue;
+        await db.updateBookEntityDescription(stored.id, String(described.description).slice(0, 1000));
+      }
     }
   }
 
-  await db.upsertBookBrain(bookId, {
+  return {
     overallSummary: synthesis.overallSummary,
     themes: synthesis.themes,
     timeline: synthesis.timeline.map((t: { event: string; chapter: number }) => ({ event: t.event, page: t.chapter })),
-    passCompleted: 3,
-  });
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -430,12 +550,12 @@ function createRetrievalPassages(
   return passages;
 }
 
-async function runPass4(bookId: number): Promise<void> {
+async function runPass4(bookId: number, analysisVersion: number): Promise<void> {
   // Clear old embeddings and retrieval passages (idempotent)
-  await db.deleteBookEmbeddings(bookId);
-  await db.deleteRetrievalPassages(bookId);
+  await db.deleteBookEmbeddings(bookId, analysisVersion);
+  await db.deleteRetrievalPassages(bookId, analysisVersion);
 
-  const chunks = await db.getBookChunks(bookId);
+  const chunks = await db.getBookChunks(bookId, analysisVersion);
 
   // Part A: Embed analysis chunks (for chapter-level understanding)
   for (const chunk of chunks) {
@@ -467,6 +587,7 @@ async function runPass4(bookId: number): Promise<void> {
           embeddingModel: embResult.model,
           embeddingDimensions: embResult.dimensions,
         },
+        analysisVersion,
       });
     } catch (err) {
       console.warn(`[bookBrain] chunk embedding failed for chunk ${chunk.id}:`, err);
@@ -486,6 +607,7 @@ async function runPass4(bookId: number): Promise<void> {
         endPage: passage.endPage,
         text: passage.text.slice(0, 8000), // Store up to 8000 chars
         embedding: embResult.embedding,
+        analysisVersion,
       });
     } catch (err) {
       // Store passage without embedding — still useful for proximity retrieval
@@ -496,11 +618,11 @@ async function runPass4(bookId: number): Promise<void> {
         endPage: passage.endPage,
         text: passage.text.slice(0, 8000),
         embedding: null,
+        analysisVersion,
       });
     }
   }
 
-  await db.upsertBookBrain(bookId, { passCompleted: 4 });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -517,25 +639,30 @@ export async function runBookBrainPipeline(bookId: number): Promise<{
   }
 
   const brain = await db.getBookBrain(bookId);
-  const startPass = (brain?.passCompleted ?? 0) + 1;
-
-  if (startPass > 4) {
+  if (!needsBookBrainRebuild(brain?.analysisVersion, brain?.passCompleted)) {
     return { passCompleted: 4, skipped: true };
   }
 
-  if (!brain) {
-    await db.upsertBookBrain(bookId, { passCompleted: 1 });
-  }
+  /*
+   * Build every v4 derived artifact beside the currently active version. The
+   * PDF and extracted bookPages are never changed. If a model call fails, the
+   * existing Book Brain remains the active one; a retry clears only the partial
+   * v4 rows and starts again. The final metadata update is the live switch.
+   */
+  const staged = await runPass2(bookId, pages, BOOK_BRAIN_VERSION);
+  const synthesis = await runPass3(bookId, staged.chapterSummaries, BOOK_BRAIN_VERSION);
+  await runPass4(bookId, BOOK_BRAIN_VERSION);
 
-  if (startPass <= 2) {
-    await runPass2(bookId, pages);
-  }
-  if (startPass <= 3) {
-    await runPass3(bookId);
-  }
-  if (startPass <= 4) {
-    await runPass4(bookId);
-  }
+  await db.upsertBookBrain(bookId, {
+    chapterSummaries: staged.chapterSummaries,
+    structureSource: staged.structure.source,
+    structureConfidence: Math.round(staged.structure.confidence * 100),
+    overallSummary: synthesis.overallSummary,
+    themes: synthesis.themes,
+    timeline: synthesis.timeline,
+    analysisVersion: BOOK_BRAIN_VERSION,
+    passCompleted: 4,
+  });
 
   return { passCompleted: 4, skipped: false };
 }
@@ -569,6 +696,45 @@ export interface BrainContext {
   semanticChunks: string;   // Top semantically-relevant chunks from anywhere in the book
   brainReady: boolean;
   passCompleted: number;
+  /** Where chapter structure came from; drives whether chapter claims are allowed. */
+  structureSource: "outline" | "detected" | "synthetic" | null;
+  /** True only when the AI may say "Chapter N" as a fact. */
+  chapterClaimsAllowed: boolean;
+  /** Fine-grained retrieval passages (the evidence the answer must cite). */
+  evidencePassages: string;
+  /** Page numbers legitimately available for citation. */
+  allowedPages: number[];
+  /** Entity cards limited to what the reader has actually reached. */
+  entityEvidence: {
+    name: string;
+    type: string;
+    description: string;
+    firstSeen: number | null;
+    lastSeen: number | null;
+    relationships: { name: string; relation: string; page?: number }[];
+  }[];
+}
+
+/** How many fine-grained passages to send as evidence. */
+const EVIDENCE_PASSAGE_LIMIT = 6;
+
+/**
+ * Keyword overlap score, used to boost semantic hits. Cheap, and it rescues
+ * exact-name questions ("who is Shawn?") where pure vectors can drift.
+ */
+function keywordOverlap(query: string, text: string): number {
+  const terms = Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .split(/[^a-z0-9']+/)
+        .filter(term => term.length >= 4),
+    ),
+  );
+  if (terms.length === 0) return 0;
+  const haystack = text.toLowerCase();
+  const hits = terms.filter(term => haystack.includes(term)).length;
+  return hits / terms.length;
 }
 
 export async function buildBrainContext(
@@ -580,6 +746,12 @@ export async function buildBrainContext(
   const brain = await db.getBookBrain(bookId);
   const passCompleted = brain?.passCompleted ?? 0;
   const brainReady = passCompleted >= 4;
+  const activeAnalysisVersion = brain?.analysisVersion ?? 1;
+  const structureSource = (brain?.structureSource ?? null) as BrainContext["structureSource"];
+  const chapterClaimsAllowed = canMakeChapterClaims({
+    source: structureSource ?? "synthetic",
+    confidence: (brain?.structureConfidence ?? 0) / 100,
+  });
 
   if (passCompleted < 2) {
     return {
@@ -591,6 +763,11 @@ export async function buildBrainContext(
       semanticChunks: "",
       brainReady: false,
       passCompleted,
+      structureSource,
+      chapterClaimsAllowed: false,
+      evidencePassages: "",
+      allowedPages: [],
+      entityEvidence: [],
     };
   }
 
@@ -599,33 +776,54 @@ export async function buildBrainContext(
 
   // Chapter context: find the chapter the reader is currently in.
   const chapters = ((brain?.chapterSummaries ?? []) as {
-    chapter: number; title: string; summary: string; startPage: number;
+    chapter: number; title: string; summary: string; startPage: number; endPage?: number; authorDefined?: boolean;
   }[]).filter(c => spoilerMode === "full" || c.startPage <= pageLimit);
 
   const currentChapter = [...chapters].reverse().find(c => c.startPage <= currentPage);
-  // P0-2: In safe mode, only show the current chapter summary if we have confirmed
-  // that the chapter started at or before the current page. The summary itself was
-  // generated from the full chapter text, so we show it but with a note that it
-  // covers the chapter up to the reader's current position.
+  // Structural honesty: only call it a chapter when it genuinely is one.
   const chapterContext = currentChapter
-    ? `Chapter ${currentChapter.chapter} — "${currentChapter.title}": ${currentChapter.summary}`
+    ? (() => {
+        const authorDefined = currentChapter.authorDefined ?? chapterClaimsAllowed;
+        const label = authorDefined
+          ? `Chapter ${currentChapter.chapter} — "${currentChapter.title}"`
+          : `Earlier in the book (reading section ${currentChapter.chapter}, not an author-defined chapter)`;
+        return `${label}: ${currentChapter.summary}`;
+      })()
     : null;
 
-  // P0-2: Relevant entities — in safe mode, only include entities whose first
-  // known page is at or before the reader's current page.
-  const entities = await db.getBookEntities(bookId);
-  const filteredEntities = spoilerMode === "full"
-    ? entities
-    : entities.filter(e => {
-        const pages = (e.pages as number[] | null) ?? [];
-        // If no page info, include it (conservative — better to include than exclude).
-        if (pages.length === 0) return true;
-        // Only include if the entity first appeared at or before the current page.
-        return Math.min(...pages) <= pageLimit;
-      });
-  const relevantEntities = filteredEntities
+  // Entity evidence — in safe mode, both the entity AND its page evidence are
+  // clipped to what the reader has reached.
+  const entities = await db.getBookEntities(bookId, activeAnalysisVersion);
+  const entityEvidence = entities
+    .map(entity => {
+      const pages = ((entity.pages as number[] | null) ?? []).filter(
+        page => spoilerMode === "full" || page <= pageLimit,
+      );
+      const relationships = (((entity.relationships ?? []) as { name: string; relation: string; page?: number }[]) ?? [])
+        .filter(rel => spoilerMode === "full" || rel.page === undefined || rel.page <= pageLimit);
+      return {
+        name: entity.name,
+        type: entity.type as string,
+        description: entity.description ?? "",
+        firstSeen: pages.length > 0 ? Math.min(...pages) : null,
+        lastSeen: pages.length > 0 ? Math.max(...pages) : null,
+        relationships,
+        seenPages: pages,
+      };
+    })
+    // In safe mode an entity with no reached pages has not been met yet.
+    .filter(entity => spoilerMode === "full" || entity.seenPages.length > 0)
+    .map(({ seenPages, ...entity }) => entity);
+
+  const relevantEntities = entityEvidence
     .slice(0, 15)
-    .map(e => `• ${e.name} (${e.type}): ${e.description}`)
+    .map(entity => {
+      const seen =
+        entity.firstSeen !== null
+          ? ` (first seen p.${entity.firstSeen}${entity.lastSeen && entity.lastSeen !== entity.firstSeen ? `, most recently p.${entity.lastSeen}` : ""})`
+          : " (no confirmed page evidence yet)";
+      return `• ${entity.name} (${entity.type})${seen}: ${entity.description}`;
+    })
     .join("\n");
 
   // Key passages nearby (proximity-based fallback)
@@ -635,13 +833,67 @@ export async function buildBrainContext(
     .map(p => `[p.${p.page}] "${p.text}" — ${p.reason}`)
     .join("\n");
 
+  /* -- Fine-grained evidence retrieval -----------------------------------
+   * Analysis chunks are for understanding; retrieval passages are for evidence.
+   * The live path searches the passages, which is what makes citations exact.
+   */
+  let evidencePassages = "";
+  const allowedPages = new Set<number>();
+  if (queryText && passCompleted >= 2) {
+    try {
+      const passages = await db.getRetrievalPassages(bookId, activeAnalysisVersion);
+      const eligible = passages.filter(passage =>
+        spoilerMode === "full" ? true : passage.endPage <= pageLimit,
+      );
+
+      if (eligible.length > 0) {
+        let scored: { passage: (typeof eligible)[number]; score: number }[] = [];
+        const withVectors = eligible.filter(passage => Array.isArray(passage.embedding));
+
+        if (withVectors.length > 0) {
+          const queryEmbedding = (await llmEmbedWithMeta(queryText)).embedding;
+          scored = withVectors.map(passage => {
+            const similarity = cosineSimilarity(queryEmbedding, (passage.embedding as number[]) ?? []);
+            // Hybrid: vectors lead, keywords break ties and rescue exact names.
+            return { passage, score: similarity + 0.15 * keywordOverlap(queryText, passage.text) };
+          });
+        } else {
+          // No vectors yet (brain still building): keyword + proximity fallback.
+          scored = eligible.map(passage => ({
+            passage,
+            score:
+              keywordOverlap(queryText, passage.text) +
+              0.2 / (1 + Math.abs(passage.endPage - currentPage)),
+          }));
+        }
+
+        const top = scored
+          .sort((a, b) => b.score - a.score)
+          .filter(entry => entry.score > 0)
+          .slice(0, EVIDENCE_PASSAGE_LIMIT);
+
+        evidencePassages = top
+          .map(({ passage }) => {
+            for (let page = passage.startPage; page <= passage.endPage; page++) allowedPages.add(page);
+            const label = passage.startPage === passage.endPage
+              ? `[p.${passage.startPage}]`
+              : `[pp.${passage.startPage}–${passage.endPage}]`;
+            return `${label}\n${passage.text.slice(0, 1800)}`;
+          })
+          .join("\n\n---\n\n");
+      }
+    } catch (err) {
+      console.warn("[bookBrain] passage retrieval failed:", err);
+    }
+  }
+
   // Semantic retrieval: find the most relevant chunks from anywhere in the book
   let semanticChunks = "";
   if (queryText && brainReady) {
     try {
       const queryEmbResult = await llmEmbedWithMeta(queryText);
       const queryEmbedding = queryEmbResult.embedding;
-      const embeddings = await db.getBookEmbeddings(bookId);
+      const embeddings = await db.getBookEmbeddings(bookId, activeAnalysisVersion);
 
       // Filter by spoiler mode: exclude chunks that start after the current page
       const eligible = embeddings.filter(emb => {
@@ -672,6 +924,9 @@ export async function buildBrainContext(
             if (!chunk) return null;
             const meta = emb.metadata as { startPage: number; endPage: number } | null;
             const pageRange = meta ? `pp.${meta.startPage}–${meta.endPage}` : "";
+            if (meta) {
+              for (let page = meta.startPage; page <= meta.endPage; page++) allowedPages.add(page);
+            }
             // P0-5: Return actual evidence — original chunk text (truncated) with page citation.
             // This lets the AI cite specific details, not just paraphrase the summary.
             const originalText = (chunk.text as string | null)?.slice(0, 1500) ?? chunk.summary ?? "";
@@ -703,5 +958,10 @@ export async function buildBrainContext(
     semanticChunks,
     brainReady,
     passCompleted,
+    structureSource,
+    chapterClaimsAllowed,
+    evidencePassages,
+    allowedPages: Array.from(allowedPages).sort((a, b) => a - b),
+    entityEvidence,
   };
 }

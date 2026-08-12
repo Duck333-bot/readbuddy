@@ -142,7 +142,10 @@ export const booksRouter = router({
         coverKey,
         coverUrl,
         pageCount: extracted.pageCount,
-        lastPage: 1,
+        // Open on real text, not a cover or blank front-matter page.
+        lastPage: extracted.firstReadablePage,
+        firstReadablePage: extracted.firstReadablePage,
+        pdfOutline: extracted.outline,
         fileSize: bytes.length,
       });
 
@@ -181,6 +184,7 @@ export const booksRouter = router({
         bookId,
         title,
         pageCount: extracted.pageCount,
+        firstReadablePage: extracted.firstReadablePage,
         truncated: extracted.pageCount >= MAX_PAGES,
       };
     }),
@@ -190,16 +194,24 @@ export const booksRouter = router({
     .query(async ({ ctx, input }) => {
       await ownBookOrThrow(input.bookId, ctx.user.id);
       const brain = await db.getBookBrain(input.bookId);
-      const entities = await db.getBookEntities(input.bookId);
+      const entities = await db.getBookEntities(input.bookId, brain?.analysisVersion ?? 1);
+      const structureSource = brain?.structureSource ?? null;
+      const structureConfidence = brain?.structureConfidence ?? 0;
       return {
         passCompleted: brain?.passCompleted ?? 0,
         overallSummary: brain?.overallSummary ?? null,
         themes: (brain?.themes ?? []) as string[],
+        structureSource,
+        structureConfidence,
+        /** False when the "chapters" are our own grouping, so the UI must say Sections. */
+        chaptersAreAuthorDefined: structureSource !== null && structureSource !== "synthetic" && structureConfidence >= 50,
         chapterSummaries: (brain?.chapterSummaries ?? []) as {
           chapter: number;
           title: string;
           summary: string;
           startPage: number;
+          endPage?: number;
+          authorDefined?: boolean;
         }[],
         entities: entities.map(e => ({ name: e.name, type: e.type, pages: e.pages })),
       };

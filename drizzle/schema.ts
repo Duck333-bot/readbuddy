@@ -54,7 +54,11 @@ export const books = mysqlTable(
     coverUrl: varchar("coverUrl", { length: 768 }),
     pageCount: int("pageCount").notNull().default(0),
     lastPage: int("lastPage").notNull().default(1),
+    /** First page with enough selectable text to open on. */
+    firstReadablePage: int("firstReadablePage").notNull().default(1),
     fileSize: int("fileSize").notNull().default(0),
+    /** Chapter entries from the PDF's own bookmark outline, when present. */
+    pdfOutline: json("pdfOutline").$type<{ title: string; page: number; level: number }[]>(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
     lastOpenedAt: timestamp("lastOpenedAt"),
@@ -94,7 +98,7 @@ export const notebookEntries = mysqlTable(
       .notNull()
       .references(() => books.id, { onDelete: "cascade" }),
     pageNumber: int("pageNumber").notNull(),
-    mode: mysqlEnum("mode", ["explain", "simplify", "context", "why", "translate", "define", "ask", "who"])
+    mode: mysqlEnum("mode", ["explain", "simplify", "context", "why", "translate", "define", "ask", "who", "word"])
       .default("explain")
       .notNull(),
     highlight: text("highlight").notNull(),
@@ -117,6 +121,12 @@ export const annotations = mysqlTable(
     bookId: int("bookId").notNull().references(() => books.id, { onDelete: "cascade" }),
     pageNumber: int("pageNumber").notNull(),
     selectedText: text("selectedText").notNull(),
+    /**
+     * Character offsets into the normalized page text. Null for rows created
+     * before offsets existed; those fall back to first-match rendering.
+     */
+    startOffset: int("startOffset"),
+    endOffset: int("endOffset"),
     color: varchar("color", { length: 24 }).notNull().default("yellow"),
     note: text("note"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -197,8 +207,21 @@ export const bookBrain = mysqlTable(
     timeline: json("timeline").$type<{ event: string; page: number }[]>(),
     /** Chapter summaries as a JSON array of {chapter, title, summary, startPage} (pass 2) */
     chapterSummaries: json("chapterSummaries").$type<
-      { chapter: number; title: string; summary: string; startPage: number }[]
+      {
+        chapter: number;
+        title: string;
+        summary: string;
+        startPage: number;
+        endPage?: number;
+        authorDefined?: boolean;
+      }[]
     >(),
+    /** Where the chapter structure came from: outline | detected | synthetic. */
+    structureSource: mysqlEnum("structureSource", ["outline", "detected", "synthetic"]),
+    /** 0–100 confidence in the structure. Below 50, no confident chapter claims. */
+    structureConfidence: int("structureConfidence").notNull().default(0),
+    /** Analysis pipeline version that produced this brain. */
+    analysisVersion: int("analysisVersion").notNull().default(1),
     /** Important/difficult passages as JSON (pass 4) */
     keyPassages: json("keyPassages").$type<
       { page: number; text: string; reason: string }[]
@@ -289,6 +312,8 @@ export const retrievalPassages = mysqlTable(
     text: text("text").notNull(),
     /** Embedding vector as a JSON array of floats. */
     embedding: json("embedding").$type<number[]>(),
+    /** Book Brain analysis version that created this derived passage. */
+    analysisVersion: int("analysisVersion").notNull().default(1),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
@@ -318,6 +343,8 @@ export const bookEmbeddings = mysqlTable(
       chapterNumber: number;
       chunkSequence: number;
     }>(),
+    /** Book Brain analysis version that created this vector. */
+    analysisVersion: int("analysisVersion").notNull().default(1),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [index("bookEmbeddings_bookId_idx").on(table.bookId)],
@@ -341,8 +368,10 @@ export const bookEntities = mysqlTable(
     description: text("description").notNull(),
     /** Pages where this entity appears, JSON array of ints */
     pages: json("pages").$type<number[]>(),
-    /** Relationships to other entities, JSON array of {name, relation} */
-    relationships: json("relationships").$type<{ name: string; relation: string }[]>(),
+    /** Relationships to other entities, JSON array of {name, relation, page} */
+    relationships: json("relationships").$type<{ name: string; relation: string; page?: number }[]>(),
+    /** Book Brain analysis version that produced this entity evidence. */
+    analysisVersion: int("analysisVersion").notNull().default(1),
   },
   table => [
     index("entities_bookId_idx").on(table.bookId),

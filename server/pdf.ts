@@ -8,7 +8,51 @@ export type ExtractedPdf = {
   pages: string[];
   title: string | null;
   author: string | null;
+  /** Chapter entries taken from the PDF's own bookmark outline, when present. */
+  outline: PdfOutlineEntry[];
+  /** First page containing enough selectable text to be worth opening on. */
+  firstReadablePage: number;
 };
+
+/** One entry from the PDF's embedded outline (bookmarks panel). */
+export type PdfOutlineEntry = {
+  title: string;
+  page: number;
+  level: number;
+};
+
+/**
+ * A page needs a reasonable amount of real prose before we treat it as the
+ * opening page. Covers, blank pages, and pure-image plates fall below this.
+ */
+export const MEANINGFUL_TEXT_CHARS = 200;
+
+/** Count characters that belong to words, ignoring stray punctuation and page numbers. */
+export function meaningfulTextLength(pageText: string): number {
+  return pageText.replace(/[^0-9A-Za-z\u00C0-\u024F\u0370-\u1FFF\u3040-\u9FFF]+/g, " ").trim().length;
+}
+
+/**
+ * Pick the first page a reader should land on. Prefers the first page with
+ * enough prose; if a book is unusually sparse, falls back to the densest early
+ * page so we never open on a blank sheet, and finally to page 1.
+ */
+export function findFirstReadablePage(pages: string[]): number {
+  for (let i = 0; i < pages.length; i++) {
+    if (meaningfulTextLength(pages[i] ?? "") >= MEANINGFUL_TEXT_CHARS) return i + 1;
+  }
+  let bestIndex = -1;
+  let bestLength = 0;
+  const searchLimit = Math.min(pages.length, 30);
+  for (let i = 0; i < searchLimit; i++) {
+    const length = meaningfulTextLength(pages[i] ?? "");
+    if (length > bestLength) {
+      bestLength = length;
+      bestIndex = i;
+    }
+  }
+  return bestLength > 0 ? bestIndex + 1 : 1;
+}
 
 /** Hard ceiling so a pathological upload cannot exhaust the request budget. */
 export const MAX_PAGES = 1200;
@@ -117,9 +161,48 @@ export async function extractPdf(bytes: Uint8Array): Promise<ExtractedPdf> {
     // Metadata is optional.
   }
 
+  // The PDF's own outline is the highest-confidence source of chapter structure,
+  // so resolve every bookmark destination to a real page number.
+  const outline: PdfOutlineEntry[] = [];
+  try {
+    type OutlineNode = { title?: string; dest?: unknown; items?: OutlineNode[] };
+    const rawOutline = (await doc.getOutline()) as OutlineNode[] | null;
+    const resolvePage = async (dest: unknown): Promise<number | null> => {
+      try {
+        const resolved = typeof dest === "string" ? await doc.getDestination(dest) : dest;
+        if (!Array.isArray(resolved) || resolved.length === 0) return null;
+        const index = await doc.getPageIndex(resolved[0] as never);
+        return index + 1;
+      } catch {
+        return null;
+      }
+    };
+    const walk = async (nodes: OutlineNode[] | undefined, level: number) => {
+      if (!nodes || level > 3) return;
+      for (const node of nodes) {
+        const rawTitle = typeof node.title === "string" ? node.title.replace(/\s+/g, " ").trim() : "";
+        const page = node.dest === undefined || node.dest === null ? null : await resolvePage(node.dest);
+        if (rawTitle && page !== null && page >= 1 && page <= pageCount) {
+          outline.push({ title: rawTitle.slice(0, 300), page, level });
+        }
+        await walk(node.items, level + 1);
+      }
+    };
+    await walk(rawOutline ?? undefined, 0);
+  } catch {
+    // Outline is optional; heading detection is the fallback.
+  }
+
   await doc.cleanup();
 
-  return { pageCount, pages, title, author };
+  return {
+    pageCount,
+    pages,
+    title,
+    author,
+    outline,
+    firstReadablePage: findFirstReadablePage(pages),
+  };
 }
 
 /** Derive a human-friendly title from a filename when metadata is missing. */

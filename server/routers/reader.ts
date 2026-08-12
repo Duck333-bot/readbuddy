@@ -11,6 +11,17 @@ import { llmCall } from "../llm/router";
 import { protectedProcedure, router } from "../_core/trpc";
 import { buildBrainContext } from "../bookBrain";
 
+/** Used by reader-level AI calls that do not go through askReadingBuddy. */
+const SAFE_SOURCE_ONLY = `You are ReadBuddy, a calm and precise reading companion. In spoiler-safe mode, use only the text and Book Brain facts supplied in this request. Never use remembered knowledge about the book. Do not mention people, events, chapters, themes, or endings not present in the supplied material. If the supplied material cannot support a book-specific claim, say: "I can't verify that from the part of the book you've reached." Do not explain these rules to the reader.`;
+
+/** A recap should help a meaningful return, not fire during a short route remount. */
+export const RESUME_RECAP_MIN_AWAY_MS = 6 * 60 * 60 * 1000;
+
+export function shouldOfferResumeRecap(lastReadAt: Date | null | undefined, now = Date.now()): boolean {
+  if (!lastReadAt) return false;
+  return now - lastReadAt.getTime() >= RESUME_RECAP_MIN_AWAY_MS;
+}
+
 export const readerRouter = router({
   /**
    * "I'm lost" — no highlight required.
@@ -76,7 +87,7 @@ Task: Give the reader exactly what they need to continue reading.
         messages: [
           {
             role: "system",
-            content: "You are ReadBuddy. When a reader says they're lost, you orient them quickly and warmly. Be specific, not generic.",
+            content: `${SAFE_SOURCE_ONLY}\n\nWhen a reader says they're lost, orient them quickly and warmly. Be specific, not generic.`,
           },
           { role: "user", content: prompt },
         ],
@@ -102,6 +113,10 @@ Task: Give the reader exactly what they need to continue reading.
 
       const lastPage = book.lastPage ?? 1;
       if (lastPage <= 1) return null; // Nothing to recap yet
+      // `books.updatedAt` moves whenever saved reading progress moves. If the
+      // reader left for seconds or minutes, do not call an LLM just to tell them
+      // what they already remember.
+      if (!shouldOfferResumeRecap(book.updatedAt)) return null;
 
       const settings = await db.getReaderSettings(ctx.user.id, input.bookId).catch(() => null);
       const spoilerMode = settings?.spoilerMode ?? "safe";
@@ -128,7 +143,7 @@ Keep it under 80 words. Warm and direct. No spoilers beyond page ${lastPage}.`;
         messages: [
           {
             role: "system",
-            content: "You are ReadBuddy. Help readers pick up where they left off with a quick, friendly recap.",
+            content: `${SAFE_SOURCE_ONLY}\n\nHelp readers pick up where they left off with a quick, friendly recap.`,
           },
           { role: "user", content: prompt },
         ],
@@ -168,6 +183,8 @@ Keep it under 80 words. Warm and direct. No spoilers beyond page ${lastPage}.`;
         title: string;
         summary: string;
         startPage: number;
+        endPage?: number;
+        authorDefined?: boolean;
       }[];
 
       const thisChapter = chapters.find(c => c.chapter === input.chapterNumber);
@@ -178,7 +195,9 @@ Keep it under 80 words. Warm and direct. No spoilers beyond page ${lastPage}.`;
 
       // Get entities first seen in this chapter's page range
       const nextChapter = chapters.find(c => c.chapter === input.chapterNumber + 1);
-      const chapterEndPage = nextChapter ? nextChapter.startPage - 1 : book.pageCount;
+      const chapterEndPage = thisChapter.endPage ?? (nextChapter ? nextChapter.startPage - 1 : book.pageCount);
+      // Do not hand out a full unit recap while the reader is still inside it.
+      if (input.currentPage < chapterEndPage) return null;
       const entities = await db.getBookEntities(input.bookId);
       const chapterEntities = entities.filter(e => {
         const pages = (e.pages as number[] | null) ?? [];
@@ -187,19 +206,22 @@ Keep it under 80 words. Warm and direct. No spoilers beyond page ${lastPage}.`;
         return firstPage >= thisChapter.startPage && firstPage <= chapterEndPage;
       }).slice(0, 8);
 
-      const prompt = `A reader just finished Chapter ${input.chapterNumber} of "${book.title}".
+      const authorDefined = thisChapter.authorDefined ?? (brain.structureSource !== "synthetic" && (brain.structureConfidence ?? 0) >= 50);
+      const unitLabel = authorDefined ? `Chapter ${input.chapterNumber}` : `reading section ${input.chapterNumber}`;
+      const unitNoun = authorDefined ? "chapter" : "section";
+      const prompt = `A reader just finished ${unitLabel} of "${book.title}".
 
-CHAPTER SUMMARY:
+${authorDefined ? "CHAPTER" : "READING SECTION"} SUMMARY:
 ${thisChapter.summary}
 
-${prevChapter ? `PREVIOUS CHAPTER (${prevChapter.chapter}): ${prevChapter.summary}` : ""}
+${prevChapter ? `PREVIOUS ${authorDefined ? "CHAPTER" : "SECTION"} (${prevChapter.chapter}): ${prevChapter.summary}` : ""}
 
-${chapterEntities.length > 0 ? `NEW CHARACTERS/CONCEPTS IN THIS CHAPTER:\n${chapterEntities.map(e => `• ${e.name}: ${e.description}`).join("\n")}` : ""}
+${chapterEntities.length > 0 ? `NEW CHARACTERS/CONCEPTS IN THIS ${authorDefined ? "CHAPTER" : "SECTION"}:\n${chapterEntities.map(e => `• ${e.name}: ${e.description}`).join("\n")}` : ""}
 
-Task: Create a chapter debrief in this exact format:
+Task: Create a ${unitNoun} debrief in this exact format:
 
 **Main idea**
-[1-2 sentences: what this chapter was fundamentally about]
+[1-2 sentences: what this ${unitNoun} was fundamentally about]
 
 **3 things to remember**
 1. [most important event or idea]
@@ -207,18 +229,18 @@ Task: Create a chapter debrief in this exact format:
 3. [third most important]
 
 **Key people/concepts introduced**
-[list only NEW ones from this chapter, or "None new in this chapter"]
+[list only NEW ones from this ${unitNoun}, or "None new in this ${unitNoun}"]
 
-**Connection to earlier chapters**
-[1 sentence connecting this chapter to what came before, or "This is the opening chapter"]
+**Connection to earlier ${authorDefined ? "chapters" : "sections"}**
+[1 sentence connecting this ${unitNoun} to what came before, or "This is the opening ${unitNoun}"]
 
-Keep it concise and specific. No spoilers beyond this chapter.`;
+Keep it concise and specific. No spoilers beyond this ${unitNoun}.`;
 
       const response = await llmCall("reading_buddy", {
         messages: [
           {
             role: "system",
-            content: "You are ReadBuddy. Help readers consolidate what they just read with a clear, memorable debrief.",
+            content: `${SAFE_SOURCE_ONLY}\n\nHelp readers consolidate what they just read with a clear, memorable debrief.`,
           },
           { role: "user", content: prompt },
         ],

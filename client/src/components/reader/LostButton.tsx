@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Streamdown } from "streamdown";
 
 export function LostButton({ onClick }: { onClick: () => void }) {
-  return <div className="fixed bottom-6 right-4 z-40 sm:right-6"><Tooltip><TooltipTrigger asChild><button onClick={onClick} className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card/90 text-muted-foreground shadow-md backdrop-blur transition-all hover:border-[var(--rb-evidence)] hover:text-[var(--rb-evidence)] active:scale-95" aria-label="I’m lost — help me understand where I am"><HelpCircle className="h-4 w-4" /></button></TooltipTrigger><TooltipContent side="left">I’m lost</TooltipContent></Tooltip></div>;
+  return <div className="fixed bottom-4 right-3 z-40 sm:bottom-6 sm:right-6"><Tooltip><TooltipTrigger asChild><button onClick={onClick} className="flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-border bg-card/90 px-3 text-xs font-medium text-muted-foreground shadow-md backdrop-blur transition-all hover:border-[var(--rb-evidence)] hover:text-[var(--rb-evidence)] active:scale-95" aria-label="I’m lost — help me understand where I am"><HelpCircle className="h-4 w-4" /><span>I’m lost</span></button></TooltipTrigger><TooltipContent side="left">Get a quick orientation</TooltipContent></Tooltip></div>;
 }
 
 export function LostReaderCard({ answer, isLoading, onClose }: { answer: string; isLoading: boolean; onClose: () => void }) {

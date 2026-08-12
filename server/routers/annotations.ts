@@ -17,16 +17,28 @@ export const annotationsRouter = router({
       return db.listAnnotationsForPage(ctx.user.id, input.bookId, input.pageNumber);
     }),
 
+  listForUser: protectedProcedure.query(async ({ ctx }) => {
+    return db.listAnnotationsForUser(ctx.user.id);
+  }),
+
   create: protectedProcedure
     .input(z.object({
       bookId: z.number().int().positive(),
       pageNumber: z.number().int().positive(),
       selectedText: z.string().trim().min(1).max(5000),
+      startOffset: z.number().int().nonnegative().optional(),
+      endOffset: z.number().int().positive().optional(),
       color: z.enum(["yellow", "blue", "pink", "green"]).default("yellow"),
       note: z.string().trim().max(4000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await assertBookAccess(input.bookId, ctx.user.id);
+      if (
+        (input.startOffset === undefined) !== (input.endOffset === undefined) ||
+        (input.startOffset !== undefined && input.endOffset !== undefined && input.endOffset <= input.startOffset)
+      ) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That highlight range is invalid. Please select the text again." });
+      }
       const id = await db.createAnnotation({ ...input, userId: ctx.user.id, note: input.note ?? null });
       return { id };
     }),

@@ -203,6 +203,13 @@ export async function getBookPage(bookId: number, pageNumber: number) {
   return rows[0];
 }
 
+/** Background pipelines run without a user context, so look up by id alone. */
+export async function getBookById(bookId: number) {
+  const db = await requireDb();
+  const rows = await db.select().from(books).where(eq(books.id, bookId)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function updateBookProgress(bookId: number, userId: number, lastPage: number) {
   const db = await requireDb();
   await db
@@ -342,14 +349,28 @@ export async function insertBookEntities(rows: InsertBookEntity[]) {
   }
 }
 
-export async function getBookEntities(bookId: number) {
+export async function getBookEntities(bookId: number, analysisVersion?: number) {
   const db = await requireDb();
-  return db.select().from(bookEntities).where(eq(bookEntities.bookId, bookId));
+  return db.select().from(bookEntities).where(
+    analysisVersion === undefined
+      ? eq(bookEntities.bookId, bookId)
+      : and(eq(bookEntities.bookId, bookId), eq(bookEntities.analysisVersion, analysisVersion)),
+  );
 }
 
-export async function deleteBookEntities(bookId: number) {
+/** Pass 3 adds descriptions only; page evidence from pass 2 must survive. */
+export async function updateBookEntityDescription(entityId: number, description: string) {
   const db = await requireDb();
-  await db.delete(bookEntities).where(eq(bookEntities.bookId, bookId));
+  await db.update(bookEntities).set({ description }).where(eq(bookEntities.id, entityId));
+}
+
+export async function deleteBookEntities(bookId: number, analysisVersion?: number) {
+  const db = await requireDb();
+  await db.delete(bookEntities).where(
+    analysisVersion === undefined
+      ? eq(bookEntities.bookId, bookId)
+      : and(eq(bookEntities.bookId, bookId), eq(bookEntities.analysisVersion, analysisVersion)),
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -431,9 +452,13 @@ export async function getAllPagesForBook(bookId: number) {
 /*                        Book Chunks (hierarchical pipeline)                 */
 /* -------------------------------------------------------------------------- */
 
-export async function deleteBookChunks(bookId: number) {
+export async function deleteBookChunks(bookId: number, analysisVersion?: number) {
   const db = await requireDb();
-  await db.delete(bookChunks).where(eq(bookChunks.bookId, bookId));
+  await db.delete(bookChunks).where(
+    analysisVersion === undefined
+      ? eq(bookChunks.bookId, bookId)
+      : and(eq(bookChunks.bookId, bookId), eq(bookChunks.analysisVersion, analysisVersion)),
+  );
 }
 
 export async function insertBookChunk(values: {
@@ -447,6 +472,7 @@ export async function insertBookChunk(values: {
   entities?: string[] | null;
   concepts?: string[] | null;
   keyPassages?: { text: string; reason: string }[] | null;
+  analysisVersion?: number;
 }) {
   const db = await requireDb();
   const result = await db.insert(bookChunks).values(values);
@@ -454,12 +480,16 @@ export async function insertBookChunk(values: {
   return (header as { insertId?: number }).insertId ?? 0;
 }
 
-export async function getBookChunks(bookId: number) {
+export async function getBookChunks(bookId: number, analysisVersion?: number) {
   const db = await requireDb();
   return db
     .select()
     .from(bookChunks)
-    .where(eq(bookChunks.bookId, bookId))
+    .where(
+      analysisVersion === undefined
+        ? eq(bookChunks.bookId, bookId)
+        : and(eq(bookChunks.bookId, bookId), eq(bookChunks.analysisVersion, analysisVersion)),
+    )
     .orderBy(asc(bookChunks.chapterNumber), asc(bookChunks.chunkSequence));
 }
 
@@ -473,9 +503,13 @@ export async function getBookChunksByIds(ids: number[]) {
 /*                        Book Embeddings (semantic retrieval)                */
 /* -------------------------------------------------------------------------- */
 
-export async function deleteBookEmbeddings(bookId: number) {
+export async function deleteBookEmbeddings(bookId: number, analysisVersion?: number) {
   const db = await requireDb();
-  await db.delete(bookEmbeddings).where(eq(bookEmbeddings.bookId, bookId));
+  await db.delete(bookEmbeddings).where(
+    analysisVersion === undefined
+      ? eq(bookEmbeddings.bookId, bookId)
+      : and(eq(bookEmbeddings.bookId, bookId), eq(bookEmbeddings.analysisVersion, analysisVersion)),
+  );
 }
 
 export async function insertBookEmbedding(values: {
@@ -491,24 +525,33 @@ export async function insertBookEmbedding(values: {
     embeddingModel?: string;
     embeddingDimensions?: number;
   } | null;
+  analysisVersion?: number;
 }) {
   const db = await requireDb();
   await db.insert(bookEmbeddings).values(values);
 }
 
-export async function getBookEmbeddings(bookId: number) {
+export async function getBookEmbeddings(bookId: number, analysisVersion?: number) {
   const db = await requireDb();
   return db
     .select()
     .from(bookEmbeddings)
-    .where(eq(bookEmbeddings.bookId, bookId));
+    .where(
+      analysisVersion === undefined
+        ? eq(bookEmbeddings.bookId, bookId)
+        : and(eq(bookEmbeddings.bookId, bookId), eq(bookEmbeddings.analysisVersion, analysisVersion)),
+    );
 }
 
 // ─── Retrieval Passages ──────────────────────────────────────────────────────
 
-export async function deleteRetrievalPassages(bookId: number): Promise<void> {
+export async function deleteRetrievalPassages(bookId: number, analysisVersion?: number): Promise<void> {
   const db = await requireDb();
-  await db.delete(retrievalPassages).where(eq(retrievalPassages.bookId, bookId));
+  await db.delete(retrievalPassages).where(
+    analysisVersion === undefined
+      ? eq(retrievalPassages.bookId, bookId)
+      : and(eq(retrievalPassages.bookId, bookId), eq(retrievalPassages.analysisVersion, analysisVersion)),
+  );
 }
 
 export async function insertRetrievalPassage(data: {
@@ -517,17 +560,22 @@ export async function insertRetrievalPassage(data: {
   endPage: number;
   text: string;
   embedding?: number[] | null;
+  analysisVersion?: number;
 }): Promise<void> {
   const db = await requireDb();
   await db.insert(retrievalPassages).values(data);
 }
 
-export async function getRetrievalPassages(bookId: number) {
+export async function getRetrievalPassages(bookId: number, analysisVersion?: number) {
   const db = await requireDb();
   return db
     .select()
     .from(retrievalPassages)
-    .where(eq(retrievalPassages.bookId, bookId))
+    .where(
+      analysisVersion === undefined
+        ? eq(retrievalPassages.bookId, bookId)
+        : and(eq(retrievalPassages.bookId, bookId), eq(retrievalPassages.analysisVersion, analysisVersion)),
+    )
     .orderBy(asc(retrievalPassages.startPage));
 }
 
@@ -540,11 +588,33 @@ export async function listAnnotationsForPage(userId: number, bookId: number, pag
   );
 }
 
+/** Highlights and personal notes belong to the reader, not to a single page view. */
+export async function listAnnotationsForUser(userId: number) {
+  const db = await requireDb();
+  return db
+    .select({
+      id: annotations.id,
+      bookId: annotations.bookId,
+      bookTitle: books.title,
+      pageNumber: annotations.pageNumber,
+      selectedText: annotations.selectedText,
+      color: annotations.color,
+      note: annotations.note,
+      createdAt: annotations.createdAt,
+    })
+    .from(annotations)
+    .leftJoin(books, eq(annotations.bookId, books.id))
+    .where(eq(annotations.userId, userId))
+    .orderBy(desc(annotations.createdAt));
+}
+
 export async function createAnnotation(input: {
   userId: number;
   bookId: number;
   pageNumber: number;
   selectedText: string;
+  startOffset?: number;
+  endOffset?: number;
   color?: string;
   note?: string | null;
 }) {
@@ -554,6 +624,8 @@ export async function createAnnotation(input: {
     bookId: input.bookId,
     pageNumber: input.pageNumber,
     selectedText: input.selectedText,
+    startOffset: input.startOffset ?? null,
+    endOffset: input.endOffset ?? null,
     color: input.color ?? "yellow",
     note: input.note ?? null,
   });

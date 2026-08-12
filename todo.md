@@ -368,3 +368,41 @@
 - [x] Add performance/economics aggregation for findings report section G (median/p95 latency, Book Brain time, failure rate, cost per book/interaction/reader) with vitest coverage
 - [x] Produce session-ready execution kit: recruitment brief, observation sheet, interview script, triage sheet, findings report template
 - [x] P1 fix: library subtitle no longer claims "Nothing here yet" while books are still loading
+
+## Trust Before Growth Sprint
+
+### Step 0 — Source of truth
+- [x] Inspect the real working tree vs public main; record baseline typecheck/test count/build
+- [x] Verify for each task below whether the defect actually still exists before changing code
+
+### P0 — Trust breakers
+- [x] Task 1: chapter-detection hierarchy (PDF outline → text headings → LLM validation → synthetic sections) with structureSource/confidence field
+- [x] Task 1: synthetic groupings must be named "Section N", never "Chapter N"; low confidence suppresses confident chapter claims
+- [x] Task 2: entity extraction returns page evidence; aggregate/normalize/dedupe pages; safe-mode first/last from pages <= currentPage
+- [x] Task 2: never render "p.unknown" — omit or state ReadBuddy has not located the appearance
+- [x] Task 3: server requires [[p.N]] citations for claims that depend on retrieved earlier material
+- [x] Task 3: server-side citation validation — reject future pages in safe mode, reject pages absent from supplied evidence
+- [x] Task 4: source-only safe mode; forbid pretrained book knowledge; honest refusal wording without internal/system language
+- [x] Task 5: live retrieval actually searches fine-grained retrievalPassages, not only analysis chunks
+- [x] Task 6: offset-based annotations (startOffset/endOffset on normalized page text) so multiple highlights per paragraph render; migration for old rows
+- [x] Task 7: firstReadablePage on new books; calm empty-page message with next-page action
+
+### P1 — Usability
+- [x] Task 8: single-word selection toolbar becomes Define · Translate · Explain; concise 1–3 line Define
+- [x] Task 8: Translate with persisted target-language preference
+- [x] Task 9: no silent short-selection failure
+- [x] Task 10: mobile parity — Ask Book, evidence jump, back-to-page, I'm Lost, spoiler setting, Define, Translate
+- [x] Task 11: user-controllable spoiler mode with one-time confirmation, respected across all AI paths
+- [x] Task 12: I'm Lost affordance with label, quieter after first successful use
+- [x] Task 13: resume recap gated on real elapsed time; no recap after ~40 seconds; no recap on remount
+- [x] Task 14: night-mode consistency and contrast across all reader surfaces
+- [x] Task 15: conservative heading classification; body text when uncertain
+- [x] Task 16: Left/Right page turns only; Up/Down scroll normally
+- [x] Task 17: remove the misleading "…" control or give it real actions
+- [x] Task 18: thumbs feedback acknowledgement plus compact negative categories
+- [x] Task 19: Notebook segmented view — All / Highlights / My notes / AI explanations with jump to source page
+
+### Foundation
+- [x] BOOK_BRAIN_VERSION with stale detection and safe background rebuild preserving PDF/pages
+- [x] Regression tests for every task above; keep all existing tests passing
+- [ ] Manual verification of Scenarios A–G in browser

@@ -403,6 +403,12 @@ export default function Reader() {
   const [noteText, setNoteText] = useState("");
   const [annotationColor, setAnnotationColor] = useState<"yellow" | "blue" | "pink" | "green">("yellow");
   const [chromeVisible, setChromeVisible] = useState(true);
+  const [translationLanguage, setTranslationLanguage] = useState(() =>
+    typeof window === "undefined" ? "" : window.localStorage.getItem("readbuddy-translation-language") ?? "",
+  );
+  const [translationPickerOpen, setTranslationPickerOpen] = useState(false);
+  const [translationDraft, setTranslationDraft] = useState("");
+  const [spoilerConfirmOpen, setSpoilerConfirmOpen] = useState(false);
 
   // "I'm lost" state
   const [lostOpen, setLostOpen] = useState(false);
@@ -443,12 +449,12 @@ export default function Reader() {
     const p = Number(params.get("page"));
     if (p > 0 && p <= pageCount) {
       setPageNumber(p);
-    } else if (book?.lastPage) {
+    } else if (book?.lastPage && book.lastPage > (book.firstReadablePage ?? 1)) {
       setPageNumber(book.lastPage);
     } else {
-      setPageNumber(1);
+      setPageNumber(book?.firstReadablePage ?? 1);
     }
-  }, [search, book?.lastPage, pageCount]);
+  }, [search, book?.lastPage, book?.firstReadablePage, pageCount]);
 
   const pageQuery = trpc.books.page.useQuery(
     { bookId, pageNumber: pageNumber ?? 1 },
@@ -462,6 +468,18 @@ export default function Reader() {
   useEffect(() => {
     window.localStorage.setItem("readbuddy-reading-theme", readingTheme);
   }, [readingTheme]);
+  useEffect(() => {
+    // Dialogs, popovers, and sheets render in portals outside the reader root.
+    // Put the temporary reader theme on <html> so those surfaces stay coherent.
+    const root = document.documentElement;
+    root.dataset.readbuddyReaderTheme = readingTheme;
+    return () => { delete root.dataset.readbuddyReaderTheme; };
+  }, [readingTheme]);
+  useEffect(() => {
+    if (translationLanguage.trim()) {
+      window.localStorage.setItem("readbuddy-translation-language", translationLanguage.trim());
+    }
+  }, [translationLanguage]);
   useEffect(() => {
     window.localStorage.setItem("readbuddy-continuous-reading", String(continuousMode));
   }, [continuousMode]);
@@ -497,6 +515,14 @@ export default function Reader() {
     { bookId },
     { enabled: !!bookId },
   );
+  const spoilerQuery = trpc.books.getSpoilerMode.useQuery(
+    { bookId },
+    { enabled: !!bookId && !Number.isNaN(bookId) },
+  );
+  const spoilerMode = spoilerQuery.data?.spoilerMode ?? "safe";
+  const setSpoilerMutation = trpc.books.setSpoilerMode.useMutation({
+    onSuccess: () => spoilerQuery.refetch(),
+  });
   const createAnnotation = trpc.annotations.create.useMutation();
   const createBookmark = trpc.annotations.bookmark.useMutation();
   const deleteBookmark = trpc.annotations.removeBookmark.useMutation();
@@ -607,13 +633,15 @@ export default function Reader() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.shiftKey) return;
-      if (e.key === "ArrowRight" || e.key === "ArrowDown") goTo((pageNumber ?? 1) + 1);
-      if (e.key === "ArrowLeft" || e.key === "ArrowUp") goTo((pageNumber ?? 1) - 1);
+      // Up/Down belong to the browser's normal scroll behaviour. In continuous
+      // mode even Left/Right should not unexpectedly jump the reading position.
+      if (e.shiftKey || continuousMode) return;
+      if (e.key === "ArrowRight") goTo((pageNumber ?? 1) + 1);
+      if (e.key === "ArrowLeft") goTo((pageNumber ?? 1) - 1);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [pageNumber, goTo]);
+  }, [pageNumber, goTo, continuousMode]);
 
   // Selection detection
   const handleSelection = useCallback(() => {
@@ -670,8 +698,14 @@ export default function Reader() {
   }, []);
 
   const askBuddy = useCallback(
-    (mode: BuddyMode, question?: string) => {
+    (mode: BuddyMode, question?: string, explicitTargetLanguage?: string) => {
       if (!selection?.text) return;
+      const targetLanguage = explicitTargetLanguage?.trim() || translationLanguage.trim();
+      if (mode === "translate" && !targetLanguage) {
+        setTranslationDraft("");
+        setTranslationPickerOpen(true);
+        return;
+      }
       trackEvent.mutate({
         event: "highlight_action",
         bookId,
@@ -698,9 +732,10 @@ export default function Reader() {
         highlight: selection.text,
         mode,
         question,
+        targetLanguage: mode === "translate" ? targetLanguage : undefined,
       });
     },
-    [selection, selectionPage, activeMode, bookId, pageNumber, askMutation, trackEvent],
+    [selection, selectionPage, activeMode, bookId, pageNumber, askMutation, trackEvent, translationLanguage],
   );
 
   const createHighlight = useCallback((note?: string) => {
@@ -711,6 +746,9 @@ export default function Reader() {
         bookId,
         pageNumber: annotationPage,
         selectedText: selection.text,
+        ...(selection.startOffset !== null && selection.endOffset !== null && annotationPage === selectionPage
+          ? { startOffset: selection.startOffset, endOffset: selection.endOffset }
+          : {}),
         color: annotationColor,
         note: note?.trim() || undefined,
       },
@@ -905,6 +943,16 @@ export default function Reader() {
               setBookAskOpen(true);
               trackEvent.mutate({ event: "book_question_open", bookId, pageNumber: pageNumber ?? 1 });
             }}
+            className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:hidden"
+            aria-label="Ask this book">
+            <BookOpen className="h-4 w-4" />
+          </button>
+
+          <button
+            onClick={() => {
+              setBookAskOpen(true);
+              trackEvent.mutate({ event: "book_question_open", bookId, pageNumber: pageNumber ?? 1 });
+            }}
             className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:flex">
             <BookOpen className="h-3.5 w-3.5" />
             Ask this book
@@ -919,6 +967,7 @@ export default function Reader() {
               Back to p.{jumpBackPage}
             </button>
           )}
+          {jumpBackPage && <button onClick={handleJumpBack} className="fixed right-3 top-[4.25rem] z-40 flex items-center gap-1 rounded-full border border-primary/30 bg-card/95 px-3 py-1.5 text-[11px] font-semibold text-primary shadow-md backdrop-blur sm:hidden"><ArrowLeft className="h-3 w-3" /> Back to p.{jumpBackPage}</button>}
 
           <span className="hidden text-xs text-muted-foreground sm:inline tabular-nums">
             {percent}%
@@ -936,7 +985,13 @@ export default function Reader() {
             <TooltipContent>{isCurrentPageBookmarked ? "Remove bookmark" : "Bookmark this page"}</TooltipContent>
           </Tooltip>
 
-          <ReaderSettings fontSizeIndex={fontSizeIndex} setFontSizeIndex={setFontSizeIndex} widthIndex={widthIndex} setWidthIndex={setWidthIndex} lineHeightIndex={lineHeightIndex} setLineHeightIndex={setLineHeightIndex} theme={readingTheme} setTheme={setReadingTheme} continuousMode={continuousMode} setContinuousMode={setContinuousMode} />
+          <ReaderSettings fontSizeIndex={fontSizeIndex} setFontSizeIndex={setFontSizeIndex} widthIndex={widthIndex} setWidthIndex={setWidthIndex} lineHeightIndex={lineHeightIndex} setLineHeightIndex={setLineHeightIndex} theme={readingTheme} setTheme={setReadingTheme} continuousMode={continuousMode} setContinuousMode={setContinuousMode} spoilerMode={spoilerMode} onSpoilerModeChange={nextMode => {
+            if (nextMode === "full" && spoilerMode !== "full") {
+              setSpoilerConfirmOpen(true);
+              return;
+            }
+            if (nextMode === "safe") setSpoilerMutation.mutate({ bookId, spoilerMode: "safe" });
+          }} />
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1073,6 +1128,70 @@ export default function Reader() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={translationPickerOpen} onOpenChange={setTranslationPickerOpen}>
+        <DialogContent className="max-w-sm sm:rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Translate into</DialogTitle>
+            <DialogDescription>
+              Choose once. ReadBuddy will remember this for your next translation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              {["Chinese", "German", "Spanish", "English"].map(language => (
+                <button
+                  key={language}
+                  onClick={() => setTranslationDraft(language)}
+                  className={`min-h-10 rounded-xl border px-3 text-left text-sm font-medium transition-colors ${translationDraft === language ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/40 text-foreground hover:bg-muted"}`}>
+                  {language}
+                </button>
+              ))}
+            </div>
+            <Input
+              value={translationDraft}
+              onChange={event => setTranslationDraft(event.target.value)}
+              placeholder="Or type a language"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setTranslationPickerOpen(false)}>Cancel</Button>
+              <Button
+                disabled={translationDraft.trim().length < 2 || !selection?.text}
+                onClick={() => {
+                  const language = translationDraft.trim();
+                  if (!language) return;
+                  setTranslationLanguage(language);
+                  setTranslationPickerOpen(false);
+                  askBuddy("translate", undefined, language);
+                }}>
+                Translate
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={spoilerConfirmOpen} onOpenChange={setSpoilerConfirmOpen}>
+        <DialogContent className="max-w-sm sm:rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Use the whole book?</DialogTitle>
+            <DialogDescription>
+              ReadBuddy may reveal events or information from pages you haven’t read yet.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-2 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setSpoilerConfirmOpen(false)}>Keep me safe</Button>
+            <Button
+              onClick={() => {
+                setSpoilerMutation.mutate({ bookId, spoilerMode: "full" });
+                setSpoilerConfirmOpen(false);
+              }}>
+              Use whole book
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Reading area — full width, no sidebar */}
       <main className="flex-1 px-4 pb-12 pt-24 sm:px-6 sm:pt-28">
         <div
@@ -1104,6 +1223,7 @@ export default function Reader() {
               isLoading={pageQuery.isLoading}
               intelligenceCue={earlierEntityCue}
               onOpenEarlierPassage={handleJumpToEvidence}
+              onGoToNextPage={() => goTo((pageNumber ?? 1) + 1)}
             />
 
             {/* Inline AI answer card — appears below text, no layout shift */}
@@ -1135,11 +1255,12 @@ export default function Reader() {
                   });
                 }}
                 isSaved={isSaved}
-                onTrustFeedback={positive => {
+                onTrustFeedback={(positive, reason) => {
                   trackEvent.mutate({
                     event: positive ? "answer_positive" : "answer_negative",
                     bookId,
                     pageNumber: pageNumber ?? 1,
+                    ...(reason ? { metadata: { reason } } : {}),
                   });
                 }}
                 onJumpToPage={handleJumpToEvidence}
