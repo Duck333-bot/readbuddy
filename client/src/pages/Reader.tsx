@@ -1135,6 +1135,13 @@ export default function Reader() {
                   });
                 }}
                 isSaved={isSaved}
+                onTrustFeedback={positive => {
+                  trackEvent.mutate({
+                    event: positive ? "answer_positive" : "answer_negative",
+                    bookId,
+                    pageNumber: pageNumber ?? 1,
+                  });
+                }}
                 onJumpToPage={handleJumpToEvidence}
               />
             )}

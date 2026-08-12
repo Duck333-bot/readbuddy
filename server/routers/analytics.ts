@@ -28,6 +28,8 @@ const eventName = z.enum([
   "ai_answer_received",
   "reading_continued",
   "return_to_book",
+  "answer_positive",
+  "answer_negative",
 ]);
 
 const visitorEventName = z.enum(["landing_view", "landing_start_clicked"]);

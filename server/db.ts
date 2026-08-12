@@ -596,6 +596,26 @@ export async function getPrivateAnalyticsSummary() {
   const highlights = count("highlight_action");
   const evidenceTaps = count("evidence_tap");
   const saves = count("notebook_save");
+  const answers = count("ai_answer_received");
+  const negativeAnswers = count("answer_negative");
+  const positiveAnswers = count("answer_positive");
+  const meaningfulSessions = count("meaningful_reading_session");
+  const operationEvents = events.filter(event => event.event.startsWith("operation:"));
+  const failedOperations = operationEvents.filter(event => event.metadata && (event.metadata as Record<string, unknown>).success === false).length;
+  const tffumMs: number[] = [];
+  const eventUsers = new Map<number, typeof events>();
+  for (const event of events) {
+    if (!event.userId) continue;
+    const bucket = eventUsers.get(event.userId) ?? [];
+    bucket.push(event);
+    eventUsers.set(event.userId, bucket);
+  }
+  for (const userEvents of Array.from(eventUsers.values())) {
+    const firstPdf = userEvents.find(event => event.event === "pdf_selected");
+    const firstAnswer = userEvents.find(event => event.event === "ai_answer_received" && firstPdf && event.createdAt >= firstPdf.createdAt);
+    if (firstPdf && firstAnswer) tffumMs.push(firstAnswer.createdAt.getTime() - firstPdf.createdAt.getTime());
+  }
+  const returnedBookKeys = new Set(events.filter(event => event.event === "return_to_book" && event.userId && event.bookId).map(event => `${event.userId}:${event.bookId}`));
   const actionNames = [
     "highlight_action", "simpler_after_explain", "evidence_tap", "lost_open", "notebook_save",
     "chapter_debrief_open", "chapter_debrief_dismiss", "book_question_open", "book_question_submit",
@@ -627,8 +647,18 @@ export async function getPrivateAnalyticsSummary() {
     actionCounts: Object.fromEntries(actionNames.map(event => [event, count(event)])),
     evidenceClickRate: highlights ? Math.round((evidenceTaps / highlights) * 100) : null,
     saveRate: highlights ? Math.round((saves / highlights) * 100) : null,
-    qualityInstrumented: false,
-    economicsInstrumented: false,
+    alpha: {
+      acquisitionReachedBook: new Set(events.filter(event => event.event === "ready_to_read").map(identityFor).filter(Boolean)).size,
+      activationUsedAi: new Set(events.filter(event => event.event === "ai_answer_received").map(event => event.userId).filter(Boolean)).size,
+      magicActions: { evidenceTaps, who: count("operation:llm_reading_buddy"), context: count("book_question_submit") },
+      engagementMeaningfulSessions: meaningfulSessions,
+      retentionSameBookReturns: returnedBookKeys.size,
+      trust: { answers, negativeAnswers, positiveAnswers, negativeRatePercent: answers ? Math.round((negativeAnswers / answers) * 100) : null },
+      timeToFirstUsefulMomentMs: tffumMs.length ? Math.round(tffumMs.reduce((sum, value) => sum + value, 0) / tffumMs.length) : null,
+      operationFailures: failedOperations,
+    },
+    qualityInstrumented: true,
+    economicsInstrumented: true,
     funnel,
   };
 }

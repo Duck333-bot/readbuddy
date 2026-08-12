@@ -12,6 +12,7 @@
 import { deepseekProvider } from "./deepseek";
 import { openaiProvider } from "./openai";
 import type { LLMProvider, LLMRequest, LLMResponse, LLMTask } from "./provider";
+import { recordOperationTelemetry } from "../telemetry";
 
 const hasDeepSeek = () => Boolean(process.env.DEEPSEEK_API_KEY);
 
@@ -55,14 +56,37 @@ function getConfig(task: LLMTask): TaskConfig {
  */
 export async function llmCall(task: LLMTask, req: Omit<LLMRequest, "model">): Promise<LLMResponse> {
   const config = getConfig(task);
-  return config.provider.call({ ...req, model: config.model });
+  const startedAt = Date.now();
+  try {
+    const response = await config.provider.call({ ...req, model: config.model });
+    void recordOperationTelemetry({
+      operation: `llm_${task}`,
+      startedAt,
+      success: true,
+      provider: config.provider.name,
+      model: response.model ?? config.model,
+      usage: response.usage,
+    });
+    return response;
+  } catch (error) {
+    void recordOperationTelemetry({ operation: `llm_${task}`, startedAt, success: false, provider: config.provider.name, model: config.model, error });
+    throw error;
+  }
 }
 
 /**
  * Generate an embedding for a text. Always uses OpenAI (DeepSeek has no embeddings).
  */
 export async function llmEmbed(text: string): Promise<number[]> {
-  return openaiProvider.embed(text);
+  const startedAt = Date.now();
+  try {
+    const result = await openaiProvider.embed(text);
+    void recordOperationTelemetry({ operation: "embedding", startedAt, success: true, provider: openaiProvider.name, model: "text-embedding-3-small", extra: { dimensions: result.length } });
+    return result;
+  } catch (error) {
+    void recordOperationTelemetry({ operation: "embedding", startedAt, success: false, provider: openaiProvider.name, model: "text-embedding-3-small", error });
+    throw error;
+  }
 }
 
 /**
@@ -71,4 +95,3 @@ export async function llmEmbed(text: string): Promise<number[]> {
 export function getProviderName(task: LLMTask): string {
   return getConfig(task).provider.name;
 }
-

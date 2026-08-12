@@ -50,16 +50,18 @@ export default function AlphaDashboard() {
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <div className="mb-8 max-w-2xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">Private Alpha</p>
-          <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight">Are readers coming back?</h1>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">A deliberately small dashboard using only real interaction events from the last {data.windowDays} days. The north-star signal is readers reopening and continuing books.</p>
+          <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight">What are five readers telling us?</h1>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Six decisions from real, privacy-minimal activity in the last {data.windowDays} days. No passages, questions, answers, or uploaded file names are stored here.</p>
         </div>
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric label="Active readers today" value={data.activeReaders} note="Opened a book in the last 24 hours" />
-          <Metric label="Readers this week" value={data.weekReaders} note="Opened a book in the last 7 days" />
-          <Metric label="Reading sessions" value={data.readingSessions} note="Book openings in 7 days" />
-          <Metric label="Books opened today" value={data.booksOpened} note="Distinct books" />
-        </section>
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Metric label="Acquisition" value={data.alpha.acquisitionReachedBook} note="Reached a ready-to-read book" />
+            <Metric label="Activation" value={data.alpha.activationUsedAi} note="Used AI while genuinely reading" />
+            <Metric label="Magic" value={data.alpha.magicActions.evidenceTaps + data.alpha.magicActions.who + data.alpha.magicActions.context} note="Evidence, character, or context moments" />
+            <Metric label="Engagement" value={data.alpha.engagementMeaningfulSessions} note="Meaningful reading sessions" />
+            <Metric label="Retention" value={data.alpha.retentionSameBookReturns} note="Same-book returns" />
+            <Metric label="Trust" value={data.alpha.trust.negativeRatePercent === null ? "—" : `${data.alpha.trust.negativeRatePercent}%`} note="Negatively rated AI answers" />
+          </section>
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <Card className="border-border/70 shadow-sm">
             <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><BrainCircuit className="h-4 w-4 text-primary" /> AI reading behavior</CardTitle></CardHeader>
             <CardContent className="space-y-2">
@@ -69,7 +71,7 @@ export default function AlphaDashboard() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
             <Metric label="Evidence click rate" value={data.evidenceClickRate === null ? "—" : `${data.evidenceClickRate}%`} note="Evidence taps ÷ selection actions" />
             <Metric label="Save rate" value={data.saveRate === null ? "—" : `${data.saveRate}%`} note="Saved AI answers ÷ selection actions" />
-            <Card className="border-border/70 shadow-sm"><CardContent className="p-4"><div className="flex items-start gap-3"><Activity className="mt-0.5 h-4 w-4 text-primary" /><div><p className="text-sm font-medium">Quality and cost</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Latency, AI errors, Book Brain failures, and cost remain intentionally blank until server-side timing and provider-cost instrumentation is added. This dashboard never estimates them.</p></div></div></CardContent></Card>
+            <Card className="border-border/70 shadow-sm"><CardContent className="p-4"><div className="flex items-start gap-3"><Activity className="mt-0.5 h-4 w-4 text-primary" /><div><p className="text-sm font-medium">Speed, cost, and trust</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Average first useful moment: {data.alpha.timeToFirstUsefulMomentMs === null ? "—" : `${Math.round(data.alpha.timeToFirstUsefulMomentMs / 1000)}s`}. Operation failures: {data.alpha.operationFailures}. Positive / negative answer signals: {data.alpha.trust.positiveAnswers} / {data.alpha.trust.negativeAnswers}. Provider, model, token, duration, and estimated-cost metadata are collected server-side without reader content.</p></div></div></CardContent></Card>
           </div>
         </div>
         <Card className="mt-8 border-border/70 shadow-sm">

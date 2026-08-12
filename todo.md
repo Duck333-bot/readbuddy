@@ -347,3 +347,16 @@
 - [x] Verify typography hierarchy, whitespace, semantic color composition, Thread restraint, motion purpose, and silent-reader discipline on every primary screen
 - [x] Verify non-blocking upload and every protected reading interaction remains functionally intact after refinements
 - [x] Run final typecheck, tests, production build, and visual acceptance before release checkpoint
+
+## Controlled Five-Reader Alpha — Instrumentation First, UI Frozen
+
+- [x] Freeze all UI, feature, animation, onboarding, and button-position changes for the five-reader study except P0 broken/confusing blockers
+- [x] Add privacy-safe operation telemetry: success/failure, duration, provider, model, token counts, and cost estimates—never raw book text, selected text, questions, or answers
+- [x] Instrument upload selected/start/success/failure, text-ready duration, and total Book Brain completion duration
+- [x] Instrument Explain, Simpler, Context, Who, I’m Lost, Ask Book, retrieval, embeddings, and Book Brain chunk retries/failures
+- [x] Track Time to First Useful Moment from PDF selected to first successful AI explanation
+- [x] Add answer-level trust feedback and calculate negatively rated answer rate
+- [x] Calculate true same-book return retention and meaningful-reading engagement duration
+- [x] Rework `/alpha` into six decision-grade sections: acquisition, activation, magic, engagement, retention, and trust
+- [x] Finalize the five-reader study script, observer scorecard, post-session questions, issue-classification sheet, and invitation message
+- [x] Add observability regression tests and verify controlled-alpha production build

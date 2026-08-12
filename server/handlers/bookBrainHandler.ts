@@ -14,8 +14,11 @@ import * as db from "../db";
 import { eq } from "drizzle-orm";
 import { bookBrain } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { recordOperationTelemetry } from "../telemetry";
 
 export async function bookBrainHandler(req: Request, res: Response) {
+  const startedAt = Date.now();
+  let trackedBookId: number | null = null;
   try {
     const user = await sdk.authenticateRequest(req);
     if (!user.isCron || !user.taskUid) {
@@ -39,6 +42,7 @@ export async function bookBrainHandler(req: Request, res: Response) {
     }
 
     const { bookId, passCompleted } = rows[0];
+    trackedBookId = bookId;
 
     if (passCompleted >= 4) {
       // Already complete — nothing to do.
@@ -46,8 +50,10 @@ export async function bookBrainHandler(req: Request, res: Response) {
     }
 
     const result = await runBookBrainPipeline(bookId);
+    void recordOperationTelemetry({ operation: "book_brain_pipeline", startedAt, success: true, bookId, extra: { passCompletedBefore: passCompleted, passCompletedAfter: result.passCompleted ?? null } });
     return res.json({ ok: true, ...result });
   } catch (err) {
+    void recordOperationTelemetry({ operation: "book_brain_pipeline", startedAt, success: false, bookId: trackedBookId, error: err });
     const error = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
     console.error("[bookBrainHandler] error:", error);
@@ -59,4 +65,3 @@ export async function bookBrainHandler(req: Request, res: Response) {
     });
   }
 }
-
