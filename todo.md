@@ -301,3 +301,16 @@
 - [x] Create high-fidelity desktop and mobile full-screen Upload / “Read the Book” mockups
 - [x] Create high-fidelity desktop and mobile Reader mockups with silent reading and a distinctive margin-thread evidence interaction
 - [x] Create a visual acceptance checklist and implementation order; request approval before production changes
+
+## Living Library v2 — Product-Led Revision, Design Only
+
+- [ ] Keep production UI and feature work frozen until Living Library v2 passes approval
+- [x] Reduce decorative fantasy/constellation language by roughly 40%; remove stars, floating books, gradients, and illustration when they do not explain a connection
+- [x] Define the ReadBuddy Thread as the single proprietary visual behavior across landing, upload, library, and reader
+- [x] Revise color, type, spacing, shape, and motion for modern editorial confidence: fewer cards, fewer borders, less rounding, stronger hierarchy, more asymmetry
+- [x] Redesign landing concept so real reading interaction and spoiler-safe whole-book value are obvious in the first three seconds
+- [x] Redesign library concept as a gallery-like private intellectual collection with six or fewer generous book objects
+- [x] Redesign upload concept as a full-screen intelligence-forming state with Chapters, Characters, Concepts, Connections, and spoiler-boundary readiness
+- [x] Redesign reader concept as silent editorial reading with the ReadBuddy Thread as the only signature behavior
+- [x] Create high-fidelity desktop and mobile interaction states: open book, upload processing, highlight, Explain, evidence jump/back, Who?, I’m Lost, resume tomorrow
+- [x] Package a strict Living Library v2 approval scorecard; do not implement before every gate passes
