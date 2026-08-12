@@ -44,7 +44,8 @@ export async function getDb() {
 
 /** Store a compact interaction signal without selected book text, questions, or AI answers. */
 export async function recordAnalyticsEvent(input: {
-  userId: number;
+  userId?: number | null;
+  visitorId?: string | null;
   bookId?: number | null;
   event: string;
   pageNumber?: number | null;
@@ -53,7 +54,8 @@ export async function recordAnalyticsEvent(input: {
   const db = await getDb();
   if (!db) return;
   await db.insert(analyticsEvents).values({
-    userId: input.userId,
+    userId: input.userId ?? null,
+    visitorId: input.visitorId ?? null,
     bookId: input.bookId ?? null,
     event: input.event,
     pageNumber: input.pageNumber ?? null,
@@ -598,6 +600,24 @@ export async function getPrivateAnalyticsSummary() {
     "highlight_action", "simpler_after_explain", "evidence_tap", "lost_open", "notebook_save",
     "chapter_debrief_open", "chapter_debrief_dismiss", "book_question_open", "book_question_submit",
   ];
+  const funnelOrder = [
+    "landing_view", "landing_start_clicked", "auth_completed", "library_reached", "upload_opened",
+    "pdf_selected", "upload_started", "ready_to_read", "start_reading_clicked", "reader_opened",
+    "meaningful_reading_session", "highlight_action", "ai_answer_received", "evidence_tap",
+    "reading_continued", "return_to_book",
+  ];
+  const identityFor = (event: typeof events[number]) => event.visitorId ?? (event.userId ? `user:${event.userId}` : null);
+  const landingIdentities = new Set(events.filter(event => event.event === "landing_view").map(identityFor).filter(Boolean));
+  const funnel = funnelOrder.map(event => {
+    const identities = new Set(events.filter(item => item.event === event).map(identityFor).filter(Boolean));
+    const completed = identities.size;
+    return {
+      event,
+      entered: landingIdentities.size,
+      completed,
+      conversionPercent: landingIdentities.size ? Math.round((completed / landingIdentities.size) * 100) : null,
+    };
+  });
   return {
     windowDays: 7,
     activeReaders: new Set(daily.filter(event => event.event === "reading_open").map(event => event.userId)).size,
@@ -609,5 +629,6 @@ export async function getPrivateAnalyticsSummary() {
     saveRate: highlights ? Math.round((saves / highlights) * 100) : null,
     qualityInstrumented: false,
     economicsInstrumented: false,
+    funnel,
   };
 }

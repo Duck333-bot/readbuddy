@@ -29,6 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { progressPercent } from "@/lib/format";
+import { getFunnelVisitorId } from "@/lib/funnel";
 import { readSelection, type ReaderSelection } from "@/lib/selection";
 import { trpc } from "@/lib/trpc";
 import {
@@ -504,7 +505,14 @@ export default function Reader() {
 
   useEffect(() => {
     if (!book?.id || !pageNumber) return;
-    trackEvent.mutate({ event: "reading_open", bookId: book.id, pageNumber });
+    const visitorId = getFunnelVisitorId();
+    trackEvent.mutate({ event: "reading_open", bookId: book.id, pageNumber, visitorId });
+    trackEvent.mutate({ event: "reader_opened", bookId: book.id, pageNumber, visitorId });
+    if (book.lastPage > 1) trackEvent.mutate({ event: "return_to_book", bookId: book.id, pageNumber, visitorId });
+    const meaningfulTimer = window.setTimeout(() => {
+      trackEvent.mutate({ event: "meaningful_reading_session", bookId: book.id, pageNumber, visitorId });
+    }, 45_000);
+    return () => window.clearTimeout(meaningfulTimer);
     // A book session is counted once per reader-page mount, not on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [book?.id]);
@@ -512,6 +520,12 @@ export default function Reader() {
   // AI answer mutation
   const askMutation = trpc.buddy.ask.useMutation();
   const askBookMutation = trpc.buddy.askBook.useMutation();
+
+  useEffect(() => {
+    if (askMutation.data?.answer) {
+      trackEvent.mutate({ event: "ai_answer_received", bookId, pageNumber: pageNumber ?? 1, visitorId: getFunnelVisitorId() });
+    }
+  }, [askMutation.data?.answer]);
 
   // "I'm lost" mutation
   const lostMutation = trpc.reader.lost.useMutation();
@@ -572,6 +586,9 @@ export default function Reader() {
   const goTo = useCallback(
     (page: number) => {
       const clamped = Math.max(1, Math.min(page, pageCount));
+      if (clamped !== (pageNumber ?? 1)) {
+        trackEvent.mutate({ event: "reading_continued", bookId, pageNumber: clamped, visitorId: getFunnelVisitorId() });
+      }
       setPageNumber(clamped);
       setAnswerOpen(false);
       setLostOpen(false);
@@ -583,7 +600,7 @@ export default function Reader() {
         updateProgress.mutate({ bookId, lastPage: clamped });
       }, 2000);
     },
-    [bookId, pageCount, navigate, updateProgress],
+    [bookId, pageCount, pageNumber, navigate, updateProgress, trackEvent],
   );
 
   // Keyboard navigation

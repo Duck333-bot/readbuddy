@@ -28,6 +28,14 @@ const labelOf: Record<string, string> = {
   book_question_submit: "Ask-this-book questions",
 };
 
+const funnelLabel: Record<string, string> = {
+  landing_view: "Landing viewed", landing_start_clicked: "Start reading clicked", auth_completed: "Account created",
+  library_reached: "Library reached", upload_opened: "Upload opened", pdf_selected: "PDF selected",
+  upload_started: "Upload started", ready_to_read: "Ready to read", start_reading_clicked: "Start reading from upload",
+  reader_opened: "Reader opened", meaningful_reading_session: "Meaningful reading session", highlight_action: "First highlight",
+  ai_answer_received: "First AI answer", evidence_tap: "Evidence clicked", reading_continued: "Reader continued", return_to_book: "Returned to book",
+};
+
 export default function AlphaDashboard() {
   const dashboard = trpc.analytics.dashboard.useQuery();
   if (dashboard.isLoading) {
@@ -64,6 +72,12 @@ export default function AlphaDashboard() {
             <Card className="border-border/70 shadow-sm"><CardContent className="p-4"><div className="flex items-start gap-3"><Activity className="mt-0.5 h-4 w-4 text-primary" /><div><p className="text-sm font-medium">Quality and cost</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Latency, AI errors, Book Brain failures, and cost remain intentionally blank until server-side timing and provider-cost instrumentation is added. This dashboard never estimates them.</p></div></div></CardContent></Card>
           </div>
         </div>
+        <Card className="mt-8 border-border/70 shadow-sm">
+          <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Users className="h-4 w-4 text-primary" /> First-reading funnel</CardTitle><p className="text-xs text-muted-foreground">Each percentage uses unique visitors who viewed the landing during the same seven-day window. No book text or questions are retained.</p></CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[38rem] text-left text-sm"><thead className="border-b border-border text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"><tr><th className="pb-3">Step</th><th className="pb-3 text-right">Entered</th><th className="pb-3 text-right">Completed</th><th className="pb-3 text-right">Conversion</th></tr></thead><tbody>{data.funnel.map(step => <tr key={step.event} className="border-b border-border/50 last:border-0"><td className="py-3 text-foreground">{funnelLabel[step.event] ?? step.event}</td><td className="py-3 text-right tabular-nums text-muted-foreground">{step.entered}</td><td className="py-3 text-right tabular-nums font-medium">{step.completed}</td><td className="py-3 text-right tabular-nums">{step.conversionPercent === null ? "—" : `${step.conversionPercent}%`}</td></tr>)}</tbody></table>
+          </CardContent>
+        </Card>
         <p className="mt-8 flex items-center gap-2 text-[11px] text-muted-foreground"><MousePointerClick className="h-3.5 w-3.5" /> No passages, questions, or AI answers are collected here — only privacy-minimal interaction metadata.</p>
       </div>
     </AppShell>

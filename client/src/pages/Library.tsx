@@ -8,16 +8,17 @@ import { progressPercent } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { ArrowRight, BookOpen, Library as LibraryIcon, Plus, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
+import { consumeFunnelAuthIntent, getFunnelVisitorId } from "@/lib/funnel";
 
 function LibrarySkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 lg:grid-cols-5">
-      {Array.from({ length: 5 }).map((_, index) => (
+    <div className="grid grid-cols-2 gap-x-6 gap-y-12 sm:grid-cols-3 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
         <div key={index}>
-          <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+          <Skeleton className="aspect-[3/4] w-full rounded-[0.65rem]" />
           <Skeleton className="mt-3 h-4 w-4/5" />
           <Skeleton className="mt-2 h-3 w-2/5" />
         </div>
@@ -31,6 +32,7 @@ export default function Library() {
   const [, navigate] = useLocation();
   const [uploadOpen, setUploadOpen] = useState(false);
   const utils = trpc.useUtils();
+  const track = trpc.analytics.track.useMutation();
 
   const booksQuery = trpc.books.list.useQuery(undefined, { enabled: isAuthenticated });
   const notebookCount = trpc.notebook.count.useQuery(undefined, { enabled: isAuthenticated });
@@ -45,6 +47,18 @@ export default function Library() {
   });
 
   const books = booksQuery.data ?? [];
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const visitorId = getFunnelVisitorId();
+    track.mutate({ event: "library_reached", visitorId });
+    if (consumeFunnelAuthIntent()) track.mutate({ event: "auth_completed", visitorId });
+  }, [isAuthenticated]);
+
+  const openUpload = () => {
+    track.mutate({ event: "upload_opened", visitorId: getFunnelVisitorId() });
+    setUploadOpen(true);
+  };
 
   const continueReading = useMemo(
     () =>
@@ -86,7 +100,7 @@ export default function Library() {
                   }`}
             </p>
           </div>
-          <Button className="relative h-11 gap-2 rounded-xl bg-[var(--rb-ink)] px-5 text-[var(--rb-paper)] shadow-none hover:bg-[#24335e]" onClick={() => setUploadOpen(true)}>
+          <Button className="relative h-11 gap-2 rounded-xl bg-primary px-5 text-primary-foreground shadow-none hover:opacity-90" onClick={openUpload}>
             <Plus className="h-4 w-4" strokeWidth={2.2} />
             Add a book
           </Button>
@@ -97,7 +111,7 @@ export default function Library() {
           <Link
             href={`/read/${continueReading.id}`}
             className="relative mt-12 flex items-center gap-5 overflow-hidden rounded-[1.125rem] bg-[var(--rb-night)] p-5 text-[var(--rb-paper)] no-underline transition-transform duration-200 hover:-translate-y-0.5 sm:p-7">
-            <div className="relative h-[7.5rem] w-[5.4rem] shrink-0 overflow-hidden rounded-[0.65rem] border border-white/20 bg-[#243864] shadow-[10px_12px_0_rgba(255,210,105,.16)]">
+            <div className="relative h-[7.5rem] w-[5.4rem] shrink-0 overflow-hidden rounded-[0.65rem] border border-white/20 bg-[var(--rb-night-raised)] shadow-[10px_12px_0_rgba(255,210,105,.16)]">
               {continueReading.coverUrl ? (
                 <img
                   src={continueReading.coverUrl}
@@ -105,7 +119,7 @@ export default function Library() {
                   className="h-full w-full object-cover object-top"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[#243864]">
+                <div className="flex h-full w-full items-center justify-center bg-[var(--rb-night-raised)]">
                   <BookOpen className="h-5 w-5 text-[var(--rb-sun)]" strokeWidth={1.7} />
                 </div>
               )}
@@ -129,7 +143,7 @@ export default function Library() {
                     }}
                   />
                 </div>
-                <span className="text-xs text-[#c9d3ed]">
+                <span className="text-xs text-[var(--rb-on-night-muted)]">
                   page {continueReading.lastPage} of {continueReading.pageCount}
                 </span>
               </div>
@@ -149,7 +163,7 @@ export default function Library() {
               <span className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--rb-night)] text-[var(--rb-sun)]"><LibraryIcon className="h-6 w-6" strokeWidth={1.6} /></span>
               <h2 className="relative mt-6 font-display text-4xl font-semibold tracking-[-.05em] text-[var(--rb-ink)]">Your collection begins here.</h2>
               <p className="relative mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">Bring a book you want to understand deeply. Start reading as soon as the text is ready; the deeper connections keep forming quietly.</p>
-              <Button className="relative mt-7 h-11 gap-2 rounded-xl bg-[var(--rb-ink)] px-6 text-[var(--rb-paper)] hover:bg-[#24335e]" onClick={() => setUploadOpen(true)}><Sparkles className="h-4 w-4 text-[var(--rb-sun)]" /> Add your first book</Button>
+              <Button className="relative mt-7 h-11 gap-2 rounded-xl bg-primary px-6 text-primary-foreground hover:opacity-90" onClick={openUpload}><Sparkles className="h-4 w-4 text-[var(--rb-sun)]" /> Add your first book</Button>
             </motion.div>
           ) : (
             <div className="grid grid-cols-2 gap-x-6 gap-y-12 sm:grid-cols-3 lg:grid-cols-4">

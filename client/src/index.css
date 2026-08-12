@@ -57,6 +57,15 @@
   --rb-sun: #ffd269;
   --rb-coral: #f1786a;
   --rb-mint: #5ec5a1;
+  --rb-night-surface: #101d3b;
+  --rb-night-raised: #243864;
+  --rb-on-night: #f9f5ed;
+  --rb-on-night-muted: #c9d3ed;
+  --rb-on-night-dim: #9bbdf1;
+  --rb-success: #26866b;
+  --rb-success-surface: #dff4eb;
+  --rb-evidence: #6557e8;
+  --rb-evidence-surface: #ebe8ff;
   --radius: 1.125rem;
   --background: var(--rb-paper);
   --foreground: var(--rb-ink);

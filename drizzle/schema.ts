@@ -152,9 +152,9 @@ export const analyticsEvents = mysqlTable(
   "analyticsEvents",
   {
     id: int("id").autoincrement().primaryKey(),
-    userId: int("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    userId: int("userId").references(() => users.id, { onDelete: "cascade" }),
+    /** Random browser-local identifier for pre-auth funnel conversion only; never PII. */
+    visitorId: varchar("visitorId", { length: 64 }),
     bookId: int("bookId").references(() => books.id, { onDelete: "cascade" }),
     event: varchar("event", { length: 64 }).notNull(),
     pageNumber: int("pageNumber"),
@@ -163,6 +163,7 @@ export const analyticsEvents = mysqlTable(
   },
   table => [
     index("analyticsEvents_user_created_idx").on(table.userId, table.createdAt),
+    index("analyticsEvents_visitor_created_idx").on(table.visitorId, table.createdAt),
     index("analyticsEvents_book_event_idx").on(table.bookId, table.event),
   ],
 );

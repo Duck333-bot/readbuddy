@@ -327,3 +327,14 @@
 - [x] Implement the product-led landing and silent-reader treatment without changing the existing reading-intelligence contracts
 - [x] Complete mobile, reduced-motion, keyboard, focus, contrast, and touch-target refinement across the new visual system
 - [x] Verify the V2.1 acceptance test: upload → early Start reading → ongoing Book Brain → subtle ready notice, without an interruption
+
+## Alpha Experience Integrity — No New Features
+
+- [ ] Audit and purge raw component colors across Upload, Library, Landing, Notebook, Analytics, reader auxiliaries, and empty/error/loading states
+- [x] Verify and update all public positioning copy so it states whole-book understanding, reader memory, and spoiler-safe explanations
+- [x] Verify current-journey library hierarchy, 3–4 desktop cover columns, and non-SaaS empty/loading states
+- [x] Instrument first-reading funnel events: landing, start click, auth, library, upload open, PDF select, upload start, ready, start reading, reader open, meaningful session, highlight, answer, evidence, continued reading, return
+- [x] Add owner-only funnel conversion metrics (entered, completed, percent) without collecting book text or question content
+- [x] Add first-session event coverage and regression tests for the non-blocking upload/readiness path
+- [x] Run desktop/mobile visual regression and create five-reader task script, observation scorecard, and post-session questions
+- [x] Publish the Alpha Experience Integrity checkpoint and prepare the five-reader invite packet
