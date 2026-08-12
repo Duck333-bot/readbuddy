@@ -89,7 +89,9 @@ export default function Library() {
               Good morning.
             </h1>
             <p className="mt-1.5 text-muted-foreground">
-              {books.length === 0
+              {booksQuery.isLoading
+                ? "Opening your collection…"
+                : books.length === 0
                 ? "Nothing here yet — add your first book."
                 : `${books.length} book${books.length === 1 ? "" : "s"}${
                     notebookCount.data

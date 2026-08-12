@@ -360,3 +360,11 @@
 - [x] Rework `/alpha` into six decision-grade sections: acquisition, activation, magic, engagement, retention, and trust
 - [x] Finalize the five-reader study script, observer scorecard, post-session questions, issue-classification sheet, and invitation message
 - [x] Add observability regression tests and verify controlled-alpha production build
+
+## Alpha Execution Verification (execution prompt Steps 1–2)
+
+- [x] Step 1: confirm build/tests pass and every listed reader feature plus telemetry stream is functional
+- [x] Step 2: confirm /alpha answers acquisition, activation, magic, engagement, retention, and trust
+- [x] Add performance/economics aggregation for findings report section G (median/p95 latency, Book Brain time, failure rate, cost per book/interaction/reader) with vitest coverage
+- [x] Produce session-ready execution kit: recruitment brief, observation sheet, interview script, triage sheet, findings report template
+- [x] P1 fix: library subtitle no longer claims "Nothing here yet" while books are still loading

@@ -45,6 +45,8 @@ export default function AlphaDashboard() {
     return <AppShell><div className="mx-auto max-w-xl px-4 py-20 text-center"><h1 className="font-display text-3xl font-semibold">Private Alpha</h1><p className="mt-3 text-sm text-muted-foreground">This page is available only to the ReadBuddy owner.</p></div></AppShell>;
   }
   const data = dashboard.data;
+  const ms = (value: number | null) => (value === null ? "—" : `${(value / 1000).toFixed(1)}s`);
+  const usd = (value: number | null) => (value === null ? "—" : `$${value < 0.01 ? value.toFixed(5) : value.toFixed(3)}`);
   return (
     <AppShell>
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -74,6 +76,19 @@ export default function AlphaDashboard() {
             <Card className="border-border/70 shadow-sm"><CardContent className="p-4"><div className="flex items-start gap-3"><Activity className="mt-0.5 h-4 w-4 text-primary" /><div><p className="text-sm font-medium">Speed, cost, and trust</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Average first useful moment: {data.alpha.timeToFirstUsefulMomentMs === null ? "—" : `${Math.round(data.alpha.timeToFirstUsefulMomentMs / 1000)}s`}. Operation failures: {data.alpha.operationFailures}. Positive / negative answer signals: {data.alpha.trust.positiveAnswers} / {data.alpha.trust.negativeAnswers}. Provider, model, token, duration, and estimated-cost metadata are collected server-side without reader content.</p></div></div></CardContent></Card>
           </div>
         </div>
+        <Card className="mt-8 border-border/70 shadow-sm">
+          <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><BookOpen className="h-4 w-4 text-primary" /> Performance and economics</CardTitle><p className="text-xs text-muted-foreground">Measured from server-side operation telemetry. Estimated cost uses public reference pricing, so treat it as a directional figure.</p></CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Metric label="AI answer median" value={ms(data.economics.aiAnswerMedianMs)} note={`${data.economics.aiAnswerCount} answers measured`} />
+            <Metric label="AI answer p95" value={ms(data.economics.aiAnswerP95Ms)} note="Slowest realistic wait" />
+            <Metric label="Book Brain median" value={ms(data.economics.bookBrainMedianMs)} note={`${data.economics.bookBrainCompletions} pipeline runs`} />
+            <Metric label="Failure rate" value={data.economics.failureRatePercent === null ? "—" : `${data.economics.failureRatePercent}%`} note={`${data.economics.operationCount} operations`} />
+            <Metric label="Cost per book" value={usd(data.economics.costPerBookUsd)} note="Estimated, all passes" />
+            <Metric label="Cost per AI answer" value={usd(data.economics.costPerAiInteractionUsd)} note="Estimated" />
+            <Metric label="Cost per reader" value={usd(data.economics.costPerReaderUsd)} note="Estimated, 7-day window" />
+            <Metric label="Total estimated cost" value={usd(data.economics.totalEstimatedCostUsd)} note="Last 7 days" />
+          </CardContent>
+        </Card>
         <Card className="mt-8 border-border/70 shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Users className="h-4 w-4 text-primary" /> First-reading funnel</CardTitle><p className="text-xs text-muted-foreground">Each percentage uses unique visitors who viewed the landing during the same seven-day window. No book text or questions are retained.</p></CardHeader>
           <CardContent className="overflow-x-auto">

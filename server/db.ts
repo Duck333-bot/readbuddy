@@ -584,13 +584,19 @@ export async function deleteBookmarkForUser(bookmarkId: number, userId: number) 
   await db.delete(bookmarks).where(and(eq(bookmarks.id, bookmarkId), eq(bookmarks.userId, userId)));
 }
 
-/** Small owner dashboard aggregate based only on real captured interaction events. */
-export async function getPrivateAnalyticsSummary() {
-  const db = await requireDb();
-  const now = Date.now();
+/** Privacy-minimal analytics event shape used by the owner dashboard aggregation. */
+export type AnalyticsEventRow = {
+  userId: number | null;
+  bookId: number | null;
+  visitorId: string | null;
+  event: string;
+  createdAt: Date;
+  metadata: unknown;
+};
+
+/** Pure aggregation so the alpha decision metrics can be verified without a database. */
+export function summarizeAlphaEvents(events: AnalyticsEventRow[], now = Date.now()) {
   const dayAgo = new Date(now - 24 * 60 * 60 * 1000);
-  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
-  const events = await db.select().from(analyticsEvents).where(gte(analyticsEvents.createdAt, weekAgo));
   const daily = events.filter(event => event.createdAt >= dayAgo);
   const count = (event: string) => events.filter(item => item.event === event).length;
   const highlights = count("highlight_action");
@@ -602,6 +608,43 @@ export async function getPrivateAnalyticsSummary() {
   const meaningfulSessions = count("meaningful_reading_session");
   const operationEvents = events.filter(event => event.event.startsWith("operation:"));
   const failedOperations = operationEvents.filter(event => event.metadata && (event.metadata as Record<string, unknown>).success === false).length;
+  const metaOf = (event: typeof events[number]) => (event.metadata ?? {}) as Record<string, unknown>;
+  const numberOf = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : null);
+  const percentile = (values: number[], fraction: number) => {
+    if (!values.length) return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(fraction * sorted.length) - 1));
+    return Math.round(sorted[index]);
+  };
+  const buddyOperations = operationEvents.filter(event => event.event === "operation:llm_reading_buddy");
+  const buddyLatencies = buddyOperations.map(event => numberOf(metaOf(event).durationMs)).filter((value): value is number => value !== null);
+  const brainOperations = operationEvents.filter(event => event.event === "operation:book_brain_pipeline");
+  const brainDurations = brainOperations.map(event => numberOf(metaOf(event).durationMs)).filter((value): value is number => value !== null);
+  const totalCostUsd = operationEvents.reduce((sum, event) => sum + (numberOf(metaOf(event).estimatedCostUsd) ?? 0), 0);
+  const interactionCostEvents = buddyOperations.filter(event => numberOf(metaOf(event).estimatedCostUsd) !== null);
+  const interactionCostUsd = interactionCostEvents.reduce((sum, event) => sum + (numberOf(metaOf(event).estimatedCostUsd) ?? 0), 0);
+  const brainCostByBook = new Map<number, number>();
+  for (const event of operationEvents) {
+    if (!event.bookId) continue;
+    const cost = numberOf(metaOf(event).estimatedCostUsd);
+    if (cost === null) continue;
+    brainCostByBook.set(event.bookId, (brainCostByBook.get(event.bookId) ?? 0) + cost);
+  }
+  const costPerReaderUsers = new Set(operationEvents.map(event => event.userId).filter(Boolean));
+  const round6 = (value: number | null) => (value === null ? null : Number(value.toFixed(6)));
+  const economics = {
+    aiAnswerMedianMs: percentile(buddyLatencies, 0.5),
+    aiAnswerP95Ms: percentile(buddyLatencies, 0.95),
+    aiAnswerCount: buddyOperations.length,
+    bookBrainMedianMs: percentile(brainDurations, 0.5),
+    bookBrainCompletions: brainOperations.length,
+    operationCount: operationEvents.length,
+    failureRatePercent: operationEvents.length ? Math.round((failedOperations / operationEvents.length) * 100) : null,
+    totalEstimatedCostUsd: round6(totalCostUsd),
+    costPerAiInteractionUsd: interactionCostEvents.length ? round6(interactionCostUsd / interactionCostEvents.length) : null,
+    costPerBookUsd: brainCostByBook.size ? round6(Array.from(brainCostByBook.values()).reduce((sum, value) => sum + value, 0) / brainCostByBook.size) : null,
+    costPerReaderUsd: costPerReaderUsers.size ? round6(totalCostUsd / costPerReaderUsers.size) : null,
+  };
   const tffumMs: number[] = [];
   const eventUsers = new Map<number, typeof events>();
   for (const event of events) {
@@ -659,6 +702,16 @@ export async function getPrivateAnalyticsSummary() {
     },
     qualityInstrumented: true,
     economicsInstrumented: true,
+    economics,
     funnel,
   };
+}
+
+/** Small owner dashboard aggregate based only on real captured interaction events. */
+export async function getPrivateAnalyticsSummary() {
+  const db = await requireDb();
+  const now = Date.now();
+  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  const events = await db.select().from(analyticsEvents).where(gte(analyticsEvents.createdAt, weekAgo));
+  return summarizeAlphaEvents(events as unknown as AnalyticsEventRow[], now);
 }
