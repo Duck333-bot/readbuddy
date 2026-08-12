@@ -206,10 +206,34 @@
     border-radius: 2px;
   }
   @media (prefers-reduced-motion: reduce) {
-    .motion-safe-only {
+  .motion-safe-only {
       animation: none !important;
       transition: none !important;
     }
+  }
+
+  .reader-surface {
+    --reader-accent: #6f6ab2;
+    --reader-accent-soft: rgba(111, 106, 178, 0.11);
+    --reader-paper: #fcfaf5;
+    --reader-sepia: #f4eddf;
+    --reader-night: #171a24;
+    min-height: 100vh;
+  }
+  .reader-surface :focus-visible {
+    outline: 2px solid var(--reader-accent);
+    outline-offset: 3px;
+  }
+  .reader-chrome {
+    transition: opacity 190ms var(--ease-out-quint), transform 220ms var(--ease-out-quint);
+  }
+  .reader-chrome-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reader-chrome { transition: none; }
   }
 }
 

@@ -1,5 +1,15 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Wordmark } from "@/components/AppShell";
+import { ReaderContent } from "@/components/reader/ReaderContent";
+import { ReaderParagraph } from "@/components/reader/ReaderParagraph";
+import { SelectionToolbar } from "@/components/reader/SelectionToolbar";
+import { InlineAnswerCard as ReaderInlineAnswerCard } from "@/components/reader/InlineAnswerCard";
+import { LostButton, LostReaderCard } from "@/components/reader/LostButton";
+import { ResumeReadingCard } from "@/components/reader/ResumeReadingCard";
+import { ChapterDebriefCard } from "@/components/reader/ChapterDebriefCard";
+import { ContentsDrawer } from "@/components/reader/ContentsDrawer";
+import { ReaderSettings } from "@/components/reader/ReaderSettings";
+import type { BuddyMode, PageAnnotation, ReadingTheme } from "@/components/reader/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,18 +55,16 @@ import { Link, useLocation, useParams, useSearch } from "wouter";
 import { ExternalLink } from "lucide-react";
 
 type SelectionState = ReaderSelection;
-type BuddyMode = "explain" | "simplify" | "context" | "who" | "why" | "translate" | "define" | "ask";
 
 const FONT_SIZES = [16, 17, 18, 19, 20, 22, 24];
 const HEADER_HEIGHT = 56;
 const WIDTHS = [
-  { label: "Narrow", value: "34rem" },
-  { label: "Comfortable", value: "40rem" },
-  { label: "Wide", value: "48rem" },
+  { label: "Narrow", value: "38.75rem" },
+  { label: "Comfortable", value: "42rem" },
+  { label: "Wide", value: "45rem" },
 ];
 const LINE_HEIGHTS = [1.6, 1.75, 1.9, 2.1];
 const LINE_HEIGHT_LABELS = ["Tight", "Normal", "Relaxed", "Spacious"];
-type ReadingTheme = "light" | "sepia" | "dark";
 const THEME_STYLES: Record<ReadingTheme, { bg: string; text: string; label: string }> = {
   light: { bg: "bg-background", text: "text-foreground", label: "Light" },
   sepia: { bg: "bg-[#f5f0e8]", text: "text-[#3b2f1e]", label: "Sepia" },
@@ -94,7 +102,6 @@ function paragraphKind(text: string): "chapter" | "subheading" | "quote" | "body
   return "body";
 }
 
-type PageAnnotation = { id: number; selectedText: string; color: string; note: string | null };
 const ANNOTATION_STYLES: Record<string, string> = {
   yellow: "bg-amber-200/70 dark:bg-amber-300/30",
   blue: "bg-sky-200/70 dark:bg-sky-300/30",
@@ -394,6 +401,7 @@ export default function Reader() {
   const [noteComposerOpen, setNoteComposerOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [annotationColor, setAnnotationColor] = useState<"yellow" | "blue" | "pink" | "green">("yellow");
+  const [chromeVisible, setChromeVisible] = useState(true);
 
   // "I'm lost" state
   const [lostOpen, setLostOpen] = useState(false);
@@ -403,6 +411,7 @@ export default function Reader() {
   const [resumeDismissed, setResumeDismissed] = useState(false);
   // Evidence jump/back state — tracks the page to return to after jumping to evidence
   const [jumpBackPage, setJumpBackPage] = useState<number | null>(null);
+  const [jumpBackScrollY, setJumpBackScrollY] = useState<number | null>(null);
 
   const [fontSizeIndex, setFontSizeIndex] = useState(1);
   const [widthIndex, setWidthIndex] = useState(1);
@@ -418,6 +427,7 @@ export default function Reader() {
   const [jumpValue, setJumpValue] = useState("");
   const articleRef = useRef<HTMLDivElement>(null);
   const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chromeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const bookQuery = trpc.books.get.useQuery(
     { bookId },
@@ -454,6 +464,26 @@ export default function Reader() {
   useEffect(() => {
     window.localStorage.setItem("readbuddy-continuous-reading", String(continuousMode));
   }, [continuousMode]);
+
+  const revealChrome = useCallback(() => {
+    setChromeVisible(true);
+    if (chromeTimer.current) clearTimeout(chromeTimer.current);
+    chromeTimer.current = setTimeout(() => setChromeVisible(false), 2600);
+  }, []);
+
+  useEffect(() => {
+    revealChrome();
+    const onInteraction = () => revealChrome();
+    window.addEventListener("mousemove", onInteraction, { passive: true });
+    window.addEventListener("touchstart", onInteraction, { passive: true });
+    window.addEventListener("keydown", onInteraction);
+    return () => {
+      window.removeEventListener("mousemove", onInteraction);
+      window.removeEventListener("touchstart", onInteraction);
+      window.removeEventListener("keydown", onInteraction);
+      if (chromeTimer.current) clearTimeout(chromeTimer.current);
+    };
+  }, [revealChrome]);
 
   const updateProgress = trpc.books.updateProgress.useMutation();
   const saveEntry = trpc.notebook.save.useMutation();
@@ -751,6 +781,7 @@ export default function Reader() {
     (targetPage: number) => {
       if (pageNumber && pageNumber !== targetPage) {
         setJumpBackPage(pageNumber);
+        setJumpBackScrollY(window.scrollY);
       }
       trackEvent.mutate({
         event: "evidence_tap",
@@ -767,9 +798,13 @@ export default function Reader() {
   const handleJumpBack = useCallback(() => {
     if (jumpBackPage) {
       goTo(jumpBackPage);
+      if (jumpBackScrollY !== null) {
+        window.setTimeout(() => window.scrollTo({ top: jumpBackScrollY, behavior: "smooth" }), 80);
+      }
       setJumpBackPage(null);
+      setJumpBackScrollY(null);
     }
-  }, [jumpBackPage, goTo]);
+  }, [jumpBackPage, jumpBackScrollY, goTo]);
 
   const paragraphs = useMemo(() => {
     const content = pageQuery.data?.content ?? "";
@@ -814,9 +849,9 @@ export default function Reader() {
   const percent = progressPercent(pageNumber ?? 1, pageCount);
 
   return (
-    <div className={`flex min-h-screen flex-col transition-colors duration-300 ${THEME_STYLES[readingTheme].bg} ${THEME_STYLES[readingTheme].text}`}>
+    <div onMouseMove={revealChrome} onTouchStart={revealChrome} className={`reader-surface flex min-h-screen flex-col transition-colors duration-300 ${THEME_STYLES[readingTheme].bg} ${THEME_STYLES[readingTheme].text}`}>
       {/* Minimal sticky header */}
-      <header className={`sticky top-0 z-30 border-b backdrop-blur-md ${readingTheme === "dark" ? "border-white/10 bg-[#1a1a1a]/88" : readingTheme === "sepia" ? "border-[#cbbd9d]/60 bg-[#f5f0e8]/88" : "border-border/60 bg-background/88"}`}>
+      <header className={`reader-chrome fixed inset-x-0 top-0 z-30 border-b backdrop-blur-md ${chromeVisible ? "" : "reader-chrome-hidden"} ${readingTheme === "dark" ? "border-white/10 bg-[#171a24]/88" : readingTheme === "sepia" ? "border-[#cbbd9d]/60 bg-[#f4eddf]/88" : "border-border/60 bg-[#fcfaf5]/88"}`}>
         <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -836,52 +871,7 @@ export default function Reader() {
             </p>
           </div>
 
-          <Popover open={tocOpen} onOpenChange={setTocOpen}>
-            <PopoverTrigger asChild>
-              <button
-                className="hidden h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:flex"
-                aria-label="Open contents">
-                <List className="h-3.5 w-3.5" /> Contents
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-80 p-2">
-              <div className="px-2 py-1.5">
-                <p className="text-xs font-semibold">Contents</p>
-                <p className="text-[10px] text-muted-foreground">Jump to a chapter or saved page.</p>
-              </div>
-              <div className="max-h-72 overflow-y-auto px-1 pb-1">
-                {chapters.length > 0 ? chapters.map(chapter => {
-                  const active = currentChapterInfo?.chapter === chapter.chapter;
-                  return (
-                    <button
-                      key={chapter.chapter}
-                      onClick={() => { goTo(chapter.startPage); setTocOpen(false); }}
-                      className={`mb-0.5 w-full rounded-md px-2 py-2 text-left transition-colors ${active ? "bg-primary/10 text-primary" : "hover:bg-accent"}`}>
-                      <span className="block text-[11px] font-medium">{chapter.title || `Chapter ${chapter.chapter}`}</span>
-                      <span className="mt-0.5 block text-[10px] opacity-65">Page {chapter.startPage}</span>
-                    </button>
-                  );
-                }) : <p className="px-2 py-3 text-xs text-muted-foreground">Chapter navigation will appear as this book finishes processing.</p>}
-              </div>
-              {(bookmarksQuery.data ?? []).length > 0 && (
-                <>
-                  <div className="mx-2 my-1 border-t border-border/60" />
-                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Bookmarks</p>
-                  <div className="max-h-32 overflow-y-auto px-1 pb-1">
-                    {(bookmarksQuery.data ?? []).map(bookmark => (
-                      <button
-                        key={bookmark.id}
-                        onClick={() => { goTo(bookmark.pageNumber); setTocOpen(false); }}
-                        className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-[11px] hover:bg-accent">
-                        <span>{bookmark.label || `Page ${bookmark.pageNumber}`}</span>
-                        <span className="text-[10px] text-muted-foreground">p.{bookmark.pageNumber}</span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </PopoverContent>
-          </Popover>
+          <ContentsDrawer open={tocOpen} onOpenChange={setTocOpen} bookTitle={book.title} chapters={chapters} currentChapter={currentChapterInfo?.chapter} currentPage={pageNumber ?? 1} bookmarks={bookmarksQuery.data ?? []} onGoToPage={goTo} />
 
           <button
             onClick={() => {
@@ -919,99 +909,7 @@ export default function Reader() {
             <TooltipContent>{isCurrentPageBookmarked ? "Remove bookmark" : "Bookmark this page"}</TooltipContent>
           </Tooltip>
 
-          {/* Reading settings (font size, width, spoiler mode) */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground"
-                aria-label="Reading settings">
-                <Settings2 className="h-4 w-4" strokeWidth={1.9} />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-72">
-              <div className="space-y-5">
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium">Text size</span>
-                    <span className="text-xs text-muted-foreground">{FONT_SIZES[fontSizeIndex]}px</span>
-                  </div>
-                  <Slider
-                    value={[fontSizeIndex]}
-                    min={0}
-                    max={FONT_SIZES.length - 1}
-                    step={1}
-                    onValueChange={value => setFontSizeIndex(value[0])}
-                  />
-                </div>
-                <div>
-                  <span className="mb-2 block text-xs font-medium">Page width</span>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {WIDTHS.map((option, index) => (
-                      <Button
-                        key={option.value}
-                        variant={widthIndex === index ? "default" : "outline"}
-                        size="sm"
-                        className={`h-7 text-[11px] ${widthIndex === index ? "" : "bg-background"}`}
-                        onClick={() => setWidthIndex(index)}>
-                        {option.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium">Line spacing</span>
-                    <span className="text-xs text-muted-foreground">{LINE_HEIGHT_LABELS[lineHeightIndex]}</span>
-                  </div>
-                  <Slider
-                    value={[lineHeightIndex]}
-                    min={0}
-                    max={LINE_HEIGHTS.length - 1}
-                    step={1}
-                    onValueChange={value => setLineHeightIndex(value[0] ?? 2)}
-                  />
-                </div>
-                <div>
-                  <span className="mb-2 flex items-center gap-1.5 text-xs font-medium"><Palette className="h-3.5 w-3.5" /> Reading theme</span>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {(Object.keys(THEME_STYLES) as ReadingTheme[]).map(theme => (
-                      <Button
-                        key={theme}
-                        variant={readingTheme === theme ? "default" : "outline"}
-                        size="sm"
-                        className={`h-7 text-[11px] ${readingTheme === theme ? "" : "bg-background"}`}
-                        onClick={() => setReadingTheme(theme)}>
-                        {theme === "light" ? <Sun className="mr-1 h-3 w-3" /> : theme === "dark" ? <Moon className="mr-1 h-3 w-3" /> : null}
-                        {THEME_STYLES[theme].label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border/70 px-3 py-2.5">
-                  <div>
-                    <p className="text-xs font-medium">Continuous reading</p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">Keep the next page flowing below.</p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={continuousMode}
-                    onClick={() => setContinuousMode(value => !value)}
-                    className={`relative h-5 w-9 rounded-full transition-colors ${continuousMode ? "bg-primary" : "bg-muted"}`}>
-                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${continuousMode ? "translate-x-4" : "translate-x-0.5"}`} />
-                  </button>
-                </div>
-                <div>
-                  <span className="mb-2 block text-xs font-medium">Spoiler protection</span>
-                  <p className="text-[11px] text-muted-foreground">
-                    ReadBuddy only uses what you've read so far. Change this in a future update.
-                  </p>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <ReaderSettings fontSizeIndex={fontSizeIndex} setFontSizeIndex={setFontSizeIndex} widthIndex={widthIndex} setWidthIndex={setWidthIndex} lineHeightIndex={lineHeightIndex} setLineHeightIndex={setLineHeightIndex} theme={readingTheme} setTheme={setReadingTheme} continuousMode={continuousMode} setContinuousMode={setContinuousMode} />
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1149,81 +1047,39 @@ export default function Reader() {
       </Dialog>
 
       {/* Reading area — full width, no sidebar */}
-      <main className="flex-1 px-4 py-10 sm:px-6">
+      <main className="flex-1 px-4 pb-12 pt-24 sm:px-6 sm:pt-28">
         <div
           className="mx-auto"
           style={{ maxWidth: WIDTHS[widthIndex]?.value ?? "40rem" }}>
 
           {/* "I'm lost" card */}
           {lostOpen && (
-            <LostCard
+            <LostReaderCard
               answer={lostMutation.data?.answer ?? ""}
               isLoading={lostMutation.isPending}
               onClose={() => setLostOpen(false)}
             />
           )}
 
-          <article ref={articleRef}>
-            {/* Page number */}
-            <p className="mb-6 text-center text-[11px] tabular-nums text-muted-foreground/60">
-              {pageNumber} / {pageCount}
-            </p>
-
-            {pageQuery.isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-11/12" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-10/12" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-            ) : !pageQuery.data?.content ? (
-              <p className="text-center text-sm text-muted-foreground">
-                No text found on this page.
-              </p>
-            ) : (
-              <div
-                data-testid="page-text"
-                data-reader-page={pageNumber ?? 1}
-                className={`font-reading selection:bg-primary/25 selection:text-current ${THEME_STYLES[readingTheme].text}`}
-                style={{ fontSize: `${FONT_SIZES[fontSizeIndex]}px`, lineHeight: LINE_HEIGHTS[lineHeightIndex] }}>
-                {currentChapterInfo && currentChapterInfo.startPage === pageNumber && (
-                  <div className="mb-9 border-b border-current/10 pb-6 text-center">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-55">Chapter {currentChapterInfo.chapter}</p>
-                    <h1 className="mt-2 font-display text-[1.5em] font-semibold leading-tight">{currentChapterInfo.title || `Chapter ${currentChapterInfo.chapter}`}</h1>
-                  </div>
-                )}
-                {paragraphs.map((paragraph: string, index: number) => {
-                  const kind = paragraphKind(paragraph);
-                  const annotation = annotationForText(paragraph, pageAnnotations);
-                  if (kind === "chapter") return <h2 key={index} className="mb-7 mt-10 font-display text-[1.35em] font-semibold leading-tight tracking-tight first:mt-0">{formatAnnotatedBookText(paragraph, pageAnnotations)}</h2>;
-                  if (kind === "subheading") return <h3 key={index} className="mb-4 mt-8 font-display text-[1.08em] font-semibold leading-snug">{formatAnnotatedBookText(paragraph, pageAnnotations)}</h3>;
-                  if (kind === "quote") return <blockquote key={index} className="my-7 border-l-2 border-primary/35 pl-5 font-reading italic opacity-85">{formatAnnotatedBookText(paragraph, pageAnnotations)}</blockquote>;
-                  return <div key={index} className="mb-[1.15em] last:mb-0"><p>{formatAnnotatedBookText(paragraph, pageAnnotations)}</p>{annotation?.note && <aside className="mt-2 flex gap-2 rounded-r-md border-l-2 border-amber-400/60 bg-amber-50/60 px-3 py-2 text-xs leading-relaxed text-amber-950 dark:bg-amber-300/10 dark:text-amber-100"><StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span><strong className="font-semibold">Your note</strong> — {annotation.note}</span></aside>}</div>;
-                })}
-              </div>
-            )}
-
-            {continuousMode && nextParagraphs.length > 0 && (
-              <section className="mt-14 border-t border-current/10 pt-10" data-reader-page={(pageNumber ?? 1) + 1}>
-                <p className="mb-7 text-center text-[10px] font-semibold uppercase tracking-[0.16em] opacity-45">Page {(pageNumber ?? 1) + 1}</p>
-                <div
-                  className={`font-reading selection:bg-primary/25 selection:text-current ${THEME_STYLES[readingTheme].text}`}
-                  style={{ fontSize: `${FONT_SIZES[fontSizeIndex]}px`, lineHeight: LINE_HEIGHTS[lineHeightIndex] }}>
-                  {nextParagraphs.map((paragraph: string, index: number) => {
-                    const kind = paragraphKind(paragraph);
-                    if (kind === "chapter") return <h2 key={index} className="mb-7 mt-10 font-display text-[1.35em] font-semibold leading-tight tracking-tight first:mt-0">{formatInlineBookText(paragraph)}</h2>;
-                    if (kind === "subheading") return <h3 key={index} className="mb-4 mt-8 font-display text-[1.08em] font-semibold leading-snug">{formatInlineBookText(paragraph)}</h3>;
-                    if (kind === "quote") return <blockquote key={index} className="my-7 border-l-2 border-primary/35 pl-5 font-reading italic opacity-85">{formatInlineBookText(paragraph)}</blockquote>;
-                    return <p key={index} className="mb-[1.15em] last:mb-0">{formatInlineBookText(paragraph)}</p>;
-                  })}
-                </div>
-              </section>
-            )}
+          <article>
+            <ReaderContent
+              articleRef={articleRef}
+              pageNumber={pageNumber ?? 1}
+              pageCount={pageCount}
+              paragraphs={paragraphs}
+              nextParagraphs={nextParagraphs}
+              continuousMode={continuousMode}
+              annotations={pageAnnotations}
+              chapter={currentChapterInfo}
+              fontSize={FONT_SIZES[fontSizeIndex]}
+              lineHeight={LINE_HEIGHTS[lineHeightIndex]}
+              textClassName={THEME_STYLES[readingTheme].text}
+              isLoading={pageQuery.isLoading}
+            />
 
             {/* Inline AI answer card — appears below text, no layout shift */}
             {answerOpen && activeHighlight && (
-              <InlineAnswerCard
+              <ReaderInlineAnswerCard
                 highlight={activeHighlight}
                 answer={askMutation.data?.answer ?? ""}
                 mode={activeMode}
@@ -1300,80 +1156,13 @@ export default function Reader() {
       </main>
 
       {/* Instant selection action bar — appears at selection position */}
-      {selection && (
-        <div
-          data-selection-actions
-          className="fixed z-50 animate-in fade-in zoom-in-95 duration-150"
-          style={{ left: Math.max(8, selection.x - 80), top: selection.y - 8 }}>
-          <div className="flex items-center gap-0.5 rounded-full border border-border/70 bg-card px-1.5 py-1 shadow-lg">
-            <button
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => askBuddy("explain")}
-              className="rounded-full px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent">
-              Explain
-            </button>
-            <button
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => askBuddy("simplify")}
-              className="rounded-full px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent">
-              Simpler
-            </button>
-            <button
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => askBuddy("context")}
-              className="rounded-full px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent">
-              Context
-            </button>
-            <button
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => createHighlight()}
-              disabled={createAnnotation.isPending}
-              className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-amber-100 hover:text-amber-900 disabled:opacity-50">
-              <Highlighter className="h-3 w-3" /> Highlight
-            </button>
-            <button
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => setNoteComposerOpen(true)}
-              className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent">
-              <StickyNote className="h-3 w-3" /> Note
-            </button>
-            {selection.text.trim().split(/\s+/).length <= 4 &&
-              knownEntityNames.has(selection.text.trim().toLowerCase()) && (
-              <button
-                onMouseDown={e => e.preventDefault()}
-                onClick={() => askBuddy("who")}
-                className="rounded-full px-3 py-1.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10">
-                Who?
-              </button>
-            )}
-            <button
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => setSelection(null)}
-              className="ml-0.5 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-accent">
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        </div>
-      )}
+      {selection && <SelectionToolbar selection={selection} showWho={selection.text.trim().split(/\s+/).length <= 4 && knownEntityNames.has(selection.text.trim().toLowerCase())} isSavingHighlight={createAnnotation.isPending} onAction={askBuddy} onHighlight={() => createHighlight()} onNote={() => setNoteComposerOpen(true)} onDismiss={() => setSelection(null)} />}
 
-      {/* "I'm lost" floating button — subtle, always visible */}
-      <div className="fixed bottom-6 right-4 z-40 flex flex-col items-end gap-2 sm:right-6">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={handleLost}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground shadow-md transition-all hover:border-primary/40 hover:text-primary hover:shadow-lg active:scale-95"
-              aria-label="I'm lost — help me understand where I am">
-              <HelpCircle className="h-4.5 w-4.5" strokeWidth={1.8} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="left">I'm lost</TooltipContent>
-        </Tooltip>
-      </div>
+      <LostButton onClick={handleLost} />
 
       {/* Resume recap card */}
       {resumeOpen && resumeQuery.data && (
-        <ResumeCard
+        <ResumeReadingCard
           recap={resumeQuery.data.recap}
           lastPage={resumeQuery.data.lastPage}
           pageCount={resumeQuery.data.pageCount}
@@ -1390,54 +1179,7 @@ export default function Reader() {
       )}
 
       <footer className="border-t border-border/60 py-4">
-      {/* Chapter debrief card — appears at end of each chapter */}
-      {showDebrief && debriefQuery.data && (
-        <div className="mx-auto mt-6 max-w-2xl animate-in slide-in-from-bottom-4 duration-300">
-          <div className="rounded-xl border border-primary/20 bg-card p-5 shadow-lg">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wider text-primary/70">
-                  Chapter {debriefQuery.data.chapterNumber} Complete
-                </p>
-                <h3 className="mt-0.5 text-base font-semibold text-foreground">
-                  What did you just read?
-                </h3>
-              </div>
-              <button
-                onClick={() => {
-                  setShowDebrief(false);
-                  trackEvent.mutate({
-                    event: "chapter_debrief_dismiss",
-                    bookId,
-                    pageNumber: pageNumber ?? 1,
-                    metadata: { action: "close" },
-                  });
-                }}
-                className="rounded-full p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="prose prose-sm max-w-none text-sm leading-relaxed text-foreground [&_strong]:font-semibold [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mt-1 [&_li]:mb-0.5">
-              <Streamdown>{debriefQuery.data.debrief}</Streamdown>
-            </div>
-            <div className="mt-4">
-              <button
-                onClick={() => {
-                  setShowDebrief(false);
-                  trackEvent.mutate({
-                    event: "chapter_debrief_dismiss",
-                    bookId,
-                    pageNumber: pageNumber ?? 1,
-                    metadata: { action: "continue" },
-                  });
-                }}
-                className="rounded-lg bg-primary px-4 py-2 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-                Continue reading
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showDebrief && debriefQuery.data && <ChapterDebriefCard chapterNumber={debriefQuery.data.chapterNumber} debrief={debriefQuery.data.debrief} onDismiss={() => { setShowDebrief(false); trackEvent.mutate({ event: "chapter_debrief_dismiss", bookId, pageNumber: pageNumber ?? 1, metadata: { action: "close" } }); }} onContinue={() => { setShowDebrief(false); trackEvent.mutate({ event: "chapter_debrief_dismiss", bookId, pageNumber: pageNumber ?? 1, metadata: { action: "continue" } }); }} />}
 
         <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
           <Wordmark />

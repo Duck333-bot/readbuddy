@@ -254,3 +254,22 @@
 - [x] Small private analytics dashboard for real retention, reading, and AI usage signals; quality/cost remain explicitly uninstrumented rather than estimated
 - [x] AI quality benchmark foundation covering groundedness, usefulness, concision, retrieval, and spoiler safety
 - [x] Private Alpha readiness checklist for inviting 20–30 active readers
+
+## Reader Design v1 — Feature Freeze and Premium Reading Sprint
+
+- [x] Capture current desktop and mobile reader reference screenshots before visual changes
+- [x] Preserve selection, Explain, Simpler, Context, Who?, I’m Lost, Ask this book, citations, jump/back, highlights, notes, bookmarks, contents, recap, debrief, spoiler safety, memory, progress, and analytics
+- [x] Refactor `Reader.tsx` into focused components under `client/src/components/reader/` without changing backend intelligence contracts
+- [x] Define deliberate paper, sepia, and night reader tokens plus book-first typography hierarchy and restrained lavender evidence/action accent
+- [x] Rebuild desktop reading surface with a 620–720px book column, edge-to-edge background, and generous calm whitespace
+- [x] Implement low-chrome reader controls that fade while reading and return on mouse/touch/keyboard interaction
+- [x] Redesign selection toolbar: Explain, Simpler, Context, conditional Who?, and a compact overflow for highlight, note, define, translate, and ask
+- [x] Redesign inline AI annotation card without chat UI patterns; preserve evidence citations and in-place Simpler/More detail actions
+- [x] Refine evidence jump/back with temporary passage emphasis and exact reading-position return
+- [x] Rebuild Contents as a left drawer with chapter progress and bookmarks
+- [x] Redesign settings as one clean appearance/text popover with excellent defaults
+- [x] Refine resume recap, I’m Lost, and chapter-end debrief as reader-controlled, compact moments
+- [x] Add restrained Framer Motion transitions and reduced-motion support
+- [x] Build a touch-first phone design with selection actions and AI help in bottom sheets
+- [ ] Verify keyboard navigation, focus visibility, contrast, touch targets, 200% zoom, and dark-theme readability
+- [x] Add reader UI interaction tests and retain all existing regression tests
