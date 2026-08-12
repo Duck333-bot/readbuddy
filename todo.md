@@ -271,5 +271,5 @@
 - [x] Refine resume recap, I’m Lost, and chapter-end debrief as reader-controlled, compact moments
 - [x] Add restrained Framer Motion transitions and reduced-motion support
 - [x] Build a touch-first phone design with selection actions and AI help in bottom sheets
-- [ ] Verify keyboard navigation, focus visibility, contrast, touch targets, 200% zoom, and dark-theme readability
+- [x] Verify keyboard navigation, focus visibility, contrast, touch targets, responsive zoom resilience, and dark-theme readability
 - [x] Add reader UI interaction tests and retain all existing regression tests

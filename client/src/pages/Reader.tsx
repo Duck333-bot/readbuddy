@@ -857,7 +857,7 @@ export default function Reader() {
             <TooltipTrigger asChild>
               <Link
                 href="/library"
-                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground no-underline transition-colors hover:bg-accent hover:text-foreground"
+                className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground no-underline transition-colors hover:bg-accent hover:text-foreground sm:h-8 sm:w-8"
                 aria-label="Back to library">
                 <ArrowLeft className="h-4 w-4" strokeWidth={2} />
               </Link>
@@ -901,7 +901,7 @@ export default function Reader() {
             <TooltipTrigger asChild>
               <button
                 onClick={toggleBookmark}
-                className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${isCurrentPageBookmarked ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+                className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors sm:h-8 sm:w-8 ${isCurrentPageBookmarked ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
                 aria-label={isCurrentPageBookmarked ? "Remove bookmark" : "Bookmark this page"}>
                 <Bookmark className="h-4 w-4" fill={isCurrentPageBookmarked ? "currentColor" : "none"} strokeWidth={1.9} />
               </button>
@@ -915,7 +915,7 @@ export default function Reader() {
             <TooltipTrigger asChild>
               <Link
                 href="/notebook"
-                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground no-underline transition-colors hover:bg-accent hover:text-foreground"
+                className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground no-underline transition-colors hover:bg-accent hover:text-foreground sm:h-8 sm:w-8"
                 aria-label="Open notebook">
                 <NotebookPen className="h-4 w-4" strokeWidth={1.9} />
               </Link>
