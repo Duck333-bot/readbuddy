@@ -1,10 +1,10 @@
 # ReadBuddy Living Library — Visual Direction v2
 
-**Status:** Design-only. No further production UI or feature work should begin until this direction is approved.
+**Status:** Superseded by Living Library v2.1. This document remains as visual history; the approved production rule is defined in `living-library-v2-approval.md`.
 
 ## The decision
 
-> **Books are worlds. Ideas form constellations. ReadBuddy remembers the paths between them.**
+> **Every book is full of connections. ReadBuddy remembers the ones that matter.**
 
 ReadBuddy is not a friendly pastel AI tool. It is a private intellectual world: cinematic and alive before a reader opens a book, then almost silent once they are inside one. The design must be recognisable through the **Living Thread** alone: an intelligent line that makes an otherwise invisible connection visible.
 
@@ -55,7 +55,7 @@ The library begins with a greeting and one dominant **Continue your journey** ob
 
 ![Upload concept](/manus-storage/living-library-upload-concept_1df689d6.png)
 
-Upload becomes a full-screen ritual called **Give ReadBuddy a book.** The reader sees the book become known: chapters form as a route, characters appear as points, concepts gather, then connections form. Completion does not say “upload successful”; it says **“I know this book now.”** Only then does **Start reading** appear.
+Upload becomes a full-screen ritual called **Give ReadBuddy a book.** The reader sees the book become known: chapters form as a route, characters appear as points, concepts gather, then connections form. As soon as text extraction and basic structure are ready, the screen says **“Your book is ready.”** and offers **Start reading**. The later **“I know this book now.”** state is non-blocking and continues in the background.
 
 | Desktop behavior | Mobile behavior | Acceptance test |
 |---|---|---|

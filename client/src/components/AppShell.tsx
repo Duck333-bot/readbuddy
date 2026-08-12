@@ -25,9 +25,15 @@ function initialsOf(name: string | null | undefined) {
 
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
-    <span className={`inline-flex items-baseline gap-[1px] font-display ${className}`}>
+    <span className={`inline-flex items-center gap-2 font-display ${className}`}>
+      <span className="relative flex h-5 w-4 items-center justify-center" aria-hidden="true">
+        <span className="rb-thread absolute h-4 rotate-[28deg]" />
+        <span className="rb-thread-node relative" />
+      </span>
+      <span className="inline-flex items-baseline gap-[1px]">
       <span className="font-semibold">Read</span>
       <span className="font-normal italic text-primary">Buddy</span>
+      </span>
     </span>
   );
 }
@@ -51,11 +57,11 @@ export function AppShell({ children, bare = false }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
+      <header className="sticky top-0 z-40 border-b border-border/80 bg-background/92 backdrop-blur-md">
+        <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-6 px-5 sm:px-8">
           <Link
             href="/library"
-            className="text-lg text-foreground no-underline transition-opacity hover:opacity-75">
+            className="text-[1.08rem] text-foreground no-underline transition-opacity hover:opacity-75">
             <Wordmark />
           </Link>
 
@@ -66,7 +72,7 @@ export function AppShell({ children, bare = false }: AppShellProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative rounded-md px-3 py-1.5 text-sm no-underline transition-colors duration-150 ${
+                  className={`relative px-3 py-2 text-sm no-underline transition-colors duration-150 ${
                     active
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -76,7 +82,7 @@ export function AppShell({ children, bare = false }: AppShellProps) {
                     {item.label}
                   </span>
                   {active && (
-                    <span className="absolute inset-x-3 -bottom-[13px] h-[2px] rounded-full bg-primary" />
+                    <span className="absolute inset-x-3 -bottom-[17px] h-[1.5px] bg-primary" />
                   )}
                 </Link>
               );
@@ -89,7 +95,7 @@ export function AppShell({ children, bare = false }: AppShellProps) {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="h-9 gap-2 px-2 hover:bg-accent"
+                    className="h-10 gap-2 rounded-full px-2 hover:bg-accent"
                     aria-label="Account menu">
                     <Avatar className="h-7 w-7">
                       <AvatarFallback className="bg-primary/12 text-[11px] font-medium text-primary">

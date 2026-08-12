@@ -1,10 +1,10 @@
 # ReadBuddy Living Library v2 — Approval Package
 
-**Status:** Design-only. Production UI and feature work remain frozen until this package passes approval.
+**Status:** Approved for production implementation with the V2.1 non-blocking Book Brain rule.
 
 ## What changed from v1
 
-Living Library v2 keeps warm paper, deep ink, expressive outer product surfaces, a silent reader, a full-screen Book Brain moment, and the idea of knowledge connections. It removes the sense that ReadBuddy is a fantasy-literary themed startup. The product now has one proprietary visual behavior—the **ReadBuddy Thread**—and every screen proves the product before it creates atmosphere.
+Living Library v2.1 keeps warm paper, deep ink, expressive outer product surfaces, a silent reader, a full-screen Book Brain moment, and the idea of knowledge connections. It removes the sense that ReadBuddy is a fantasy-literary themed startup. The product now has one proprietary visual behavior—the **ReadBuddy Thread**—and every screen proves the product before it creates atmosphere. Crucially, Book Brain continues learning in the background; it never blocks a reader from entering a book once basic extraction and structure are ready.
 
 > **Product first. Brand world second. One connection behavior everywhere.**
 
@@ -30,7 +30,7 @@ The library has one dominant recent journey and at most six large, gallery-like 
 
 ![Upload v2](/manus-storage/living-library-v2-upload_8919b3a4.png)
 
-Upload becomes a dedicated full-screen event. The book is shown becoming known: chapter structure, characters, concepts, connections, and spoiler boundaries form in front of the reader. Completion is personal: **“I’m ready to read with you.”**
+Upload becomes a dedicated full-screen event with **two readiness moments**. First, after extraction and basic structure: **“Your book is ready.”** with an immediate **Start reading** action and the quiet note “ReadBuddy is still getting to know the whole book.” Second, Book Brain keeps forming chapters, characters, concepts, connections, and spoiler boundaries in the background. When complete, it makes a subtle, non-blocking statement: **“I know this book now.”**
 
 ### Reader — quiet editorial surface
 
@@ -57,7 +57,8 @@ Mobile is not a compressed desktop. A touch-first bottom sheet appears only afte
 | State | Visual behavior | Product proof |
 |---|---|---|
 | Library → open book | Cover becomes the current journey | Reading is the primary action |
-| Upload → Book Brain | Chapters, people, concepts, and boundaries form | Whole-book understanding is real |
+| Upload → ready to read | Text extraction and structure become usable; Start reading is immediately available | Reading comes first |
+| Background Book Brain | Chapters, people, concepts, connections, and boundaries continue forming | Whole-book understanding grows without user friction |
 | Highlight → Explain | Focus motion, then local annotation | Help does not interrupt reading |
 | Explain → evidence | Thread names prior page | Answer is grounded |
 | Evidence → back | Prior source gains a brief focus state, then exact return | Context is navigable, not hand-wavy |
@@ -86,4 +87,4 @@ Approve only if every answer is **yes**.
 
 Do **not** implement any production UI if two or more approval gates are “not really.” If approved, the build order is: semantic tokens → typography/spacing/shape primitives → thread mark → navigation shell → library → full-screen upload → landing → reader thread/annotation treatment → responsive polish and motion. No feature work should be mixed into that sequence.
 
-**Decision requested:** approve V2, request a targeted revision, or choose a different concept before engineering resumes.
+**Decision:** V2.1 is approved for implementation. The required implementation order remains semantic tokens → typography/spacing/shape primitives → thread mark → navigation shell → library → non-blocking full-screen upload → landing → reader thread/annotation treatment → responsive polish and motion.

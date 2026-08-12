@@ -291,7 +291,7 @@
 
 ## Living Library Visual Identity & Product Shell v2 — Design Only
 
-- [ ] Freeze all production UI and feature changes until the visual direction is approved
+- [x] Freeze all production UI and feature changes until the visual direction is approved
 - [x] Audit current visual-token drift, component-library leakage, and GitHub main sync status
 - [x] Define final semantic color roles: Ink, Paper, Night, Violet, Sky, Sun, Coral, Mint, plus background/surface/text/AI/evidence/highlight/success/danger mappings
 - [x] Define final typography scales, three type roles, spacing scale, shape rules, shadow rules, and 4-motion system (Reveal, Lift, Thread, Focus)
@@ -304,7 +304,7 @@
 
 ## Living Library v2 — Product-Led Revision, Design Only
 
-- [ ] Keep production UI and feature work frozen until Living Library v2 passes approval
+- [x] Keep production UI and feature work frozen until Living Library v2 passes approval
 - [x] Reduce decorative fantasy/constellation language by roughly 40%; remove stars, floating books, gradients, and illustration when they do not explain a connection
 - [x] Define the ReadBuddy Thread as the single proprietary visual behavior across landing, upload, library, and reader
 - [x] Revise color, type, spacing, shape, and motion for modern editorial confidence: fewer cards, fewer borders, less rounding, stronger hierarchy, more asymmetry
@@ -314,3 +314,16 @@
 - [x] Redesign reader concept as silent editorial reading with the ReadBuddy Thread as the only signature behavior
 - [x] Create high-fidelity desktop and mobile interaction states: open book, upload processing, highlight, Explain, evidence jump/back, Who?, I’m Lost, resume tomorrow
 - [x] Package a strict Living Library v2 approval scorecard; do not implement before every gate passes
+
+## Living Library v2.1 — Approved Production Build
+
+- [x] Update all visual-direction documents: replace broad constellation language with “Every book is full of connections. ReadBuddy remembers the ones that matter.”
+- [x] Document and implement two upload readiness moments: early “Your book is ready / Start reading” and later non-blocking “I know this book now” completion
+- [x] Preserve background Book Brain processing after early reader entry; never block reading on full analysis completion
+- [x] Replace global visual drift with semantic Living Library tokens, finite typography, spacing, shape, shadow, and motion rules
+- [x] Implement the ReadBuddy Thread primitive consistently across landing, upload, library, and reader only when a genuine relationship exists
+- [x] Implement the approved navigation shell, gallery-like library, and current-journey hierarchy
+- [x] Implement the full-screen non-blocking Book Brain upload journey and its in-reader background-processing continuation
+- [x] Implement the product-led landing and silent-reader treatment without changing the existing reading-intelligence contracts
+- [x] Complete mobile, reduced-motion, keyboard, focus, contrast, and touch-target refinement across the new visual system
+- [x] Verify the V2.1 acceptance test: upload → early Start reading → ongoing Book Brain → subtle ready notice, without an interruption
