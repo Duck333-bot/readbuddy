@@ -37,6 +37,14 @@ export function needsBookBrainRebuild(analysisVersion: number | null | undefined
   return (passCompleted ?? 0) < 4 || (analysisVersion ?? 0) < BOOK_BRAIN_VERSION;
 }
 
+/** A staged v4 job must continue from its saved stage, never delete its own partial work. */
+export function shouldInitialiseBookBrainStage(
+  pipelineVersion: number | null | undefined,
+  pipelineStage: string | null | undefined,
+): boolean {
+  return pipelineVersion !== BOOK_BRAIN_VERSION || pipelineStage === "idle" || !pipelineStage;
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -626,6 +634,137 @@ async function runPass4(bookId: number, analysisVersion: number): Promise<void> 
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Resumable Book Brain — bounded background work                            */
+/* -------------------------------------------------------------------------- */
+
+type StagedStructure = {
+  source: "outline" | "detected" | "synthetic";
+  confidence: number;
+  sections: BookSection[];
+  chapterSummaries?: { chapter: number; title: string; summary: string; startPage: number; endPage: number; authorDefined: boolean }[];
+  synthesis?: { overallSummary: string; themes: string[]; timeline: { event: string; page: number }[] };
+};
+
+const CHUNKS_PER_BACKGROUND_RUN = 3;
+const CHUNK_EMBEDDINGS_PER_BACKGROUND_RUN = 8;
+const PASSAGE_EMBEDDINGS_PER_BACKGROUND_RUN = 16;
+
+function makeChunkPrompt(chunkText: string, startPage: number, endPage: number) {
+  return `Analyze this book section (pages ${startPage}–${endPage}) and return ONLY valid JSON:
+{"summary":"2-3 sentence summary", "entities":[{"name":"name","type":"person|place|concept|term|other","pages":[page numbers from markers],"relationships":[{"name":"name","relation":"short relation","page":page number}]}],"concepts":["main idea"],"keyPassages":[{"text":"short quote","reason":"why it matters"}]}
+Rules: max 10 entities, max 5 concepts, max 3 passages. Every page number MUST come from [Page N] markers. Never guess.
+TEXT:
+${chunkText}`;
+}
+
+async function initialiseStagedPipeline(bookId: number, pages: { pageNumber: number; content: string }[]) {
+  const book = await db.getBookById(bookId);
+  const structure = await resolveBookStructure(pages, {
+    outline: (book?.pdfOutline as { title: string; page: number; level: number }[] | null) ?? undefined,
+    bookTitle: book?.title ?? null,
+    validate: validateHeadingCandidates,
+  });
+  const stagedChunks = createStagedChunks(bookId, pages, structure.sections);
+  await db.deleteBookChunks(bookId, BOOK_BRAIN_VERSION);
+  await db.deleteBookEntities(bookId, BOOK_BRAIN_VERSION);
+  await db.deleteBookEmbeddings(bookId, BOOK_BRAIN_VERSION);
+  await db.deleteRetrievalPassages(bookId, BOOK_BRAIN_VERSION);
+  await db.insertBookChunks(stagedChunks);
+  await db.updateBookBrain(bookId, {
+    pipelineVersion: BOOK_BRAIN_VERSION,
+    pipelineStage: "chunks",
+    stagedStructure: { source: structure.source, confidence: structure.confidence, sections: structure.sections },
+  });
+}
+
+export function createStagedChunks(
+  bookId: number,
+  pages: { pageNumber: number; content: string }[],
+  sections: BookSection[],
+) {
+  const pageByNumber = new Map(pages.map(page => [page.pageNumber, page]));
+  const stagedChunks: Parameters<typeof db.insertBookChunk>[0][] = [];
+  for (const section of sections) {
+    const sectionPages = Array.from({ length: section.endPage - section.startPage + 1 }, (_, i) => pageByNumber.get(section.startPage + i)).filter((page): page is { pageNumber: number; content: string } => Boolean(page));
+    const sectionChunks = chunkPages(sectionPages);
+    for (let chunkSequence = 0; chunkSequence < sectionChunks.length; chunkSequence++) {
+      const chunk = sectionChunks[chunkSequence]!;
+      if (!chunk.length) continue;
+      stagedChunks.push({
+        bookId, chapterNumber: section.index - 1, chunkSequence,
+        startPage: chunk[0]!.pageNumber, endPage: chunk[chunk.length - 1]!.pageNumber,
+        text: chunk.map(page => `[Page ${page.pageNumber}]\n${page.content}`).join("\n\n"),
+        summary: null, entities: null, entityEvidence: null, concepts: null, keyPassages: null,
+        analysisVersion: BOOK_BRAIN_VERSION,
+      });
+    }
+  }
+  return stagedChunks;
+}
+
+async function processChunkBatch(bookId: number) {
+  const work = await db.getProcessableBookChunks(bookId, BOOK_BRAIN_VERSION, CHUNKS_PER_BACKGROUND_RUN);
+  for (const chunk of work) {
+    await db.updateBookChunkAnalysis(chunk.id, { status: "processing", incrementAttempts: true });
+    try {
+      const response = await llmCall("chunk_analysis", { messages: [{ role: "user", content: makeChunkPrompt(chunk.text, chunk.startPage, chunk.endPage) }], temperature: 0.3, max_tokens: 1100 });
+      const analysis = parseJson(response.text, { summary: "", entities: [] as ChunkEntity[], concepts: [] as string[], keyPassages: [] as { text: string; reason: string }[] });
+      const validPages = new Set(Array.from({ length: chunk.endPage - chunk.startPage + 1 }, (_, i) => chunk.startPage + i));
+      const entityEvidence = normalizeChunkEntities(analysis.entities, validPages);
+      await db.updateBookChunkAnalysis(chunk.id, { summary: analysis.summary, entities: entityEvidence.map(entity => entity.name), entityEvidence, concepts: analysis.concepts, keyPassages: analysis.keyPassages, status: "done" });
+    } catch (error) {
+      await db.updateBookChunkAnalysis(chunk.id, { status: "failed", lastError: error instanceof Error ? error.message.slice(0, 1000) : String(error).slice(0, 1000) });
+    }
+  }
+  return (await db.getProcessableBookChunks(bookId, BOOK_BRAIN_VERSION, 1)).length === 0;
+}
+
+async function synthesizeStagedBook(bookId: number, staged: StagedStructure) {
+  const chunks = await db.getBookChunks(bookId, BOOK_BRAIN_VERSION);
+  if (chunks.some(chunk => chunk.status !== "done")) return false;
+  const chapterSummaries = staged.sections.map(section => ({
+    chapter: section.index, title: section.title,
+    summary: chunks.filter(chunk => chunk.chapterNumber === section.index - 1).map(chunk => chunk.summary ?? "").filter(Boolean).join(" ").slice(0, 2600),
+    startPage: section.startPage, endPage: section.endPage, authorDefined: section.authorDefined,
+  }));
+  const entityStore = new Map<string, { name: string; type: string; pages: Set<number>; relationships: { name: string; relation: string; page: number }[] }>();
+  for (const chunk of chunks) mergeEntityEvidence(entityStore, (chunk.entityEvidence as Parameters<typeof mergeEntityEvidence>[1]) ?? []);
+  await db.deleteBookEntities(bookId, BOOK_BRAIN_VERSION);
+  const entities = Array.from(entityStore.values()).filter(entity => entity.name.length > 1).slice(0, 60);
+  if (entities.length) await db.insertBookEntities(entities.map(entity => ({ bookId, type: entity.type as "person" | "place" | "concept" | "term" | "other", name: entity.name.slice(0, 255), description: "", pages: Array.from(entity.pages).sort((a, b) => a - b), relationships: dedupeRelationships(entity.relationships), analysisVersion: BOOK_BRAIN_VERSION })));
+  const synthesis = await runPass3(bookId, chapterSummaries, BOOK_BRAIN_VERSION);
+  await db.updateBookBrain(bookId, { pipelineStage: "embeddings", stagedStructure: { ...staged, chapterSummaries, synthesis } });
+  return true;
+}
+
+async function embedStagedBatch(bookId: number, staged: StagedStructure) {
+  const chunks = await db.getBookChunks(bookId, BOOK_BRAIN_VERSION);
+  const embeddedChunkIds = new Set((await db.getBookEmbeddingsForVersion(bookId, BOOK_BRAIN_VERSION)).map(row => row.chunkId));
+  for (const chunk of chunks.filter(chunk => !embeddedChunkIds.has(chunk.id)).slice(0, CHUNK_EMBEDDINGS_PER_BACKGROUND_RUN)) {
+    const text = [`Section ${(chunk.chapterNumber ?? 0) + 1}`, chunk.summary ?? "", ((chunk.entities as string[] | null) ?? []).join(", "), ((chunk.concepts as string[] | null) ?? []).join(", "), chunk.text.slice(0, 2000)].filter(Boolean).join("\n");
+    const result = await llmEmbedWithMeta(text);
+    await db.insertBookEmbedding({ bookId, chunkId: chunk.id, embedding: result.embedding, metadata: { startPage: chunk.startPage, endPage: chunk.endPage, chapterNumber: chunk.chapterNumber, chunkSequence: chunk.chunkSequence, embeddingProvider: result.provider, embeddingModel: result.model, embeddingDimensions: result.dimensions }, analysisVersion: BOOK_BRAIN_VERSION });
+  }
+  if ((await db.getRetrievalPassages(bookId, BOOK_BRAIN_VERSION)).length === 0) {
+    const pages = await db.getAllPagesForBook(bookId);
+    await db.insertRetrievalPassages(createRetrievalPassages(pages).map(passage => ({ bookId, startPage: passage.startPage, endPage: passage.endPage, text: passage.text.slice(0, 8000), embedding: null, analysisVersion: BOOK_BRAIN_VERSION })));
+  }
+  for (const passage of await db.getUnembeddedRetrievalPassages(bookId, BOOK_BRAIN_VERSION, PASSAGE_EMBEDDINGS_PER_BACKGROUND_RUN)) {
+    const result = await llmEmbedWithMeta(passage.text.slice(0, 3200));
+    await db.updateRetrievalPassageEmbedding(passage.id, result.embedding);
+  }
+  const chunksComplete = (await db.getBookEmbeddingsForVersion(bookId, BOOK_BRAIN_VERSION)).length >= chunks.length;
+  const passagePending = (await db.getUnembeddedRetrievalPassages(bookId, BOOK_BRAIN_VERSION, 1)).length > 0;
+  if (!chunksComplete || passagePending) return false;
+  await db.updateBookBrain(bookId, {
+    chapterSummaries: staged.chapterSummaries ?? [], structureSource: staged.source, structureConfidence: Math.round(staged.confidence * 100),
+    overallSummary: staged.synthesis?.overallSummary ?? "", themes: staged.synthesis?.themes ?? [], timeline: staged.synthesis?.timeline ?? [],
+    analysisVersion: BOOK_BRAIN_VERSION, passCompleted: 4, pipelineStage: "complete", stagedStructure: null,
+  });
+  return true;
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Main Pipeline Entry Point                                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -638,33 +777,41 @@ export async function runBookBrainPipeline(bookId: number): Promise<{
     return { passCompleted: 0, skipped: true };
   }
 
-  const brain = await db.getBookBrain(bookId);
-  if (!needsBookBrainRebuild(brain?.analysisVersion, brain?.passCompleted)) {
+  const current = await db.getBookBrain(bookId);
+  if (!needsBookBrainRebuild(current?.analysisVersion, current?.passCompleted)) {
     return { passCompleted: 4, skipped: true };
   }
+  if (!(await db.acquireBookBrainLease(bookId))) {
+    return { passCompleted: current?.passCompleted ?? 1, skipped: true };
+  }
 
-  /*
-   * Build every v4 derived artifact beside the currently active version. The
-   * PDF and extracted bookPages are never changed. If a model call fails, the
-   * existing Book Brain remains the active one; a retry clears only the partial
-   * v4 rows and starts again. The final metadata update is the live switch.
-   */
-  const staged = await runPass2(bookId, pages, BOOK_BRAIN_VERSION);
-  const synthesis = await runPass3(bookId, staged.chapterSummaries, BOOK_BRAIN_VERSION);
-  await runPass4(bookId, BOOK_BRAIN_VERSION);
+  try {
+    await db.resetInterruptedBookChunks(bookId, BOOK_BRAIN_VERSION);
+    const brain = await db.getBookBrain(bookId);
+    if (!brain || shouldInitialiseBookBrainStage(brain.pipelineVersion, brain.pipelineStage)) {
+      await initialiseStagedPipeline(bookId, pages);
+      return { passCompleted: brain?.passCompleted ?? 1, skipped: false };
+    }
+    const staged = brain.stagedStructure as StagedStructure | null;
+    if (!staged || brain.pipelineStage === "failed") return { passCompleted: brain.passCompleted, skipped: true };
 
-  await db.upsertBookBrain(bookId, {
-    chapterSummaries: staged.chapterSummaries,
-    structureSource: staged.structure.source,
-    structureConfidence: Math.round(staged.structure.confidence * 100),
-    overallSummary: synthesis.overallSummary,
-    themes: synthesis.themes,
-    timeline: synthesis.timeline,
-    analysisVersion: BOOK_BRAIN_VERSION,
-    passCompleted: 4,
-  });
-
-  return { passCompleted: 4, skipped: false };
+    if (brain.pipelineStage === "chunks") {
+      const chunksComplete = await processChunkBatch(bookId);
+      if (chunksComplete) await db.updateBookBrain(bookId, { pipelineStage: "synthesis" });
+      return { passCompleted: brain.passCompleted, skipped: false };
+    }
+    if (brain.pipelineStage === "synthesis") {
+      await synthesizeStagedBook(bookId, staged);
+      return { passCompleted: brain.passCompleted, skipped: false };
+    }
+    if (brain.pipelineStage === "embeddings") {
+      const complete = await embedStagedBatch(bookId, staged);
+      return { passCompleted: complete ? 4 : brain.passCompleted, skipped: false };
+    }
+    return { passCompleted: brain.passCompleted, skipped: true };
+  } finally {
+    await db.releaseBookBrainLease(bookId);
+  }
 }
 
 /* -------------------------------------------------------------------------- */

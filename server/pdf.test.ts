@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { titleFromFilename } from "./pdf";
+import { findFirstReadablePage, isMeaningfulReadingPage, titleFromFilename } from "./pdf";
 
 describe("titleFromFilename", () => {
   it("strips the extension and normalises separators", () => {
@@ -20,5 +20,23 @@ describe("titleFromFilename", () => {
   it("caps very long names", () => {
     const long = `${"a".repeat(900)}.pdf`;
     expect(titleFromFilename(long).length).toBeLessThanOrEqual(500);
+  });
+});
+
+describe("first readable page", () => {
+  it("skips a dense Dune-style catalogue and opens on the first page of prose", () => {
+    const catalogue = [
+      "Books by Frank Herbert",
+      "THE BOOK OF FRANK HERBERT",
+      "DIRECT DESCENT",
+      "THE DOSADI EXPERIMENT",
+      "EYE",
+      "THE EYES OF HEISENBERG",
+      "THE GODMAKERS",
+      "THE GREEN BRAIN",
+    ].join("\n").repeat(8);
+    const story = "In the beginning, the reader is given a real scene with people, conflict, and enough surrounding prose to begin reading naturally. The next sentences keep the scene moving and make it clear this is the start of meaningful book text rather than a list of titles.";
+    expect(isMeaningfulReadingPage(catalogue)).toBe(false);
+    expect(findFirstReadablePage(["", catalogue, story])).toBe(3);
   });
 });

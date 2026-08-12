@@ -222,6 +222,33 @@ export const bookBrain = mysqlTable(
     structureConfidence: int("structureConfidence").notNull().default(0),
     /** Analysis pipeline version that produced this brain. */
     analysisVersion: int("analysisVersion").notNull().default(1),
+    /** Version currently being prepared beside the active analysis. */
+    pipelineVersion: int("pipelineVersion").notNull().default(0),
+    /** Bounded stage for resumable Book Brain work. The active analysis remains unchanged until complete. */
+    pipelineStage: mysqlEnum("pipelineStage", ["idle", "chunks", "synthesis", "embeddings", "complete", "failed"])
+      .notNull()
+      .default("idle"),
+    /** Book-level lease that prevents overlapping scheduled runs from erasing each other's staged data. */
+    processingLeaseUntil: timestamp("processingLeaseUntil"),
+    /** Honest detected/outline structure retained while staged chunks are processed over several runs. */
+    stagedStructure: json("stagedStructure").$type<{
+      source: "outline" | "detected" | "synthetic";
+      confidence: number;
+      sections: { index: number; title: string; startPage: number; endPage: number; authorDefined: boolean }[];
+      chapterSummaries?: {
+        chapter: number;
+        title: string;
+        summary: string;
+        startPage: number;
+        endPage: number;
+        authorDefined: boolean;
+      }[];
+      synthesis?: {
+        overallSummary: string;
+        themes: string[];
+        timeline: { event: string; page: number }[];
+      };
+    }>(),
     /** Important/difficult passages as JSON (pass 4) */
     keyPassages: json("keyPassages").$type<
       { page: number; text: string; reason: string }[]
@@ -266,6 +293,10 @@ export const bookChunks = mysqlTable(
     summary: text("summary"),
     /** Chunk-level entities as JSON array. */
     entities: json("entities").$type<string[]>(),
+    /** Per-chunk entity/page evidence retained until global entity aggregation completes. */
+    entityEvidence: json("entityEvidence").$type<
+      { name: string; type: string; pages: number[]; relationships: { name: string; relation: string; page: number }[] }[]
+    >(),
     /** Chunk-level concepts as JSON array. */
     concepts: json("concepts").$type<string[]>(),
     /** Important passages in this chunk as JSON array. */

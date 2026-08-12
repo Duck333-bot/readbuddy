@@ -32,6 +32,27 @@ export function meaningfulTextLength(pageText: string): number {
   return pageText.replace(/[^0-9A-Za-z\u00C0-\u024F\u0370-\u1FFF\u3040-\u9FFF]+/g, " ").trim().length;
 }
 
+/** Dense catalogues and copyright pages are readable, but are not a useful place to begin reading. */
+export function isMeaningfulReadingPage(pageText: string): boolean {
+  if (meaningfulTextLength(pageText) < MEANINGFUL_TEXT_CHARS) return false;
+  const normalized = pageText.replace(/\s+/g, " ").trim();
+  const firstLines = pageText
+    .split("\n")
+    .map(line => line.trim())
+    .filter(Boolean)
+    .slice(0, 8)
+    .join(" ");
+  const sentenceCount = (normalized.match(/[.!?](?:\s|$)/g) ?? []).length;
+  const frontMatter = /\b(books? by|also by|other books|contents|table of contents|all rights reserved|copyright|isbn|library of congress|published by)\b/i.test(firstLines);
+  const titleLikeLines = pageText
+    .split("\n")
+    .map(line => line.trim())
+    .filter(line => line.length >= 4 && /[A-Za-z]/.test(line))
+    .filter(line => line === line.toUpperCase() || /^[A-Z][A-Za-z\s,'’\-:.]{2,80}$/.test(line)).length;
+  const looksLikeCatalogue = sentenceCount < 2 && titleLikeLines >= 5;
+  return !frontMatter && !looksLikeCatalogue && sentenceCount >= 1;
+}
+
 /**
  * Pick the first page a reader should land on. Prefers the first page with
  * enough prose; if a book is unusually sparse, falls back to the densest early
@@ -39,7 +60,7 @@ export function meaningfulTextLength(pageText: string): number {
  */
 export function findFirstReadablePage(pages: string[]): number {
   for (let i = 0; i < pages.length; i++) {
-    if (meaningfulTextLength(pages[i] ?? "") >= MEANINGFUL_TEXT_CHARS) return i + 1;
+    if (isMeaningfulReadingPage(pages[i] ?? "")) return i + 1;
   }
   let bestIndex = -1;
   let bestLength = 0;

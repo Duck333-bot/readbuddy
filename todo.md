@@ -406,3 +406,16 @@
 - [x] BOOK_BRAIN_VERSION with stale detection and safe background rebuild preserving PDF/pages
 - [x] Regression tests for every task above; keep all existing tests passing
 - [ ] Manual verification of Scenarios A–G in browser
+
+## Authorized Long-Book Verification — Dune PDF
+
+- [x] Inspect the authorized PDF for page count, text availability, outline, and safe upload suitability
+- [ ] Upload the authorized long-book PDF and verify the non-blocking reader plus Book Brain v4 background pipeline
+- [ ] Verify long-book retrieval, safe spoiler boundary, evidence-page jump/back, and multi-highlight persistence
+- [ ] Verify Define/Translate, mobile controls, night surface, conservative text layout, and resume gate on the real book
+- [ ] Update the Trust Before Growth report and readiness recommendation from real long-book evidence
+
+## Dune Verification Blocker
+
+- [x] P0: first-readable-page must skip front matter such as book lists and open at meaningful book text; add a regression fixture from the Dune upload
+- [ ] P0: make scheduled Book Brain work mutually exclusive and resumable for long books; preserve staged v4 progress across runs and add concurrency/progress regressions

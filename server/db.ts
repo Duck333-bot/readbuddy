@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   bookPages,
@@ -336,6 +336,28 @@ export async function upsertBookBrain(bookId: number, values: Partial<InsertBook
   }
 }
 
+/** Acquire a short database-backed lease so two scheduled runs cannot stage one book concurrently. */
+export async function acquireBookBrainLease(bookId: number, durationMs = 110_000): Promise<boolean> {
+  const db = await requireDb();
+  const now = new Date();
+  const result = await db
+    .update(bookBrain)
+    .set({ processingLeaseUntil: new Date(now.getTime() + durationMs) })
+    .where(
+      and(
+        eq(bookBrain.bookId, bookId),
+        or(isNull(bookBrain.processingLeaseUntil), lt(bookBrain.processingLeaseUntil, now)),
+      ),
+    );
+  const header = Array.isArray(result) ? result[0] : result;
+  return Number((header as { affectedRows?: number }).affectedRows ?? 0) > 0;
+}
+
+export async function releaseBookBrainLease(bookId: number) {
+  const db = await requireDb();
+  await db.update(bookBrain).set({ processingLeaseUntil: null }).where(eq(bookBrain.bookId, bookId));
+}
+
 /* -------------------------------------------------------------------------- */
 /*                              Book Entities                                 */
 /* -------------------------------------------------------------------------- */
@@ -470,6 +492,7 @@ export async function insertBookChunk(values: {
   text: string;
   summary?: string | null;
   entities?: string[] | null;
+  entityEvidence?: { name: string; type: string; pages: number[]; relationships: { name: string; relation: string; page: number }[] }[] | null;
   concepts?: string[] | null;
   keyPassages?: { text: string; reason: string }[] | null;
   analysisVersion?: number;
@@ -478,6 +501,76 @@ export async function insertBookChunk(values: {
   const result = await db.insert(bookChunks).values(values);
   const header = Array.isArray(result) ? result[0] : result;
   return (header as { insertId?: number }).insertId ?? 0;
+}
+
+export async function insertBookChunks(values: Parameters<typeof insertBookChunk>[0][]) {
+  if (values.length === 0) return;
+  const db = await requireDb();
+  const CHUNK = 25;
+  for (let i = 0; i < values.length; i += CHUNK) {
+    await db.insert(bookChunks).values(values.slice(i, i + CHUNK));
+  }
+}
+
+export async function getProcessableBookChunks(bookId: number, analysisVersion: number, limit: number) {
+  const db = await requireDb();
+  return db
+    .select()
+    .from(bookChunks)
+    .where(
+      and(
+        eq(bookChunks.bookId, bookId),
+        eq(bookChunks.analysisVersion, analysisVersion),
+        or(eq(bookChunks.status, "pending"), and(eq(bookChunks.status, "failed"), sql`${bookChunks.attemptCount} < 3`)),
+      ),
+    )
+    .orderBy(asc(bookChunks.chapterNumber), asc(bookChunks.chunkSequence))
+    .limit(limit);
+}
+
+/** A new lease can reclaim chunks left mid-call only after the former lease has expired. */
+export async function resetInterruptedBookChunks(bookId: number, analysisVersion: number) {
+  const db = await requireDb();
+  await db
+    .update(bookChunks)
+    .set({ status: "pending", lastError: "Interrupted background run; safely retrying." })
+    .where(
+      and(
+        eq(bookChunks.bookId, bookId),
+        eq(bookChunks.analysisVersion, analysisVersion),
+        eq(bookChunks.status, "processing"),
+      ),
+    );
+}
+
+export async function updateBookChunkAnalysis(
+  chunkId: number,
+  values: {
+    summary?: string | null;
+    entities?: string[] | null;
+    entityEvidence?: { name: string; type: string; pages: number[]; relationships: { name: string; relation: string; page: number }[] }[] | null;
+    concepts?: string[] | null;
+    keyPassages?: { text: string; reason: string }[] | null;
+    status: "pending" | "processing" | "done" | "failed";
+    lastError?: string | null;
+    incrementAttempts?: boolean;
+  },
+) {
+  const db = await requireDb();
+  await db
+    .update(bookChunks)
+    .set({
+      summary: values.summary,
+      entities: values.entities,
+      entityEvidence: values.entityEvidence,
+      concepts: values.concepts,
+      keyPassages: values.keyPassages,
+      status: values.status,
+      lastError: values.lastError ?? null,
+      processedAt: values.status === "done" ? new Date() : null,
+      ...(values.incrementAttempts ? { attemptCount: sql`${bookChunks.attemptCount} + 1` } : {}),
+    })
+    .where(eq(bookChunks.id, chunkId));
 }
 
 export async function getBookChunks(bookId: number, analysisVersion?: number) {
@@ -491,6 +584,35 @@ export async function getBookChunks(bookId: number, analysisVersion?: number) {
         : and(eq(bookChunks.bookId, bookId), eq(bookChunks.analysisVersion, analysisVersion)),
     )
     .orderBy(asc(bookChunks.chapterNumber), asc(bookChunks.chunkSequence));
+}
+
+export async function getBookEmbeddingsForVersion(bookId: number, analysisVersion: number) {
+  const db = await requireDb();
+  return db
+    .select({ chunkId: bookEmbeddings.chunkId })
+    .from(bookEmbeddings)
+    .where(and(eq(bookEmbeddings.bookId, bookId), eq(bookEmbeddings.analysisVersion, analysisVersion)));
+}
+
+export async function getUnembeddedRetrievalPassages(bookId: number, analysisVersion: number, limit: number) {
+  const db = await requireDb();
+  return db
+    .select()
+    .from(retrievalPassages)
+    .where(
+      and(
+        eq(retrievalPassages.bookId, bookId),
+        eq(retrievalPassages.analysisVersion, analysisVersion),
+        isNull(retrievalPassages.embedding),
+      ),
+    )
+    .orderBy(asc(retrievalPassages.startPage))
+    .limit(limit);
+}
+
+export async function updateRetrievalPassageEmbedding(passageId: number, embedding: number[]) {
+  const db = await requireDb();
+  await db.update(retrievalPassages).set({ embedding }).where(eq(retrievalPassages.id, passageId));
 }
 
 export async function getBookChunksByIds(ids: number[]) {
@@ -564,6 +686,24 @@ export async function insertRetrievalPassage(data: {
 }): Promise<void> {
   const db = await requireDb();
   await db.insert(retrievalPassages).values(data);
+}
+
+export async function insertRetrievalPassages(
+  rows: {
+    bookId: number;
+    startPage: number;
+    endPage: number;
+    text: string;
+    embedding?: number[] | null;
+    analysisVersion?: number;
+  }[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const db = await requireDb();
+  const CHUNK = 25;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    await db.insert(retrievalPassages).values(rows.slice(i, i + CHUNK));
+  }
 }
 
 export async function getRetrievalPassages(bookId: number, analysisVersion?: number) {
