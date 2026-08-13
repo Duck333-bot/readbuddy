@@ -71,3 +71,7 @@ The production visible-connection state was also exercised. The active sequence 
 | Mobile intention | **Pass** — phone layout preserves hierarchy and atmosphere without collapsing into a desktop stack. |
 
 > **Decision: Landing approved.** I would now screen-record the live active evidence transition to show a prospective reader. Upload may move next at the agreed 55% visual-richness level; Library stays restrained at 30%, and Reader remains last at 5–10%.
+
+## Domain-indexing resolution
+
+The legacy `sleepline.icu` hostname is routed through a managed transparent proxy that does not preserve the requested host for the application, so an application-level redirect cannot reliably distinguish it from the ReadBuddy host. The effective search-indexing correction is therefore the verified canonical URL in the delivered public HTML: it now points to `https://readbuddy-fqfwwm4a.manus.space/`, not Sleepline. This removes the stale Sleepline identity from the page signals that crawlers use. A future truly branded custom domain can replace the Manus subdomain without changing the product application.

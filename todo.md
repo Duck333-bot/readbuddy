@@ -553,7 +553,7 @@
 - [x] Capture the live public landing on laptop and phone, including hero, memory sequence, spoiler/evidence scenes, and first-scroll flow
 - [x] Judge first-five-seconds desirability, color aliveness, art/graphic memorability, sequence magic, clean minimalism, and intentional mobile design
 - [x] Deliver an explicit founder verdict: approve Landing for Upload work or hold Upload and correct Landing first
-- [ ] Record the public search/domain trust issue: sleepline.icu indexing still names an unrelated Sleepline product; resolve before public alpha or marketing traffic
+- [x] Record the public search/domain trust issue: sleepline.icu indexing still names an unrelated Sleepline product; resolve before public alpha or marketing traffic
 
 ## Landing Hold — First-Five-Seconds and Trust Corrections
 
