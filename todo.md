@@ -492,6 +492,15 @@
 - [ ] Package all revised boards as publicly accessible repository assets with a founder visual-review document
 - [ ] Stop for founder approval; do not implement any production UI, art, animation, color, icon, or page change yet
 
+## Final Visual Refinement — Founder Approval Required
+
+- [x] Define the final art-direction corrections: stronger controlled color composition, visible intelligence sequence, non-botanical/non-network art, and quiet reader preservation
+- [x] Create revised desktop and mobile heroes with broader controlled palette combinations and one stronger brand accent
+- [x] Create a revised color-in-use board, 3–5 adult-capable proprietary brand-mark explorations, and a reduced motif system without Understanding Bloom
+- [x] Create an updated 0/25/50/75/100 memory-to-evidence-to-return scroll storyboard with no botanical or lifestyle imagery
+- [x] Package the six final refinement assets as accessible repository boards and re-present them for final founder approval
+- [x] Stop before any production UI, visual, motion, icon, or page implementation
+
 ## Independent ReadBuddy Authentication
 
 - [x] Audit all logout, login, callback, fallback, and navigation paths for legacy Manus identity redirects or branding
