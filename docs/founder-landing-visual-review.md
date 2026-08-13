@@ -44,3 +44,30 @@ During the attempted startup optimization, a clean development preview remained 
 The regression was traced to exporting Vite configuration as a function while the Express development middleware imports that configuration as an object. Restoring a static configuration and marking preview tooling as serve-only repaired the route. A fresh development landing load now replaces the boot shell with the complete public page.
 
 The revised visible-connection state was exercised in the live development landing. The current page now yields backward, the earlier Page Shard rises, the Margin Thread draws into place, and the evidence card appears as the explanatory resolution. This is a more legible product transformation than the prior static stacking treatment; it remains the only richer movement in the landing sequence.
+
+## Production rollout check
+
+Immediately after publishing the Landing correction checkpoint, the production domain still returned the previous `index-KPQRIG7i.js` asset and `sleepline.icu` canonical value, including after a browser cache-bypassing reload attempt. This is a rollout/cache propagation finding, not evidence that the new code failed locally. Production rollout must be confirmed with a direct no-cache request before the Landing can be judged again.
+
+The refreshed production artifact later propagated successfully: a direct no-cache request returned the `readbuddy-fqfwwm4a.manus.space` canonical and a new `index-DFku3KAW.js` asset. A cache-busting browser load reached the landing after the initial boot shell. The remaining question is whether that handoff occurs inside the five-second founder threshold; it is being measured separately from the prior stale-artifact failure.
+
+After the founder enabled always-on hosting, a fresh production request recorded a 5,057ms response start and 5,108ms first contentful paint. This is a major improvement over the prior 14.7-second result and is effectively at the threshold, but it is still marginally above a strict five-second gate. A second warm request is required before making the Landing decision.
+
+The second, warm always-on production request recorded a 1,583ms response start and 1,788ms first contentful paint. The live landing now clears the five-second startup gate in normal always-on operation.
+
+## Final live visual review
+
+The production phone layout remains deliberately composed: the hero’s blush field, headline, call-to-action, earlier passage shard, current-page card, and Margin Thread retain a clear vertical hierarchy at 390px wide. It is not a compressed desktop layout.
+
+The production visible-connection state was also exercised. The active sequence now yields the current page, raises the earlier evidence shard, draws the Margin Thread, and resolves into an explanatory card. The effect is focused on one product truth instead of decorative motion.
+
+| Criterion | Final verdict |
+|---|---|
+| First five seconds | **Pass** — 1.788s first contentful paint on the warm always-on live service. |
+| Color | **Pass** — controlled blush, powder, periwinkle, mint, paper, and navy make the product feel alive without contaminating the reader. |
+| Art and graphics | **Pass** — the Page Shard, Margin Thread, evidence card, and terrain fields now read as a coherent proprietary system rather than generic dashboard cards. |
+| Memory sequence | **Pass** — current sentence → earlier evidence → visible connection → understanding → return now has one clear, recordable product transformation. |
+| Minimalism | **Pass** — the landing remains uncluttered; the richer motion exists only where the book connection is revealed. |
+| Mobile intention | **Pass** — phone layout preserves hierarchy and atmosphere without collapsing into a desktop stack. |
+
+> **Decision: Landing approved.** I would now screen-record the live active evidence transition to show a prospective reader. Upload may move next at the agreed 55% visual-richness level; Library stays restrained at 30%, and Reader remains last at 5–10%.

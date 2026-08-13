@@ -560,5 +560,5 @@
 - [x] Identify and remove avoidable first-route JavaScript from the public landing startup path so the landing replaces the boot mark promptly
 - [x] Correct the public canonical/metadata identity away from sleepline.icu and toward the selected ReadBuddy domain
 - [x] Strengthen one signature current-sentence → earlier-passage → connection → understanding → return transformation without adding decorative clutter
-- [ ] Re-check deployed laptop and phone startup, color, art/graphics, story magic, minimalism, and mobile intention before reconsidering Upload
-- [ ] Keep Upload, Library, Reader, and final logo selection frozen until Landing earns a fresh founder approval
+- [x] Re-check deployed laptop and phone startup, color, art/graphics, story magic, minimalism, and mobile intention before reconsidering Upload
+- [x] Keep Upload, Library, Reader, and final logo selection frozen until Landing earns a fresh founder approval
