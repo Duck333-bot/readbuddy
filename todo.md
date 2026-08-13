@@ -480,3 +480,8 @@
 - [x] Remove legacy Manus OAuth login entry points from public and protected ReadBuddy surfaces
 - [ ] Verify Google login and account continuity still work after removing legacy Manus routes
 - [ ] Test production logout and protected-route fallback so no reader sees a Manus-branded identity screen
+
+## Blank-Page Production Regression
+
+- [ ] P0: diagnose and fix the blank page reported after logout/authentication navigation changes
+- [ ] Verify production home, login, logout, and library render correctly after the fix
