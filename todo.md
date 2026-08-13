@@ -554,3 +554,11 @@
 - [x] Judge first-five-seconds desirability, color aliveness, art/graphic memorability, sequence magic, clean minimalism, and intentional mobile design
 - [x] Deliver an explicit founder verdict: approve Landing for Upload work or hold Upload and correct Landing first
 - [ ] Record the public search/domain trust issue: sleepline.icu indexing still names an unrelated Sleepline product; resolve before public alpha or marketing traffic
+
+## Landing Hold — First-Five-Seconds and Trust Corrections
+
+- [x] Identify and remove avoidable first-route JavaScript from the public landing startup path so the landing replaces the boot mark promptly
+- [x] Correct the public canonical/metadata identity away from sleepline.icu and toward the selected ReadBuddy domain
+- [x] Strengthen one signature current-sentence → earlier-passage → connection → understanding → return transformation without adding decorative clutter
+- [ ] Re-check deployed laptop and phone startup, color, art/graphics, story magic, minimalism, and mobile intention before reconsidering Upload
+- [ ] Keep Upload, Library, Reader, and final logo selection frozen until Landing earns a fresh founder approval

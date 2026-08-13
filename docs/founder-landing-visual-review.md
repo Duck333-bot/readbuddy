@@ -36,3 +36,11 @@ The fully hydrated 390px-wide public capture is intentionally composed rather th
 ## Domain/indexing trust evidence
 
 The live `readbuddy-fqfwwm4a.manus.space` HTML currently declares `https://sleepline.icu/` as its canonical URL. This provides a concrete technical explanation for the unrelated Sleepline search identity and must be corrected before public alpha or marketing traffic.
+
+## Follow-up optimization regression
+
+During the attempted startup optimization, a clean development preview remained on the ReadBuddy boot shell after the public/authenticated entry split. The optimization is not ready to publish until that regression is diagnosed and the public landing again replaces the boot shell reliably.
+
+The regression was traced to exporting Vite configuration as a function while the Express development middleware imports that configuration as an object. Restoring a static configuration and marking preview tooling as serve-only repaired the route. A fresh development landing load now replaces the boot shell with the complete public page.
+
+The revised visible-connection state was exercised in the live development landing. The current page now yields backward, the earlier Page Shard rises, the Margin Thread draws into place, and the evidence card appears as the explanatory resolution. This is a more legible product transformation than the prior static stacking treatment; it remains the only richer movement in the landing sequence.

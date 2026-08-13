@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { bookBrainHandler } from "../handlers/bookBrainHandler";
+import { registerPublicLandingRoutes } from "../publicLanding";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -37,6 +38,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerAuthRoutes(app);
+  registerPublicLandingRoutes(app);
   // Heartbeat scheduled handlers — must be registered before the tRPC middleware
   app.post("/api/scheduled/bookBrain", bookBrainHandler);
 

@@ -150,7 +150,18 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+const developmentOnly = (plugin: Plugin): Plugin => ({ ...plugin, apply: "serve" });
+
+const plugins = [
+  react(),
+  tailwindcss(),
+  // These tools are valuable in the managed preview, but the runtime is a
+  // multi-megabyte inspector bundle. It must never delay a real visitor’s
+  // public landing route or inject preview metadata into production HTML.
+  developmentOnly(jsxLocPlugin()),
+  developmentOnly(vitePluginManusRuntime()),
+  vitePluginManusDebugCollector(),
+];
 
 export default defineConfig({
   plugins,

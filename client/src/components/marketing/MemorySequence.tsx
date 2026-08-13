@@ -43,12 +43,12 @@ function SequenceCanvas({ activeStage }: { activeStage: number }) {
   const showReturn = activeStage >= 4;
 
   return (
-    <div className="relative min-h-[32rem] overflow-hidden border border-[var(--rb-terrain-ink)]/10 bg-[var(--rb-terrain-paper)] p-5 shadow-[20px_28px_0_rgba(170,184,246,.36)] sm:min-h-[37rem] sm:p-8">
+    <div className={`rb-memory-canvas stage-${activeStage} relative min-h-[32rem] overflow-hidden border border-[var(--rb-terrain-ink)]/10 bg-[var(--rb-terrain-paper)] p-5 shadow-[20px_28px_0_rgba(170,184,246,.36)] sm:min-h-[37rem] sm:p-8`}>
       <div className="absolute -left-16 top-0 h-48 w-48 bg-[var(--rb-terrain-powder)]/80 [clip-path:polygon(0_0,100%_0,74%_78%,0_100%)]" />
       <div className="absolute right-0 top-0 h-52 w-56 bg-[var(--rb-terrain-blush)]/80 [clip-path:polygon(0_0,100%_0,100%_100%,24%_72%)]" />
       <div className="absolute -bottom-12 right-10 h-44 w-48 bg-[var(--rb-terrain-mint)]/80 [clip-path:polygon(25%_0,100%_0,100%_100%,0_75%)]" />
 
-      <div className="relative mx-auto mt-14 max-w-[25rem] border border-[var(--rb-terrain-ink)]/10 bg-[#fffdf8] px-5 pb-7 pt-5 shadow-[0_16px_28px_rgba(24,33,61,.12)] sm:mt-16 sm:px-7">
+      <div className="rb-memory-current relative z-10 mx-auto mt-14 max-w-[25rem] border border-[var(--rb-terrain-ink)]/10 bg-[#fffdf8] px-5 pb-7 pt-5 shadow-[0_16px_28px_rgba(24,33,61,.12)] sm:mt-16 sm:px-7">
         <div className="flex items-center justify-between border-b border-[var(--rb-terrain-ink)]/10 pb-3 text-[10px] font-bold uppercase tracking-[.16em] text-[#68708a]">
           <span>Reading now</span><span>p.143</span>
         </div>
@@ -61,17 +61,17 @@ function SequenceCanvas({ activeStage }: { activeStage: number }) {
       </div>
 
       <svg className={`pointer-events-none absolute inset-0 h-full w-full rb-terrain-reveal ${showThread ? "opacity-100" : "opacity-0"}`} viewBox="0 0 600 580" fill="none" preserveAspectRatio="none" aria-hidden="true">
-        <path className="rb-margin-thread" d="M376 292 C505 260, 505 148, 472 127" strokeWidth="1.6" />
+        <path className="rb-margin-thread rb-memory-thread-path" d="M376 292 C505 260, 505 148, 472 127" strokeWidth="1.6" />
         <circle cx="376" cy="292" r="5" fill="var(--rb-terrain-coral)" /><circle cx="472" cy="127" r="5" fill="var(--rb-terrain-coral)" />
       </svg>
 
-      <div className={`rb-page-shard absolute right-3 top-7 w-[11rem] border border-[var(--rb-terrain-ink)]/10 p-3 rb-terrain-reveal sm:right-7 sm:top-9 sm:w-[13rem] ${showEarlier ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"}`}>
+      <div className={`rb-page-shard rb-memory-earlier absolute right-3 top-7 z-20 w-[11rem] border border-[var(--rb-terrain-ink)]/10 p-3 sm:right-7 sm:top-9 sm:w-[13rem] ${showEarlier ? "translate-y-0 opacity-100 shadow-[0_22px_32px_rgba(24,33,61,.16)]" : "translate-y-9 opacity-0"}`}>
         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-[.13em] text-[#68708a]"><span>Earlier page</span><span className="text-[var(--rb-terrain-coral)]">p.47</span></div>
         <div className="rb-evidence-bracket mt-3 pl-2 font-reading text-xs leading-5 text-[#394563]">“Some truths survive by being left unsaid.”</div>
         <div className="mt-3 flex items-center gap-1 text-[9px] font-bold uppercase tracking-[.12em] text-[var(--rb-terrain-ink)]"><MapPin className="h-3 w-3 text-[var(--rb-terrain-coral)]" /> Evidence coordinate</div>
       </div>
 
-      <div className={`absolute bottom-10 left-3 right-3 border border-[var(--rb-terrain-ink)]/10 bg-[#eef0ff] p-4 shadow-[0_14px_22px_rgba(24,33,61,.10)] rb-terrain-reveal sm:left-7 sm:right-7 sm:p-5 ${showContext ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"}`}>
+      <div className={`rb-memory-connection absolute bottom-10 left-3 right-3 border border-[var(--rb-terrain-ink)]/10 bg-[#eef0ff] p-4 shadow-[0_14px_22px_rgba(24,33,61,.10)] sm:left-7 sm:right-7 sm:p-5 ${showContext ? "translate-y-0 scale-100 opacity-100" : "translate-y-8 scale-[.96] opacity-0"}`}>
         <div className="flex items-start gap-3"><MarginMark kind="evidence" className="mt-0.5 h-7 w-7 shrink-0 text-[var(--rb-terrain-coral)]" /><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[var(--rb-terrain-ink)]">What this changes</p><p className="mt-2 text-sm leading-6 text-[#394563]">The earlier line shows that the silence is deliberate. This moment is not about missing information—it is about someone protecting it.</p></div></div>
       </div>
 

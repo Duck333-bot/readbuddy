@@ -1,18 +1,27 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
+import { lazy, Suspense } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
-import Library from "./pages/Library";
-import Notebook from "./pages/Notebook";
-import Reader from "./pages/Reader";
-import AlphaDashboard from "./pages/AlphaDashboard";
-import AuthPage from "./pages/AuthPage";
+
+// Keep the unauthenticated marketing route lean. The reading product loads only
+// when somebody asks for it, rather than making the landing wait for the PDF,
+// reader, notebook, and admin surfaces.
+const Library = lazy(() => import("./pages/Library"));
+const Notebook = lazy(() => import("./pages/Notebook"));
+const Reader = lazy(() => import("./pages/Reader"));
+const AlphaDashboard = lazy(() => import("./pages/AlphaDashboard"));
+const AuthPage = lazy(() => import("./pages/AuthPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const LoginPage = () => <AuthPage />;
 const CreateAccountPage = () => <AuthPage create />;
+
+function RouteBoot() {
+  return <div className="min-h-screen bg-[#fbf8f0]" aria-label="Loading ReadBuddy" />;
+}
 
 function Router() {
   return (
@@ -36,7 +45,9 @@ function App() {
       <ThemeProvider defaultTheme="light">
         <TooltipProvider delayDuration={300}>
           <Toaster />
-          <Router />
+          <Suspense fallback={<RouteBoot />}>
+            <Router />
+          </Suspense>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

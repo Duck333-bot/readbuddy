@@ -1,12 +1,10 @@
-import { Wordmark } from "@/components/AppShell";
+import { BrandWordmark as Wordmark } from "@/components/BrandWordmark";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BookOpen, CornerDownLeft, Highlighter, Languages, Quote, Search, ShieldCheck } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/_core/hooks/useAuth";
 import { getFunnelVisitorId, markFunnelAuthIntent } from "@/lib/funnel";
-import { trpc } from "@/lib/trpc";
 import { EvidenceMoment, HeroMemoryCanvas, MemorySequence, SpoilerBoundary } from "@/components/marketing/MemorySequence";
 
 const moments = [
@@ -23,13 +21,29 @@ const stages = [
 ] as const;
 
 export default function Home() {
-  const { isAuthenticated, loading } = useAuth();
   const [, navigate] = useLocation();
   const reducedMotion = useReducedMotion();
-  const visitorTracking = trpc.analytics.trackVisitor.useMutation();
-  useEffect(() => { if (!loading && isAuthenticated) navigate("/library"); }, [isAuthenticated, loading, navigate]);
-  useEffect(() => { if (!isAuthenticated) visitorTracking.mutate({ event: "landing_view", visitorId: getFunnelVisitorId() }); }, [isAuthenticated]);
-  const begin = (create = false) => { markFunnelAuthIntent(); visitorTracking.mutate({ event: "landing_start_clicked", visitorId: getFunnelVisitorId() }); navigate(create ? "/create-account" : "/login"); };
+  const sendPublicEvent = (event: "landing_view" | "landing_start_clicked") => {
+    void fetch("/api/public/landing-event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event, visitorId: getFunnelVisitorId() }),
+      keepalive: true,
+    }).catch(() => undefined);
+  };
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/public/session", { credentials: "include" })
+      .then(response => response.ok ? response.json() as Promise<{ authenticated?: boolean }> : null)
+      .then(session => {
+        if (cancelled) return;
+        if (session?.authenticated) navigate("/library");
+        else sendPublicEvent("landing_view");
+      })
+      .catch(() => { if (!cancelled) sendPublicEvent("landing_view"); });
+    return () => { cancelled = true; };
+  }, [navigate]);
+  const begin = (create = false) => { markFunnelAuthIntent(); sendPublicEvent("landing_start_clicked"); navigate(create ? "/create-account" : "/login"); };
   const motionProps = reducedMotion ? {} : { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { duration: .46, ease: "circOut" as const } };
 
   return (

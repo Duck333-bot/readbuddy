@@ -350,9 +350,43 @@
   .rb-terrain-reveal {
     transition: opacity var(--rb-terrain-gather), transform var(--rb-terrain-gather);
   }
+  .rb-memory-current {
+    transition: transform var(--rb-terrain-gather), opacity var(--rb-terrain-gather), box-shadow var(--rb-terrain-gather);
+  }
+  .rb-memory-canvas.stage-1 .rb-memory-current,
+  .rb-memory-canvas.stage-2 .rb-memory-current,
+  .rb-memory-canvas.stage-3 .rb-memory-current,
+  .rb-memory-canvas.stage-4 .rb-memory-current {
+    transform: translate(-1.3rem, 1rem) rotate(-1deg) scale(.96);
+    opacity: .8;
+    box-shadow: 0 9px 18px color-mix(in oklab, var(--rb-terrain-ink) 10%, transparent);
+  }
+  .rb-memory-earlier {
+    transition: opacity var(--rb-terrain-track), transform var(--rb-terrain-track), box-shadow var(--rb-terrain-track);
+  }
+  .rb-memory-thread-path {
+    stroke-dasharray: 3 7;
+    stroke-dashoffset: 80;
+    transition: stroke-dashoffset var(--rb-terrain-track), stroke-width var(--rb-terrain-gather);
+  }
+  .rb-memory-canvas.stage-2 .rb-memory-thread-path,
+  .rb-memory-canvas.stage-3 .rb-memory-thread-path,
+  .rb-memory-canvas.stage-4 .rb-memory-thread-path {
+    stroke-dashoffset: 0;
+    stroke-width: 2.3;
+  }
+  .rb-memory-connection {
+    transform-origin: 100% 100%;
+    transition: opacity var(--rb-terrain-gather), transform var(--rb-terrain-gather);
+  }
+  .rb-memory-canvas.stage-3 .rb-memory-connection,
+  .rb-memory-canvas.stage-4 .rb-memory-connection {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
   @media (prefers-reduced-motion: reduce) {
     .reader-chrome { transition: none; }
-    .rb-terrain-reveal { transition: none; }
+    .rb-terrain-reveal, .rb-memory-current, .rb-memory-earlier, .rb-memory-thread-path, .rb-memory-connection { transition: none; }
   }
 }
 
