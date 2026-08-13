@@ -485,3 +485,8 @@
 
 - [ ] P0: diagnose and fix the blank page reported after logout/authentication navigation changes
 - [ ] Verify production home, login, logout, and library render correctly after the fix
+
+## Live Deployment Delivery Investigation
+
+- [ ] P0: identify why the user’s exact public domain still serves unchanged behavior after published checkpoints
+- [ ] Verify the corrected asset version and authentication flow on every ReadBuddy public domain
