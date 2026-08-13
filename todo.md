@@ -478,15 +478,20 @@
 - [x] Audit all logout, login, callback, fallback, and navigation paths for legacy Manus identity redirects or branding
 - [x] Replace legacy logout behavior with a ReadBuddy-owned session clear and `/login` redirect
 - [x] Remove legacy Manus OAuth login entry points from public and protected ReadBuddy surfaces
-- [ ] Verify Google login and account continuity still work after removing legacy Manus routes
-- [ ] Test production logout and protected-route fallback so no reader sees a Manus-branded identity screen
+- [x] Verify Google login and account continuity still work after removing legacy Manus routes
+- [x] Test production logout and protected-route fallback so no reader sees a Manus-branded identity screen
 
 ## Blank-Page Production Regression
 
-- [ ] P0: diagnose and fix the blank page reported after logout/authentication navigation changes
-- [ ] Verify production home, login, logout, and library render correctly after the fix
+- [x] P0: diagnose and fix the blank page reported after logout/authentication navigation changes
+- [x] Verify production home, login, logout, and library render correctly after the fix
 
 ## Live Deployment Delivery Investigation
 
-- [ ] P0: identify why the user’s exact public domain still serves unchanged behavior after published checkpoints
-- [ ] Verify the corrected asset version and authentication flow on every ReadBuddy public domain
+- [x] P0: identify why the user’s exact public domain still serves unchanged behavior after published checkpoints
+- [x] Verify the corrected asset version and authentication flow on every ReadBuddy public domain
+
+## Google Redirect URI Mismatch
+
+- [x] P0: capture the exact OAuth callback URL emitted by the public ReadBuddy login and align it with Google Cloud
+- [x] Verify Google sign-in returns to the merged existing library on the selected production domain
