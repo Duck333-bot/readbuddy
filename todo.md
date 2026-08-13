@@ -547,3 +547,10 @@
 - [x] Preserve all working product behavior and tests; leave Upload, Library, final logo selection, and Reader implementation unchanged pending landing verification
 - [x] Correct the later mobile Upload concept copy to describe book people/characters/entities, not Reader Intelligence
 - [x] Test and visually verify desktop/mobile landing before proposing any Upload, Library, or Reader extension
+
+## Founder Landing Visual Review Gate
+
+- [x] Capture the live public landing on laptop and phone, including hero, memory sequence, spoiler/evidence scenes, and first-scroll flow
+- [x] Judge first-five-seconds desirability, color aliveness, art/graphic memorability, sequence magic, clean minimalism, and intentional mobile design
+- [x] Deliver an explicit founder verdict: approve Landing for Upload work or hold Upload and correct Landing first
+- [ ] Record the public search/domain trust issue: sleepline.icu indexing still names an unrelated Sleepline product; resolve before public alpha or marketing traffic
