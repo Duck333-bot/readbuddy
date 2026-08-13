@@ -9,7 +9,10 @@ export function isLegacyReadBuddyHost(host: string | undefined) {
 
 /** Keep the prior product domain out of reader-facing and search-facing identity. */
 export function redirectLegacyReadBuddyHost(req: Request, res: Response, next: NextFunction) {
-  if (!isLegacyReadBuddyHost(req.get("host"))) {
+  const forwardedHost = req.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const requestHost = forwardedHost || req.get("host");
+
+  if (!isLegacyReadBuddyHost(requestHost)) {
     next();
     return;
   }
