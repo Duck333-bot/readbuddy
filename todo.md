@@ -479,9 +479,9 @@
 - [x] Commit all six actual A/B/C desktop and mobile boards under `docs/assets/creative-direction/` and repair every review link with normal relative GitHub paths
 - [x] Embed inline thumbnail previews for all six boards in `docs/creative-direction-review.md`
 - [x] Verify all six raw GitHub image URLs and the review document through anonymous public URLs
-- [ ] Re-present the publicly accessible boards for founder confirmation before any production visual implementation
-- [ ] After asset approval only: implement the Custom Hybrid hero, first scroll sequence, and signature margin-memory/evidence moment on desktop and mobile
-- [ ] Verify the limited visual implementation without extending into a full-site redesign
+- [x] Re-present the publicly accessible boards for founder confirmation before any production visual implementation
+- [x] After asset approval only: implement the Custom Hybrid hero, first scroll sequence, and signature margin-memory/evidence moment on desktop and mobile
+- [x] Verify the limited visual implementation without extending into a full-site redesign
 
 ## Revised Custom Hybrid Visual System — Founder Approval Required
 
@@ -489,8 +489,8 @@
 - [x] Create a revised unified desktop hero and mobile hero that avoid neon sci-fi, navy/purple SaaS, fantasy, antiquarian, childish, and academic-austere execution
 - [x] Create a controlled color-system board, illustration/art board, proprietary icon/motif board, and 0–100% hero scroll storyboard
 - [x] Create one calm B-discipline reader example with typography, evidence, trust, and privacy treatment
-- [ ] Package all revised boards as publicly accessible repository assets with a founder visual-review document
-- [ ] Stop for founder approval; do not implement any production UI, art, animation, color, icon, or page change yet
+- [x] Package all revised boards as publicly accessible repository assets with a founder visual-review document
+- [x] Stop for founder approval; do not implement any production UI, art, animation, color, icon, or page change yet
 
 ## Final Visual Refinement — Founder Approval Required
 
@@ -523,3 +523,11 @@
 
 - [x] P0: capture the exact OAuth callback URL emitted by the public ReadBuddy login and align it with Google Cloud
 - [x] Verify Google sign-in returns to the merged existing library on the selected production domain
+
+## Founder-Approved Limited Marketing Slice
+
+- [x] Implement only the responsive landing hero using the approved stronger color composition and visible memory/evidence sequence
+- [x] Implement only the first five-stage marketing scroll sequence: current sentence, earlier evidence, coordinate, contextual help, and return to reading
+- [x] Implement only the signature interactive memory/evidence moment using Margin Thread, Page Shard, Evidence Bracket, and Return Tab
+- [x] Preserve the existing calm reader direction and keep all brand-mark studies explicitly exploratory
+- [x] Add focused UI behavior tests, visually review desktop/mobile, and checkpoint the limited release
