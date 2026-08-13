@@ -127,6 +127,13 @@
       "when": 1786551161275,
       "tag": "0017_neat_ikaris",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1786600288194,
+      "tag": "0018_cool_lyja",
+      "breakpoints": true
     }
   ]
 }

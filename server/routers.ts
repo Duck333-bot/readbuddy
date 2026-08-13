@@ -7,6 +7,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { readerRouter } from "./routers/reader";
 import { publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
+import { sendMagicLink } from "./authRoutes";
+import { z } from "zod";
 
 /**
  * Mints the same session cookie the OAuth callback issues, but for a known
@@ -65,6 +67,10 @@ export const appRouter = router({
       return {
         success: true,
       } as const;
+    }),
+    requestEmailLink: publicProcedure.input(z.object({ email: z.string().email(), origin: z.string().url() })).mutation(async ({ input }) => {
+      await sendMagicLink(input.email.toLowerCase(), input.origin);
+      return { success: true } as const;
     }),
   }),
 

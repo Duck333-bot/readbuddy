@@ -35,6 +35,40 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+/** External provider identities linked to one stable ReadBuddy user row. */
+export const authIdentities = mysqlTable(
+  "authIdentities",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    provider: varchar("provider", { length: 32 }).notNull(),
+    providerAccountId: varchar("providerAccountId", { length: 255 }).notNull(),
+    email: varchar("email", { length: 320 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("auth_identity_provider_account_unique").on(table.provider, table.providerAccountId),
+    index("auth_identity_user_idx").on(table.userId),
+  ],
+);
+
+/** Only a hash is stored; raw passwordless sign-in tokens never reach the DB. */
+export const emailLoginTokens = mysqlTable(
+  "emailLoginTokens",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tokenHash: varchar("tokenHash", { length: 64 }).notNull(),
+    email: varchar("email", { length: 320 }).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    usedAt: timestamp("usedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("email_login_token_hash_unique").on(table.tokenHash),
+    index("email_login_email_idx").on(table.email),
+  ],
+);
+
 /**
  * A book uploaded by a user. The PDF bytes and cover image live in S3; only
  * their storage keys/urls are persisted here.

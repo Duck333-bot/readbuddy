@@ -9,6 +9,10 @@ import Library from "./pages/Library";
 import Notebook from "./pages/Notebook";
 import Reader from "./pages/Reader";
 import AlphaDashboard from "./pages/AlphaDashboard";
+import AuthPage from "./pages/AuthPage";
+
+const LoginPage = () => <AuthPage />;
+const CreateAccountPage = () => <AuthPage create />;
 
 function Router() {
   return (
@@ -18,6 +22,8 @@ function Router() {
       <Route path="/read/:bookId" component={Reader} />
       <Route path="/notebook" component={Notebook} />
       <Route path="/alpha" component={AlphaDashboard} />
+      <Route path="/login" component={LoginPage} />
+      <Route path="/create-account" component={CreateAccountPage} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

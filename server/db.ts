@@ -10,7 +10,9 @@ import {
   notebookEntries,
   analyticsEvents,
   annotations,
+  authIdentities,
   bookmarks,
+  emailLoginTokens,
   users,
 } from "../drizzle/schema";
 import {
@@ -132,6 +134,41 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+  return result[0];
+}
+
+export async function getUserByProvider(provider: string, providerAccountId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select({ user: users }).from(authIdentities)
+    .innerJoin(users, eq(authIdentities.userId, users.id))
+    .where(and(eq(authIdentities.provider, provider), eq(authIdentities.providerAccountId, providerAccountId))).limit(1);
+  return result[0]?.user;
+}
+
+export async function linkIdentity(userId: number, provider: string, providerAccountId: string, email: string) {
+  const db = await requireDb();
+  await db.insert(authIdentities).values({ userId, provider, providerAccountId, email }).onDuplicateKeyUpdate({ set: { email } });
+}
+
+export async function createEmailLoginToken(tokenHash: string, email: string, expiresAt: Date) {
+  const db = await requireDb();
+  await db.insert(emailLoginTokens).values({ tokenHash, email: email.toLowerCase(), expiresAt });
+}
+
+export async function consumeEmailLoginToken(tokenHash: string) {
+  const db = await requireDb();
+  const rows = await db.select().from(emailLoginTokens).where(and(eq(emailLoginTokens.tokenHash, tokenHash), isNull(emailLoginTokens.usedAt), gte(emailLoginTokens.expiresAt, new Date()))).limit(1);
+  const token = rows[0];
+  if (!token) return undefined;
+  await db.update(emailLoginTokens).set({ usedAt: new Date() }).where(eq(emailLoginTokens.id, token.id));
+  return token;
 }
 
 async function requireDb() {

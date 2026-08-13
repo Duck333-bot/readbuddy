@@ -429,3 +429,13 @@
 - [x] P0: bump the Book Brain analysis version so existing completed books safely rebuild with corrected source-derived entity evidence
 - [x] P0: safe-mode answers must not add book facts unsupported by the supplied passage evidence, even when their page citation is valid
 - [x] P1: make the mobile Ask Book entry visibly named rather than an unexplained icon in the phone reader header
+
+## Production Authentication — Login and Create Account
+
+- [x] Audit existing Manus OAuth routes, sessions, user identity fields, and authentication entry points
+- [x] Add dedicated `/login` and `/create-account` pages consistent with the ReadBuddy visual system
+- [x] Preserve current Manus OAuth account access while presenting Google and email entry points
+- [x] Configure real Google OAuth callback, state validation, account linking, and session issuance
+- [ ] Configure real passwordless email sign-in with secure, expiring, single-use links and delivery provider credentials
+- [ ] Add authentication regressions for provider state, email-link expiry, account linking, and current-user continuity
+- [ ] Verify provider success/failure paths, current account continuity, responsiveness, and production build
