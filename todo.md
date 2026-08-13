@@ -460,3 +460,15 @@
 - [x] Document the semantic visual system, type, color, spacing, and motion rules
 - [x] Run responsive desktop/tablet/mobile, accessibility, performance, full regression, and production build checks
 - [x] Write the real-user desirability study kit and full Premium Conversion & Desirability Sprint report
+
+## Creative Direction Reset — Founder Approval Required Before Implementation
+
+- [x] Audit current desktop, laptop, tablet, and mobile experience plus product, auth, library, upload, reader, evidence, notebook, footer, and browser identity
+- [x] Audit domain, favicon, metadata, authentication identity, legal/contact cues, and prepare ReadBuddy-branded domain migration requirements
+- [x] Document why the current visual world feels generic, emotionally flat, untrustworthy, or visually empty against the new desirability brief
+- [x] Define Direction A: The Living Book, including brand world, psychology map, art/motion system, and product-story strategy
+- [x] Define Direction B: Intellectual Editorial, including brand world, psychology map, art/motion system, and product-story strategy
+- [x] Define Direction C: The Reading Journey, including brand world, psychology map, art/motion system, and product-story strategy
+- [x] Generate high-fidelity desktop and mobile concept boards for all three directions without modifying production code
+- [x] Score all directions critically, recommend one, and prepare the founder approval gate
+- [x] Stop after founder review; do not implement, deploy, or modify production code until a direction is explicitly approved
