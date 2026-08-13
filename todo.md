@@ -436,6 +436,13 @@
 - [x] Add dedicated `/login` and `/create-account` pages consistent with the ReadBuddy visual system
 - [x] Preserve current Manus OAuth account access while presenting Google and email entry points
 - [x] Configure real Google OAuth callback, state validation, account linking, and session issuance
-- [ ] Configure real passwordless email sign-in with secure, expiring, single-use links and delivery provider credentials
+- [ ] Later: configure real passwordless email sign-in only after Resend sender/domain verification is complete
 - [ ] Add authentication regressions for provider state, email-link expiry, account linking, and current-user continuity
 - [ ] Verify provider success/failure paths, current account continuity, responsiveness, and production build
+
+## Live Authentication Blockers
+
+- [ ] P0: diagnose and fix the failed live Google sign-in redirect/callback
+- [x] P0: defer failed Resend email delivery rather than expose a broken passwordless-link option
+- [ ] P0: register every supported ReadBuddy production callback origin in Google Cloud and reject unsupported callback origins safely
+- [x] P1: remove the email-delivery surface until Resend sender verification is complete
