@@ -144,14 +144,14 @@ export function UploadBookDialog({
           <section className="relative flex min-h-[18rem] flex-col justify-between overflow-hidden bg-[var(--rb-night)] p-7 text-[var(--rb-paper)] sm:p-10 lg:min-h-0 lg:p-14">
             <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_76%_30%,color-mix(in_srgb,var(--rb-violet)_34%,transparent),transparent_27%),radial-gradient(circle_at_32%_74%,color-mix(in_srgb,var(--rb-sky)_14%,transparent),transparent_32%)]" />
             <div className="relative">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--rb-sun)]">ReadBuddy / Book Brain</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--rb-sun)]">ReadBuddy / First meeting</p>
               <h2 className="mt-5 max-w-sm font-display text-4xl font-semibold leading-[0.95] tracking-[-0.055em] sm:text-5xl">
-                {stage === "ready" ? "Your book is ready." : "Give ReadBuddy a book."}
+                {stage === "ready" ? "Your book is ready." : "Give ReadBuddy a book worth returning to."}
               </h2>
               <p className="mt-5 max-w-sm text-sm leading-relaxed text-[var(--rb-on-night-muted)] sm:text-base">
                 {stage === "ready"
-                  ? "Start reading now. I’ll keep learning the book quietly in the background."
-                  : "Text first. Deeper understanding keeps growing while you read."}
+                  ? "Start reading now. The book will keep becoming more familiar in the background."
+                  : "Start with the page. ReadBuddy quietly learns the connections around it while you read."}
               </p>
             </div>
             <div className="relative mt-8 hidden lg:block">
@@ -177,9 +177,9 @@ export function UploadBookDialog({
                     onDrop={event => { event.preventDefault(); setDragging(false); acceptFile(event.dataTransfer.files?.[0]); }}
                     className={`group w-full border-b-2 px-2 py-16 text-left transition-colors sm:px-5 sm:py-20 ${dragging ? "border-[var(--rb-evidence)] bg-[var(--rb-evidence-surface)]" : "border-border hover:border-[var(--rb-evidence)]"}`}>
                     <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--rb-night)] text-[var(--rb-sun)] transition-transform duration-200 group-hover:scale-105"><UploadCloud className="h-5 w-5" strokeWidth={1.8} /></span>
-                    <span className="mt-7 block font-display text-3xl font-semibold tracking-[-.04em] text-foreground">Drop in a PDF</span>
-                    <span className="mt-3 block max-w-sm text-sm leading-relaxed text-muted-foreground">Or choose one from your computer. Text-based PDFs work best. Up to 40 MB.</span>
-                    <span className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-[var(--rb-evidence)]">Choose a book <ArrowRight className="h-4 w-4" /></span>
+                    <span className="mt-7 block font-display text-3xl font-semibold tracking-[-.04em] text-foreground">Bring in a book</span>
+                    <span className="mt-3 block max-w-sm text-sm leading-relaxed text-muted-foreground">Choose a text-based PDF from your computer. You can begin reading as soon as the first usable pages are ready.</span>
+                    <span className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-[var(--rb-evidence)]">Choose your book <ArrowRight className="h-4 w-4" /></span>
                   </button>
                 </>
               )}
@@ -192,14 +192,14 @@ export function UploadBookDialog({
                     {!busy && <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={reset} aria-label="Remove file"><X className="h-4 w-4" /></Button>}
                   </div>
                   {!busy && <div className="space-y-2"><Label htmlFor="book-title" className="text-xs font-bold uppercase tracking-[.14em]">Book title <span className="font-normal normal-case tracking-normal text-muted-foreground">optional</span></Label><Input id="book-title" value={title} onChange={event => { setTitleTouched(true); setTitle(event.target.value); }} placeholder="Use the book title" className="h-12 rounded-xl border-border bg-card" /></div>}
-                  {busy && <div className="space-y-6"><div><p className="font-display text-3xl font-semibold tracking-[-.04em] text-foreground">{stage === "reading" ? "Reading the text…" : "Preparing your book…"}</p><p className="mt-2 text-sm text-muted-foreground">Reading will open as soon as basic structure is ready.</p></div><div className="h-px w-full overflow-hidden bg-border"><div className="h-full bg-[var(--rb-evidence)] transition-all duration-500" style={{ width: `${progress}%` }} /></div></div>}
+                  {busy && <div className="space-y-6"><div><p className="font-display text-3xl font-semibold tracking-[-.04em] text-foreground">{stage === "reading" ? "Finding the first readable page…" : "Setting the book on its shelf…"}</p><p className="mt-2 text-sm text-muted-foreground">You will be able to read before the deeper connections are finished.</p></div><div className="h-px w-full overflow-hidden bg-border"><div className="h-full bg-[var(--rb-evidence)] transition-all duration-500" style={{ width: `${progress}%` }} /></div></div>}
                   {!busy && <Button className="h-12 w-full rounded-xl bg-primary text-primary-foreground hover:opacity-90" onClick={() => void handleSubmit()}>Read this book <ArrowRight className="ml-2 h-4 w-4" /></Button>}
                 </div>
               )}
 
               {stage === "ready" && readyBook && (
                 <div className="space-y-7">
-                  <div className="border-b border-border pb-6"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[var(--rb-evidence)]">Ready to read</p><h3 className="mt-3 font-display text-4xl font-semibold tracking-[-.05em] text-foreground">{readyBook.title}</h3><p className="mt-3 text-sm leading-relaxed text-muted-foreground">{readyBook.pageCount} pages are ready. ReadBuddy is still getting to know the whole book.</p><Button className="mt-6 h-12 rounded-xl bg-primary px-6 text-primary-foreground hover:opacity-90" onClick={beginReading}>Start reading <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
+                  <div className="border-b border-border pb-6"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[var(--rb-evidence)]">Ready to read</p><h3 className="mt-3 font-display text-4xl font-semibold tracking-[-.05em] text-foreground">{readyBook.title}</h3><p className="mt-3 text-sm leading-relaxed text-muted-foreground">{readyBook.pageCount} pages are ready. ReadBuddy will keep learning the whole book without holding up your first chapter.</p><Button className="mt-6 h-12 rounded-xl bg-primary px-6 text-primary-foreground hover:opacity-90" onClick={beginReading}>Open the first page <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
                   <div><div className="flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-muted-foreground">Book Brain continues</p>{fullyUnderstood && <span className="text-xs font-semibold text-[var(--rb-success)]">I know this book now.</span>}</div><div className="mt-4 space-y-3">{BRAIN_STEPS.map((step, index) => { const stepState = getBrainStepState(passCompleted, index); const complete = stepState === "complete"; const active = stepState === "active"; return <div key={step} className="flex items-center gap-3 text-sm"><span className={`flex h-5 w-5 items-center justify-center rounded-full ${complete ? "bg-[var(--rb-success-surface)] text-[var(--rb-success)]" : active ? "bg-[var(--rb-evidence-surface)] text-[var(--rb-evidence)]" : "bg-muted text-muted-foreground"}`}>{complete ? <Check className="h-3 w-3" /> : active ? <Loader2 className="h-3 w-3 animate-spin" /> : <span className="text-[10px]">•</span>}</span><span className={complete ? "text-foreground" : "text-muted-foreground"}>{step}</span></div>; })}</div></div>
                 </div>
               )}

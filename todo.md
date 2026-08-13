@@ -446,3 +446,17 @@
 - [x] P0: defer failed Resend email delivery rather than expose a broken passwordless-link option
 - [x] P0: register every supported ReadBuddy production callback origin in Google Cloud and reject unsupported callback origins safely
 - [x] P1: remove the email-delivery surface until Resend sender verification is complete
+
+## Premium Conversion & Desirability Sprint
+
+- [x] Verify mixed vector/non-vector safe retrieval scoring and correct it only if genuinely unsafe
+- [x] Verify that Safe Ask Book gives grounded synthesis rather than an overly extractive answer
+- [x] Verify false-heading handling for uncertain ALL-CAPS PDF text and correct it only if still broken
+- [x] Record baseline typecheck, full test count, production build, desktop/mobile audit, and design findings
+- [x] Research premium conversion design principles and document an original ReadBuddy direction
+- [x] Redesign the landing page to demonstrate whole-book memory, evidence, and spoiler safety before account creation
+- [x] Elevate library, upload/Book Brain anticipation, and pricing presentation without new product features
+- [x] Refine reader typography, integrated AI moments, and mobile interaction quality without adding feature bloat
+- [x] Document the semantic visual system, type, color, spacing, and motion rules
+- [x] Run responsive desktop/tablet/mobile, accessibility, performance, full regression, and production build checks
+- [x] Write the real-user desirability study kit and full Premium Conversion & Desirability Sprint report

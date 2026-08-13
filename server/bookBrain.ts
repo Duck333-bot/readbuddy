@@ -1158,25 +1158,23 @@ export async function buildBrainContext(
           });
 
       if (eligible.length > 0) {
-        let scored: { passage: (typeof eligible)[number]; score: number }[] = [];
-        const withVectors = eligible.filter(passage => Array.isArray(passage.embedding));
-
-        if (withVectors.length > 0) {
-          const queryEmbedding = (await llmEmbedWithMeta(queryText)).embedding;
-          scored = withVectors.map(passage => {
-            const similarity = cosineSimilarity(queryEmbedding, (passage.embedding as number[]) ?? []);
-            // Hybrid: vectors lead, keywords break ties and rescue exact names.
-            return { passage, score: similarity + 0.15 * keywordOverlap(queryText, passage.text) };
-          });
-        } else {
-          // No vectors yet (brain still building): keyword + proximity fallback.
-          scored = eligible.map(passage => ({
+        const withVectors = eligible.some(passage => Array.isArray(passage.embedding));
+        const queryEmbedding = withVectors ? (await llmEmbedWithMeta(queryText)).embedding : null;
+        // Every eligible safe passage receives the same composable score. This is
+        // critical for clipped passages: their stored vectors contain unread text
+        // and are deliberately withheld, but they must still compete on grounded
+        // keyword and page-distance evidence rather than disappearing entirely.
+        const scored = eligible.map(passage => {
+          const keywordScore = keywordOverlap(queryText, passage.text);
+          const semanticScore = queryEmbedding && Array.isArray(passage.embedding)
+            ? Math.max(0, cosineSimilarity(queryEmbedding, passage.embedding as number[]))
+            : 0;
+          const proximityScore = 1 / (1 + Math.abs(passage.endPage - currentPage));
+          return {
             passage,
-            score:
-              keywordOverlap(queryText, passage.text) +
-              0.2 / (1 + Math.abs(passage.endPage - currentPage)),
-          }));
-        }
+            score: 0.55 * keywordScore + 0.35 * semanticScore + 0.1 * proximityScore,
+          };
+        });
 
         const top = scored
           .sort((a, b) => b.score - a.score)

@@ -84,7 +84,7 @@ export default function Library() {
         {/* Header */}
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[var(--rb-violet)]">Your private collection</p>
+            <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[var(--rb-violet)]">Your reading room</p>
             <h1 className="mt-2 font-display text-4xl font-semibold tracking-[-.05em] text-[var(--rb-ink)] sm:text-6xl">
               Good morning.
             </h1>
@@ -92,7 +92,7 @@ export default function Library() {
               {booksQuery.isLoading
                 ? "Opening your collection…"
                 : books.length === 0
-                ? "Nothing here yet — add your first book."
+                ? "Nothing here yet — bring in the first book you want to understand deeply."
                 : `${books.length} book${books.length === 1 ? "" : "s"}${
                     notebookCount.data
                       ? ` · ${notebookCount.data} notebook ${
@@ -128,7 +128,7 @@ export default function Library() {
             </div>
             <div className="relative min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--rb-sun)]">
-                Continue your journey
+                The page you left open
               </p>
               <h2 className="mt-1 truncate font-display text-xl font-semibold text-white">
                 {continueReading.title}
@@ -163,9 +163,9 @@ export default function Library() {
           ) : books.length === 0 ? (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="border-y border-border px-6 py-16 text-center sm:px-12 sm:py-24">
               <span className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--rb-night)] text-[var(--rb-sun)]"><LibraryIcon className="h-6 w-6" strokeWidth={1.6} /></span>
-              <h2 className="relative mt-6 font-display text-4xl font-semibold tracking-[-.05em] text-[var(--rb-ink)]">Your collection begins here.</h2>
-              <p className="relative mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">Bring a book you want to understand deeply. Start reading as soon as the text is ready; the deeper connections keep forming quietly.</p>
-              <Button className="relative mt-7 h-11 gap-2 rounded-xl bg-primary px-6 text-primary-foreground hover:opacity-90" onClick={openUpload}><Sparkles className="h-4 w-4 text-[var(--rb-sun)]" /> Add your first book</Button>
+              <h2 className="relative mt-6 font-display text-4xl font-semibold tracking-[-.05em] text-[var(--rb-ink)]">A reading room begins with one book.</h2>
+              <p className="relative mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">Bring a book you want to understand deeply. Start on the first usable page; the deeper connections keep forming quietly around your reading.</p>
+              <Button className="relative mt-7 h-11 gap-2 rounded-xl bg-primary px-6 text-primary-foreground hover:opacity-90" onClick={openUpload}><Sparkles className="h-4 w-4 text-[var(--rb-sun)]" /> Bring in your first book</Button>
             </motion.div>
           ) : (
             <div className="grid grid-cols-2 gap-x-6 gap-y-12 sm:grid-cols-3 lg:grid-cols-4">

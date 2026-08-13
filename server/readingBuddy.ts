@@ -139,15 +139,42 @@ function trimContext(pageText: string, highlight: string, budget = 4000): string
 export async function askReadingBuddy(req: BuddyRequest): Promise<string> {
   const context = trimContext(req.pageContext ?? "", req.highlight);
 
-  // Whole-book questions in spoiler-safe mode are extractive by design. This
-  // makes every claim visibly traceable to reached text rather than relying on
-  // a model to remember a famous book while wearing a citation.
+  // Whole-book questions in spoiler-safe mode receive a deliberately narrow
+  // synthesis prompt. It may explain the connection between reached passages,
+  // but a missing citation or unsupported proper term immediately falls back
+  // to exact evidence instead of allowing remembered book knowledge through.
   if (req.spoilerMode === "safe" && req.mode === "ask") {
+    const evidence = req.brainContext?.evidencePassages ?? "";
+    const suppliedSource = `${req.highlight}\n${context}\n${evidence}`;
+    if (!evidence.trim()) return safeExtractiveBookAnswer({
+      question: req.question ?? "",
+      highlight: req.highlight,
+      pageContext: context,
+      evidencePassages: evidence,
+      pageNumber: req.pageNumber,
+    });
+    const response = await llmCall("reading_buddy", {
+      messages: [
+        {
+          role: "system",
+          content: `${BASE_SYSTEM}\n\n${SOURCE_ONLY_RULES}\n\n${CITATION_RULES}\n\nSAFE BOOK QUESTION: Write 2–4 short sentences that directly answer the reader using only the supplied reached passages. You may connect or paraphrase facts already present in those passages, but do not add relationships, roles, motives, future events, or outside knowledge. Cite every book-specific sentence.`,
+        },
+        {
+          role: "user",
+          content: `REACHED BOOK EVIDENCE:\n${evidence}\n\nCURRENT PAGE:\n${context}\n\nQUESTION: ${req.question?.trim() ?? ""}`,
+        },
+      ],
+      temperature: 0.1,
+      max_tokens: 420,
+    });
+    const text = response.text.trim();
+    const hasCitation = /\[\[p\.\d+\]\]/.test(text);
+    if (text && hasCitation && findUnsupportedSafeProperTerms(text, suppliedSource).length === 0) return text;
     return safeExtractiveBookAnswer({
       question: req.question ?? "",
       highlight: req.highlight,
       pageContext: context,
-      evidencePassages: req.brainContext?.evidencePassages ?? "",
+      evidencePassages: evidence,
       pageNumber: req.pageNumber,
     });
   }
