@@ -78,3 +78,7 @@ The founder review must include: a visual language board, a Margin Marks icon bo
 ## Approval boundary
 
 This is a proposal only. It authorizes no additional production redesign. Implementation begins only after a founder explicitly approves the system and identifies which visual elements have earned their complexity.
+
+## Upload vocabulary guardrail
+
+In the Book Brain upload scene, **People** means the people, characters, and named entities that exist in the uploaded book. It must never imply that Book Brain is learning how the reader reads. **Reader Intelligence** is a separate, later layer that learns from a reader’s own highlights, questions, vocabulary, and preferences.

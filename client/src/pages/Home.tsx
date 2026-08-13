@@ -7,7 +7,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getFunnelVisitorId, markFunnelAuthIntent } from "@/lib/funnel";
 import { trpc } from "@/lib/trpc";
-import { EvidenceMoment, HeroMemoryCanvas, MemorySequence } from "@/components/marketing/MemorySequence";
+import { EvidenceMoment, HeroMemoryCanvas, MemorySequence, SpoilerBoundary } from "@/components/marketing/MemorySequence";
 
 const moments = [
   { icon: Highlighter, label: "When a sentence stops you", title: "Highlight it. Stay in the book.", copy: "Ask for a clearer explanation where you are, without opening a chat window or losing your place.", sample: "“What does this actually mean?”" },
@@ -40,19 +40,20 @@ export default function Home() {
           <div className="ml-auto flex items-center gap-2"><Button variant="ghost" className="h-10 px-3 text-sm" onClick={() => begin(false)}>Log in</Button><Button className="h-10 rounded-full bg-[#0e1838] px-4 text-[#fbf8f0] hover:bg-[#1b2c61]" onClick={() => begin(true)}>Begin reading <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button></div>
         </nav>
       </header>
-      <section className="relative overflow-hidden bg-[#fff9ef] px-5 pb-16 pt-14 sm:px-8 sm:pb-24 sm:pt-24">
-        <div className="absolute -left-28 bottom-0 h-72 w-72 rounded-full bg-[#aebdf4]/65" /><div className="absolute right-0 top-0 h-[30rem] w-[31rem] rounded-bl-[14rem] bg-[#ffa181]/60" /><div className="absolute right-[28%] top-5 h-28 w-28 rounded-full bg-[#b9ead7]/60" />
+      <section className="relative overflow-hidden bg-[var(--rb-terrain-paper)] px-5 pb-16 pt-14 sm:px-8 sm:pb-24 sm:pt-24">
+        <div className="absolute -left-28 bottom-0 h-72 w-72 bg-[var(--rb-terrain-periwinkle)]/66 [clip-path:polygon(0_0,100%_0,76%_82%,0_100%)]" /><div className="absolute right-0 top-0 h-[30rem] w-[31rem] bg-[var(--rb-terrain-blush)]/62 [clip-path:polygon(0_0,100%_0,100%_100%,33%_76%)]" /><div className="absolute right-[28%] top-5 h-28 w-28 bg-[var(--rb-terrain-mint)]/64 [clip-path:polygon(25%_0,100%_0,100%_100%,0_75%)]" />
         <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.78fr_1.22fr] lg:items-center lg:gap-16">
           <motion.div {...motionProps}>
-            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#6557e8]">A reading companion with a memory</p>
-            <h1 className="mt-5 max-w-xl font-display text-5xl font-semibold leading-[.93] tracking-[-.06em] text-[#131c38] sm:text-7xl">Read difficult books <em className="font-normal text-[#f26f35]">without getting lost.</em></h1>
-            <p className="mt-6 max-w-lg text-base leading-7 text-[#4d5974] sm:text-lg">ReadBuddy understands the book around you, remembers what you have already read, and helps at the exact moment something stops making sense.</p>
+            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-[var(--rb-terrain-ink)]">Memory · no spoilers · evidence</p>
+            <h1 className="mt-5 max-w-xl font-display text-5xl font-semibold leading-[.93] tracking-[-.06em] text-[var(--rb-terrain-ink)] sm:text-7xl">A book that <em className="font-normal text-[var(--rb-terrain-coral)]">remembers with you.</em></h1>
+            <p className="mt-6 max-w-lg text-base leading-7 text-[#4d5974] sm:text-lg">ReadBuddy remembers what you have reached, finds the earlier page that matters, and helps at the exact moment something stops making sense.</p>
             <div className="mt-8 flex flex-wrap items-center gap-4"><Button size="lg" className="h-12 rounded-full bg-[#131c38] px-6 font-semibold text-[#fff9ef] hover:bg-[#24335e]" onClick={() => begin(true)}>Bring your next book <ArrowRight className="ml-2 h-4 w-4" /></Button><span className="text-sm text-[#59657f]">Your books and reading stay private.</span></div>
           </motion.div>
           <motion.div {...motionProps}><HeroMemoryCanvas /></motion.div>
         </div>
       </section>
       <MemorySequence />
+      <SpoilerBoundary />
       <EvidenceMoment />
       <section className="px-5 py-20 sm:px-8 sm:py-28"><div className="mx-auto max-w-7xl">
         <div className="grid gap-7 border-b border-[#0e1838]/12 pb-10 lg:grid-cols-[.9fr_1.1fr] lg:items-end"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#7565e8]">The difference is context</p><h2 className="mt-4 max-w-xl font-display text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-6xl">You remember the sentence. <em className="font-normal text-[#7565e8]">ReadBuddy remembers where it came from.</em></h2></div><p className="max-w-xl text-base leading-7 text-[#666b7c]">Kindle holds the page. ChatGPT answers a question. ReadBuddy keeps the connection between this line, earlier evidence, and your own reading history visible.</p></div>

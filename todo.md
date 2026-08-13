@@ -538,3 +538,12 @@
 - [x] Create high-fidelity desktop and mobile proposal boards for three landing moments, one library concept, one upload concept, and one quiet reader concept
 - [x] Package the proposal with visual acceptance criteria proving “visually rich + premium + minimal” without generic SaaS, childish art, random gradients, or reader noise
 - [x] Stop for founder approval before any further production redesign or product-surface change
+
+## Approved Memory Terrain Implementation — Landing First
+
+- [x] Codify reusable Memory Terrain palette roles, Margin Marks direction, four approved primitives, and narrative motion tokens without replacing generic utility controls
+- [x] Implement only the expressive landing hero around “A book that remembers with you” and the current sentence → earlier passage → visible connection → understanding → return sequence
+- [x] Implement only the landing’s Memory, spoiler-awareness (“Only what you’ve reached”), and grounded-understanding (“Understand with evidence”) story scenes
+- [x] Preserve all working product behavior and tests; leave Upload, Library, final logo selection, and Reader implementation unchanged pending landing verification
+- [x] Correct the later mobile Upload concept copy to describe book people/characters/entities, not Reader Intelligence
+- [x] Test and visually verify desktop/mobile landing before proposing any Upload, Library, or Reader extension

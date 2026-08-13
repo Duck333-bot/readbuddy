@@ -57,6 +57,18 @@
   --rb-sun: #ffd269;
   --rb-coral: #f1786a;
   --rb-mint: #5ec5a1;
+  /* Memory Terrain — expressive product surfaces only. The reader continues
+     to use its quieter dedicated theme tokens below. */
+  --rb-terrain-paper: #fff8ee;
+  --rb-terrain-ink: #18213d;
+  --rb-terrain-periwinkle: #aab8f6;
+  --rb-terrain-powder: #b9daf2;
+  --rb-terrain-blush: #f3bec9;
+  --rb-terrain-mint: #b7e2cc;
+  --rb-terrain-butter: #f8d983;
+  --rb-terrain-coral: #f4775d;
+  --rb-terrain-gather: 360ms cubic-bezier(0.23, 1, 0.32, 1);
+  --rb-terrain-track: 520ms cubic-bezier(0.77, 0, 0.175, 1);
   --rb-night-surface: #101d3b;
   --rb-night-raised: #243864;
   --rb-on-night: #f9f5ed;
@@ -314,8 +326,33 @@
     background: var(--rb-violet);
     clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
   }
+  .rb-terrain-paper {
+    background: var(--rb-terrain-paper);
+  }
+  .rb-margin-thread {
+    stroke: var(--rb-terrain-coral);
+    stroke-linecap: round;
+    stroke-dasharray: 2 7;
+  }
+  .rb-page-shard {
+    background: #fffdf8;
+    box-shadow: 0 18px 30px color-mix(in oklab, var(--rb-terrain-ink) 13%, transparent);
+    clip-path: polygon(0 0, 100% 0, 100% 91%, 88% 100%, 0 100%);
+  }
+  .rb-evidence-bracket {
+    border-left: 2px solid var(--rb-terrain-periwinkle);
+  }
+  .rb-return-tab {
+    background: color-mix(in oklab, var(--rb-terrain-paper) 90%, var(--rb-terrain-periwinkle));
+    box-shadow: 0 9px 20px color-mix(in oklab, var(--rb-terrain-ink) 10%, transparent);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 12% 100%, 0 72%);
+  }
+  .rb-terrain-reveal {
+    transition: opacity var(--rb-terrain-gather), transform var(--rb-terrain-gather);
+  }
   @media (prefers-reduced-motion: reduce) {
     .reader-chrome { transition: none; }
+    .rb-terrain-reveal { transition: none; }
   }
 }
 

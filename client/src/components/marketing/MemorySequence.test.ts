@@ -5,11 +5,11 @@ describe("ReadBuddy marketing memory sequence", () => {
   it("keeps the approved five-stage story in order", () => {
     expect(memorySequenceStages).toHaveLength(5);
     expect(memorySequenceStages.map((stage) => stage.eyebrow)).toEqual([
-      "0% · The pause",
-      "25% · The thread",
-      "50% · The evidence",
-      "75% · The context",
-      "100% · Back to reading",
+      "Memory · current sentence",
+      "Memory · earlier passage",
+      "Memory · visible connection",
+      "Grounded understanding",
+      "Return to reading",
     ]);
   });
 

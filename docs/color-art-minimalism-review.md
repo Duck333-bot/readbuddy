@@ -57,6 +57,8 @@ The library is a personal reading collection, not a dashboard. Books remain the 
 
 The upload moment should feel like a book opening into a small, orderly world. The product promise remains non-blocking: reading can begin while the book is still being understood.
 
+> In this scene, **People** means book characters and named entities. It does not mean Reader Intelligence or a model of the reader; that is a separate ReadBuddy capability.
+
 ## 6. Quiet reader concept
 
 | Desktop | Mobile |
