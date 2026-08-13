@@ -1117,7 +1117,10 @@ export async function buildBrainContext(
         entity.firstSeen !== null
           ? ` (first seen p.${entity.firstSeen}${entity.lastSeen && entity.lastSeen !== entity.firstSeen ? `, most recently p.${entity.lastSeen}` : ""})`
           : " (no confirmed page evidence yet)";
-      return `• ${entity.name} (${entity.type})${seen}: ${entity.description}`;
+      // Safe mode must not expose whole-book generated descriptions; the page
+      // evidence is enough for a grounded Who? response.
+      const description = spoilerMode === "full" ? `: ${entity.description}` : "";
+      return `• ${entity.name} (${entity.type})${seen}${description}`;
     })
     .join("\n");
 
@@ -1260,9 +1263,9 @@ export async function buildBrainContext(
   return {
     overallSummary: safeOverallSummary,
     themes: safeThemes,
-    chapterContext,
+    chapterContext: spoilerMode === "safe" ? null : chapterContext,
     relevantEntities,
-    keyPassagesNearby,
+    keyPassagesNearby: spoilerMode === "safe" ? "" : keyPassagesNearby,
     semanticChunks,
     brainReady,
     passCompleted,

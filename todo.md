@@ -405,15 +405,15 @@
 ### Foundation
 - [x] BOOK_BRAIN_VERSION with stale detection and safe background rebuild preserving PDF/pages
 - [x] Regression tests for every task above; keep all existing tests passing
-- [ ] Manual verification of Scenarios A–G in browser
+- [x] Manual verification of Scenarios A–G in browser
 
 ## Authorized Long-Book Verification — Dune PDF
 
 - [x] Inspect the authorized PDF for page count, text availability, outline, and safe upload suitability
 - [x] Upload the authorized long-book PDF and verify the non-blocking reader plus Book Brain v4 background pipeline
-- [ ] Verify long-book retrieval, safe spoiler boundary, evidence-page jump/back, and multi-highlight persistence
-- [ ] Verify Define/Translate, mobile controls, night surface, conservative text layout, and resume gate on the real book
-- [ ] Update the Trust Before Growth report and readiness recommendation from real long-book evidence
+- [x] Verify long-book retrieval, safe spoiler boundary, evidence-page jump/back, and multi-highlight persistence
+- [x] Verify Define/Translate, mobile controls, night surface, conservative text layout, and resume gate on the real book
+- [x] Update the Trust Before Growth report and readiness recommendation from real long-book evidence
 
 ## Dune Verification Blocker
 
@@ -421,9 +421,11 @@
 - [x] P0: make scheduled Book Brain work mutually exclusive and resumable for long books; preserve staged v4 progress across runs and add concurrency/progress regressions
 - [x] P0: when the configured AI provider is unavailable or exhausted, pause Book Brain safely with staged work intact instead of repeatedly failing/retrying chunks
 - [x] P0: resume a paused Book Brain only after a bounded cooldown, then continue the same staged queue without rebuilding it
-- [ ] P0: route whole-book synthesis through the available DeepSeek provider when the shared OpenAI-compatible route is unavailable
-- [ ] P0: safe retrieval must clip an overlapping evidence passage to the reader’s current page instead of excluding all early-page evidence
-- [ ] P0: entity extraction must record named characters on early narrative pages so safe Who? can answer from actual page evidence
-- [ ] P1: Night mode settings popover must use dark semantic surfaces instead of bright paper styling
-- [ ] P1: Resume recap must describe the actual reopened page, not stale last-progress text after a direct page jump
-- [ ] P0: bump the Book Brain analysis version so existing completed books safely rebuild with corrected source-derived entity evidence
+- [x] P0: route whole-book synthesis through the available DeepSeek provider when the shared OpenAI-compatible route is unavailable
+- [x] P0: safe retrieval must clip an overlapping evidence passage to the reader’s current page instead of excluding all early-page evidence
+- [x] P0: entity extraction must record named characters on early narrative pages so safe Who? can answer from actual page evidence
+- [x] P1: Night mode settings popover must use dark semantic surfaces instead of bright paper styling
+- [x] P1: Resume recap must describe the actual reopened page, not stale last-progress text after a direct page jump
+- [x] P0: bump the Book Brain analysis version so existing completed books safely rebuild with corrected source-derived entity evidence
+- [x] P0: safe-mode answers must not add book facts unsupported by the supplied passage evidence, even when their page citation is valid
+- [x] P1: make the mobile Ask Book entry visibly named rather than an unexplained icon in the phone reader header

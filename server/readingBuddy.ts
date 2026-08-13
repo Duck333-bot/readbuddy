@@ -1,5 +1,6 @@
 import { llmCall } from "./llm/router";
 import * as db from "./db";
+import { findUnsupportedSafeProperTerms, safeEvidenceFallback, safeExtractiveBookAnswer } from "./safeAnswerGuard";
 
 export const BUDDY_MODES = [
   "explain",
@@ -138,6 +139,19 @@ function trimContext(pageText: string, highlight: string, budget = 4000): string
 export async function askReadingBuddy(req: BuddyRequest): Promise<string> {
   const context = trimContext(req.pageContext ?? "", req.highlight);
 
+  // Whole-book questions in spoiler-safe mode are extractive by design. This
+  // makes every claim visibly traceable to reached text rather than relying on
+  // a model to remember a famous book while wearing a citation.
+  if (req.spoilerMode === "safe" && req.mode === "ask") {
+    return safeExtractiveBookAnswer({
+      question: req.question ?? "",
+      highlight: req.highlight,
+      pageContext: context,
+      evidencePassages: req.brainContext?.evidencePassages ?? "",
+      pageNumber: req.pageNumber,
+    });
+  }
+
   const languageLine =
     req.mode === "translate"
       ? `Target language for the translation: ${req.targetLanguage?.trim() || "English"}.`
@@ -153,7 +167,7 @@ export async function askReadingBuddy(req: BuddyRequest): Promise<string> {
     if (bc.themes.length > 0) {
       brainLines.push("MAIN THEMES: " + bc.themes.join(", "));
     }
-    if (bc.chapterContext) {
+    if (bc.chapterContext && req.spoilerMode !== "safe") {
       brainLines.push("CURRENT CHAPTER CONTEXT:", bc.chapterContext);
     }
     if (!bc.chapterClaimsAllowed) {
@@ -181,7 +195,7 @@ export async function askReadingBuddy(req: BuddyRequest): Promise<string> {
         .join("\n");
       brainLines.push("ENTITY PAGE EVIDENCE (the only page numbers you may use for Who?):", cards);
     }
-    if (bc.keyPassagesNearby) {
+    if (bc.keyPassagesNearby && req.spoilerMode !== "safe") {
       brainLines.push("NEARBY KEY PASSAGES:", bc.keyPassagesNearby);
     }
     if (bc.evidencePassages) {
@@ -300,6 +314,19 @@ export async function askReadingBuddy(req: BuddyRequest): Promise<string> {
   const text = response.text.trim();
   if (!text) {
     throw new Error("The reading buddy returned an empty answer. Please try again.");
+  }
+  if (req.spoilerMode === "safe") {
+    const suppliedSource = [
+      req.bookTitle,
+      req.highlight,
+      context,
+      req.brainContext?.evidencePassages ?? "",
+      req.brainContext?.semanticChunks ?? "",
+      req.brainContext?.relevantEntities ?? "",
+    ].join("\n");
+    if (findUnsupportedSafeProperTerms(text, suppliedSource).length > 0) {
+      return safeEvidenceFallback(req.highlight, req.pageNumber);
+    }
   }
   return text;
 }

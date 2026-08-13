@@ -945,9 +945,10 @@ export default function Reader() {
               setBookAskOpen(true);
               trackEvent.mutate({ event: "book_question_open", bookId, pageNumber: pageNumber ?? 1 });
             }}
-            className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:hidden"
+            className="flex h-9 items-center gap-1 rounded-md px-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:hidden"
             aria-label="Ask this book">
-            <BookOpen className="h-4 w-4" />
+            <BookOpen className="h-3.5 w-3.5" />
+            Ask
           </button>
 
           <button
