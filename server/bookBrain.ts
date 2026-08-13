@@ -30,14 +30,14 @@ import {
  * Books stored below this version are treated as stale and rebuilt in the
  * background; the PDF and extracted pages are never touched.
  */
-export const BOOK_BRAIN_VERSION = 4;
+export const BOOK_BRAIN_VERSION = 5;
 
 /** An older completed analysis is stale even if all of its old passes finished. */
 export function needsBookBrainRebuild(analysisVersion: number | null | undefined, passCompleted: number | null | undefined): boolean {
   return (passCompleted ?? 0) < 4 || (analysisVersion ?? 0) < BOOK_BRAIN_VERSION;
 }
 
-/** A staged v4 job must continue from its saved stage, never delete its own partial work. */
+/** A staged current-version job must continue from its saved stage, never delete its own partial work. */
 export function shouldInitialiseBookBrainStage(
   pipelineVersion: number | null | undefined,
   pipelineStage: string | null | undefined,
@@ -330,10 +330,55 @@ type ChunkEntity = {
 };
 
 const ENTITY_TYPES = new Set(["person", "place", "concept", "term", "other"]);
+const NON_ENTITY_CAPITALS = new Set([
+  "a", "an", "and", "as", "at", "by", "for", "from", "he", "her", "his", "i", "if", "in", "is", "it", "my", "no", "of", "on", "or", "she", "so", "the", "their", "there", "this", "to", "we", "with", "yes", "yet", "you", "your", "your reverence", "your grace", "my lord",
+]);
 
 /** Normalize a name so aliases with different spacing/case merge safely. */
 export function normalizeEntityKey(name: string): string {
   return name.replace(/\s+/g, " ").trim().toLowerCase().replace(/^(the|a|an)\s+/, "");
+}
+
+/** Keep page evidence for cautious source-name candidates that a chunk summary omits. */
+export function extractSourceNamedMentions(
+  pages: { pageNumber: number; content: string }[],
+): { name: string; type: string; pages: number[]; relationships: { name: string; relation: string; page: number }[] }[] {
+  const mentions = new Map<string, { name: string; pages: Set<number> }>();
+  const pattern = /\b[A-Z][a-z]{2,}(?:[-'][A-Z][a-z]{2,})?(?:\s+[A-Z][a-z]{2,}(?:[-'][A-Z][a-z]{2,})?){0,2}\b/g;
+  for (const page of pages) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(page.content)) !== null) {
+      const surface = match[0].replace(/^(?:The|An|A)\s+/, "").trim();
+      const words = surface.toLowerCase().split(/\s+/);
+      if (!surface || words.every(word => NON_ENTITY_CAPITALS.has(word))) continue;
+      const key = normalizeEntityKey(surface);
+      if (!key || NON_ENTITY_CAPITALS.has(key)) continue;
+      const existing = mentions.get(key);
+      if (existing) existing.pages.add(page.pageNumber);
+      else mentions.set(key, { name: surface, pages: new Set([page.pageNumber]) });
+    }
+  }
+  return Array.from(mentions.values()).map(mention => ({
+    name: mention.name,
+    type: "person",
+    pages: Array.from(mention.pages).sort((a, b) => a - b),
+    relationships: [],
+  }));
+}
+
+function pagesFromChunkText(text: string) {
+  const pages: { pageNumber: number; content: string }[] = [];
+  const marker = /\[Page\s+(\d+)\]\n/g;
+  const matches = Array.from(text.matchAll(marker));
+  for (let index = 0; index < matches.length; index++) {
+    const current = matches[index]!;
+    const next = matches[index + 1];
+    pages.push({
+      pageNumber: Number(current[1]),
+      content: text.slice((current.index ?? 0) + current[0].length, next?.index ?? text.length).trim(),
+    });
+  }
+  return pages;
 }
 
 /**
@@ -723,7 +768,15 @@ async function processChunkBatch(bookId: number) {
       const response = await llmCall("chunk_analysis", { messages: [{ role: "user", content: makeChunkPrompt(chunk.text, chunk.startPage, chunk.endPage) }], temperature: 0.3, max_tokens: 1100 });
       const analysis = parseJson(response.text, { summary: "", entities: [] as ChunkEntity[], concepts: [] as string[], keyPassages: [] as { text: string; reason: string }[] });
       const validPages = new Set(Array.from({ length: chunk.endPage - chunk.startPage + 1 }, (_, i) => chunk.startPage + i));
-      const entityEvidence = normalizeChunkEntities(analysis.entities, validPages);
+      const entityMap = new Map<string, { name: string; type: string; pages: Set<number>; relationships: { name: string; relation: string; page: number }[] }>();
+      mergeEntityEvidence(entityMap, normalizeChunkEntities(analysis.entities, validPages));
+      mergeEntityEvidence(entityMap, extractSourceNamedMentions(pagesFromChunkText(chunk.text)));
+      const entityEvidence = Array.from(entityMap.values()).map(entity => ({
+        name: entity.name,
+        type: entity.type,
+        pages: Array.from(entity.pages).sort((a, b) => a - b),
+        relationships: dedupeRelationships(entity.relationships),
+      }));
       await db.updateBookChunkAnalysis(chunk.id, { summary: analysis.summary, entities: entityEvidence.map(entity => entity.name), entityEvidence, concepts: analysis.concepts, keyPassages: analysis.keyPassages, status: "done" });
     } catch (error) {
       if (isProviderAvailabilityError(error)) {
@@ -931,6 +984,31 @@ function keywordOverlap(query: string, text: string): number {
   return hits / terms.length;
 }
 
+/**
+ * Retrieval windows overlap pages by design. In safe mode, retain only the
+ * reached page markers instead of discarding an otherwise useful window that
+ * extends one or more pages into the reader's future.
+ */
+export function clipEvidencePassageToPageLimit(
+  text: string,
+  startPage: number,
+  endPage: number,
+  pageLimit: number,
+): { text: string; startPage: number; endPage: number } | null {
+  if (startPage > pageLimit) return null;
+  if (endPage <= pageLimit) return { text, startPage, endPage };
+  const sections = text.split(/(?=\[p\.\d+\])/i);
+  const reached = sections.map(section => section.trim()).filter(section => {
+    const match = section.match(/^\[p\.(\d+)\]/i);
+    return match ? Number(match[1]) <= pageLimit : false;
+  });
+  if (reached.length === 0) return null;
+  const first = reached[0]!.match(/^\[p\.(\d+)\]/i);
+  const last = reached[reached.length - 1]!.match(/^\[p\.(\d+)\]/i);
+  if (!first || !last) return null;
+  return { text: reached.join("\n\n"), startPage: Number(first[1]), endPage: Number(last[1]) };
+}
+
 export async function buildBrainContext(
   bookId: number,
   currentPage: number,
@@ -1009,6 +1087,29 @@ export async function buildBrainContext(
     .filter(entity => spoilerMode === "full" || entity.seenPages.length > 0)
     .map(({ seenPages, ...entity }) => entity);
 
+  // Older completed Book Brains may pre-date source-derived entity evidence.
+  // The current page is safe by definition, so retain cautious name/page facts
+  // from it rather than making Who? silently fail until a future rebuild.
+  const currentPageSource = await db.getBookPage(bookId, currentPage);
+  if (currentPageSource?.content) {
+    for (const mention of extractSourceNamedMentions([{ pageNumber: currentPage, content: currentPageSource.content }])) {
+      const existing = entityEvidence.find(entity => normalizeEntityKey(entity.name) === normalizeEntityKey(mention.name));
+      if (existing) {
+        existing.firstSeen = existing.firstSeen === null ? currentPage : Math.min(existing.firstSeen, currentPage);
+        existing.lastSeen = existing.lastSeen === null ? currentPage : Math.max(existing.lastSeen, currentPage);
+      } else {
+        entityEvidence.push({
+          name: mention.name,
+          type: mention.type,
+          description: "",
+          firstSeen: currentPage,
+          lastSeen: currentPage,
+          relationships: [],
+        });
+      }
+    }
+  }
+
   const relevantEntities = entityEvidence
     .slice(0, 15)
     .map(entity => {
@@ -1036,9 +1137,22 @@ export async function buildBrainContext(
   if (queryText && passCompleted >= 2) {
     try {
       const passages = await db.getRetrievalPassages(bookId, activeAnalysisVersion);
-      const eligible = passages.filter(passage =>
-        spoilerMode === "full" ? true : passage.endPage <= pageLimit,
-      );
+      const eligible = spoilerMode === "full"
+        ? passages
+        : passages.flatMap(passage => {
+            const clipped = clipEvidencePassageToPageLimit(
+              passage.text,
+              passage.startPage,
+              passage.endPage,
+              pageLimit,
+            );
+            // A clipped passage deliberately has no stored vector because its
+            // original vector contains unread text. Exact keyword matching
+            // still retrieves it without admitting future content.
+            return clipped
+              ? [{ ...passage, ...clipped, embedding: passage.endPage <= pageLimit ? passage.embedding : null }]
+              : [];
+          });
 
       if (eligible.length > 0) {
         let scored: { passage: (typeof eligible)[number]; score: number }[] = [];

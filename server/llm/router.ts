@@ -4,7 +4,7 @@
  * Routes each task type to the most appropriate provider/model combination:
  * - Chunk analysis (bulk, cheap): DeepSeek if available, else OpenAI gpt-4o-mini
  * - Chapter synthesis: DeepSeek if available, else OpenAI gpt-4o-mini
- * - Book synthesis: OpenAI gpt-4o (stronger model for the final synthesis)
+ * - Book synthesis: DeepSeek when configured; Forge OpenAI-compatible fallback
  * - Embeddings: OpenAI text-embedding-3-small (DeepSeek has no embeddings)
  * - Reading buddy (live): DeepSeek if available, else OpenAI gpt-4o-mini
  * - Reading buddy hard: OpenAI gpt-4o (fallback for complex questions)
@@ -34,8 +34,12 @@ function getConfig(task: LLMTask): TaskConfig {
         : { provider: openaiProvider, model: "gpt-4o-mini" };
 
     case "book_synthesis":
-      // Whole-book synthesis benefits from a stronger model.
-      return { provider: openaiProvider, model: "gpt-4o-mini" };
+      // A finished book brain is more valuable than a stronger-model preference
+      // that leaves a long book permanently paused. Use the configured bulk
+      // provider, while retaining Forge as the no-credential fallback.
+      return hasDeepSeek()
+        ? { provider: deepseekProvider, model: "deepseek-chat" }
+        : { provider: openaiProvider, model: "gpt-4o-mini" };
 
     case "embedding":
       // Only OpenAI has embeddings for now.

@@ -3,6 +3,7 @@
  * Covers: chapter detection, chunk splitting, cosine similarity, spoiler-aware retrieval.
  */
 import { describe, expect, it } from "vitest";
+import { clipEvidencePassageToPageLimit, extractSourceNamedMentions } from "./bookBrain";
 
 // --- Import the pure functions we can test without DB ---
 // We test the logic by importing the module and calling internal helpers via
@@ -385,5 +386,39 @@ describe("P0-4: Embeddings provider metadata", () => {
     expect(vec).toHaveLength(512);
     const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0));
     expect(norm).toBeCloseTo(1.0, 3);
+  });
+});
+
+describe("P0: safe retrieval evidence clipping", () => {
+  it("keeps reached text from a retrieval window that crosses the reader boundary", () => {
+    const clipped = clipEvidencePassageToPageLimit(
+      "[p.11] Earlier context\n\n[p.12] Reached text\n\n[p.13] Future text",
+      11,
+      13,
+      12,
+    );
+    expect(clipped).toEqual({
+      startPage: 11,
+      endPage: 12,
+      text: "[p.11] Earlier context\n\n[p.12] Reached text",
+    });
+  });
+
+  it("rejects a retrieval window that begins after the reader boundary", () => {
+    expect(clipEvidencePassageToPageLimit("[p.13] Future text", 13, 13, 12)).toBeNull();
+  });
+});
+
+describe("P0: source-derived entity page evidence", () => {
+  it("records named characters on early narrative pages when chunk analysis omits them", () => {
+    const entities = extractSourceNamedMentions([
+      { pageNumber: 12, content: "Paul watched Jessica speak to the old woman. Yet, the room was silent." },
+      { pageNumber: 13, content: "Jessica turned toward Paul." },
+    ]);
+    expect(entities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "Paul", pages: [12, 13] }),
+      expect.objectContaining({ name: "Jessica", pages: [12, 13] }),
+    ]));
+    expect(entities.map(entity => entity.name)).not.toContain("Yet");
   });
 });

@@ -30,6 +30,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { progressPercent } from "@/lib/format";
 import { getFunnelVisitorId } from "@/lib/funnel";
+import { shouldOfferResumeRecap } from "@/lib/readerResume";
 import { readSelection, type ReaderSelection } from "@/lib/selection";
 import { trpc } from "@/lib/trpc";
 import {
@@ -602,12 +603,13 @@ export default function Reader() {
     { enabled: !!debriefChapter && showDebrief },
   );
 
-  // Show resume card when returning to a book (has progress, not dismissed)
+  // A URL page is intentional navigation (e.g. evidence jump), not saved-progress resume.
   useEffect(() => {
-    if (resumeQuery.data && !resumeDismissed && !resumeOpen) {
+    if (shouldOfferResumeRecap(search, Boolean(resumeQuery.data)) && !resumeDismissed && !resumeOpen) {
       setResumeOpen(true);
     }
-  }, [resumeQuery.data]);
+    if (new URLSearchParams(search).has("page")) setResumeOpen(false);
+  }, [resumeQuery.data, resumeDismissed, resumeOpen, search]);
 
   const goTo = useCallback(
     (page: number) => {

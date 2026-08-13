@@ -278,6 +278,20 @@
     --reader-highlight-pink: color-mix(in oklab, #f472b6 33%, transparent);
     --reader-highlight-green: color-mix(in oklab, #34d399 33%, transparent);
   }
+  html[data-readbuddy-reader-theme="dark"] .reader-settings-popover {
+    background-color: #242323 !important;
+    color: #e8e0d0;
+    border-color: #47423d;
+  }
+  html[data-readbuddy-reader-theme="dark"] .reader-settings-popover .bg-card {
+    background-color: #302e2c;
+  }
+  html[data-readbuddy-reader-theme="dark"] .reader-settings-popover .reader-settings-inset {
+    background-color: #37314b;
+  }
+  html[data-readbuddy-reader-theme="dark"] .reader-settings-popover .text-muted-foreground {
+    color: #c2b9ab;
+  }
   .reader-surface :focus-visible {
     outline: 2px solid var(--reader-accent);
     outline-offset: 3px;
