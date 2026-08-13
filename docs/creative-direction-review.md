@@ -70,9 +70,27 @@ The following visual boards are founder-review materials only. They are not prod
 
 | Direction | Desktop board | Mobile board | What to judge first |
 |---|---|---|---|
-| **A — The Living Book** | [Open desktop concept](/manus-storage/readbuddy-direction-a-living-book-desktop_554ecc07.png) | [Open mobile concept](/manus-storage/readbuddy-direction-a-living-book-mobile_92ce1cfb.png) | Does the active margin feel intelligent but still let the book stay central? |
-| **B — Intellectual Editorial** | [Open desktop concept](/manus-storage/readbuddy-direction-b-intellectual-editorial-desktop_86ee23c3.png) | [Open mobile concept](/manus-storage/readbuddy-direction-b-intellectual-editorial-mobile_d16b64f0.png) | Does the editorial authority feel aspirational rather than like schoolwork? |
-| **C — The Reading Journey** | [Open desktop concept](/manus-storage/readbuddy-direction-c-reading-journey-desktop_4bfadfbc.png) | [Open mobile concept](/manus-storage/readbuddy-direction-c-reading-journey-mobile_2a6b623a.png) | Does the journey create ownership without becoming a gamified tracker? |
+| **A — The Living Book** | [Open desktop concept](assets/creative-direction/a-desktop.webp) | [Open mobile concept](assets/creative-direction/a-mobile.webp) | Does the active margin feel intelligent but still let the book stay central? |
+| **B — Intellectual Editorial** | [Open desktop concept](assets/creative-direction/b-desktop.webp) | [Open mobile concept](assets/creative-direction/b-mobile.webp) | Does the editorial authority feel aspirational rather than like schoolwork? |
+| **C — The Reading Journey** | [Open desktop concept](assets/creative-direction/c-desktop.webp) | [Open mobile concept](assets/creative-direction/c-mobile.webp) | Does the journey create ownership without becoming a gamified tracker? |
+
+### Direction A — The Living Book
+
+[![Direction A desktop board](assets/creative-direction/a-desktop.webp)](assets/creative-direction/a-desktop.webp)
+
+[![Direction A mobile board](assets/creative-direction/a-mobile.webp)](assets/creative-direction/a-mobile.webp)
+
+### Direction B — Intellectual Editorial
+
+[![Direction B desktop board](assets/creative-direction/b-desktop.webp)](assets/creative-direction/b-desktop.webp)
+
+[![Direction B mobile board](assets/creative-direction/b-mobile.webp)](assets/creative-direction/b-mobile.webp)
+
+### Direction C — The Reading Journey
+
+[![Direction C desktop board](assets/creative-direction/c-desktop.webp)](assets/creative-direction/c-desktop.webp)
+
+[![Direction C mobile board](assets/creative-direction/c-mobile.webp)](assets/creative-direction/c-mobile.webp)
 
 ## Critical scorecard
 

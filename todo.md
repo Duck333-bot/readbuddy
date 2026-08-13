@@ -476,8 +476,10 @@
 ## Approved Custom Hybrid — A + B + C
 
 - [x] Founder direction: use The Living Book as the product metaphor, Intellectual Editorial for reading/trust discipline, and The Reading Journey for marketing-only storytelling
-- [x] Package the six actual A/B/C desktop and mobile concept boards as committed, accessible founder-review assets and repair every review link
-- [ ] Re-present the accessible boards for founder confirmation before any production visual implementation
+- [ ] Commit all six actual A/B/C desktop and mobile boards under `docs/assets/creative-direction/` and repair every review link with normal relative GitHub paths
+- [ ] Embed inline thumbnail previews for all six boards in `docs/creative-direction-review.md`
+- [ ] Verify all six raw GitHub image URLs and the review document through anonymous public URLs
+- [ ] Re-present the publicly accessible boards for founder confirmation before any production visual implementation
 - [ ] After asset approval only: implement the Custom Hybrid hero, first scroll sequence, and signature margin-memory/evidence moment on desktop and mobile
 - [ ] Verify the limited visual implementation without extending into a full-site redesign
 
