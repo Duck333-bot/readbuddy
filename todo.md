@@ -531,3 +531,10 @@
 - [x] Implement only the signature interactive memory/evidence moment using Margin Thread, Page Shard, Evidence Bracket, and Return Tab
 - [x] Preserve the existing calm reader direction and keep all brand-mark studies explicitly exploratory
 - [x] Add focused UI behavior tests, visually review desktop/mobile, and checkpoint the limited release
+
+## Color, Art, Graphics, Icons, and Minimalism Reset — Founder Proposal Required
+
+- [x] Define a richer controlled palette, editorial art direction, custom icon direction, four-primitives graphic system, and narrative motion rules
+- [x] Create high-fidelity desktop and mobile proposal boards for three landing moments, one library concept, one upload concept, and one quiet reader concept
+- [x] Package the proposal with visual acceptance criteria proving “visually rich + premium + minimal” without generic SaaS, childish art, random gradients, or reader noise
+- [x] Stop for founder approval before any further production redesign or product-surface change
