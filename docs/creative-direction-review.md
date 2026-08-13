@@ -70,9 +70,9 @@ The following visual boards are founder-review materials only. They are not prod
 
 | Direction | Desktop board | Mobile board | What to judge first |
 |---|---|---|---|
-| **A — The Living Book** | [Open desktop concept](/manus-storage/readbuddy-direction-a-living-book-desktop_06229c2c.png) | [Open mobile concept](/manus-storage/readbuddy-direction-a-living-book-mobile_60f9106c.png) | Does the active margin feel intelligent but still let the book stay central? |
-| **B — Intellectual Editorial** | [Open desktop concept](/manus-storage/readbuddy-direction-b-intellectual-editorial-desktop_f6c84d46.png) | [Open mobile concept](/manus-storage/readbuddy-direction-b-intellectual-editorial-mobile_12086a9a.png) | Does the editorial authority feel aspirational rather than like schoolwork? |
-| **C — The Reading Journey** | [Open desktop concept](/manus-storage/readbuddy-direction-c-reading-journey-desktop_5aacbd18.png) | [Open mobile concept](/manus-storage/readbuddy-direction-c-reading-journey-mobile_22926354.png) | Does the journey create ownership without becoming a gamified tracker? |
+| **A — The Living Book** | [Open desktop concept](/manus-storage/readbuddy-direction-a-living-book-desktop_554ecc07.png) | [Open mobile concept](/manus-storage/readbuddy-direction-a-living-book-mobile_92ce1cfb.png) | Does the active margin feel intelligent but still let the book stay central? |
+| **B — Intellectual Editorial** | [Open desktop concept](/manus-storage/readbuddy-direction-b-intellectual-editorial-desktop_86ee23c3.png) | [Open mobile concept](/manus-storage/readbuddy-direction-b-intellectual-editorial-mobile_d16b64f0.png) | Does the editorial authority feel aspirational rather than like schoolwork? |
+| **C — The Reading Journey** | [Open desktop concept](/manus-storage/readbuddy-direction-c-reading-journey-desktop_4bfadfbc.png) | [Open mobile concept](/manus-storage/readbuddy-direction-c-reading-journey-mobile_2a6b623a.png) | Does the journey create ownership without becoming a gamified tracker? |
 
 ## Critical scorecard
 
@@ -122,6 +122,14 @@ Please approve one of the following exactly:
 5. **Revise directions** with specific feedback
 
 After approval, the next implementation plan will convert the chosen direction into a design-token system, responsive pages, loading and interaction states, and a final accessibility/performance pass. Until then, this project remains unchanged in production.
+
+## Founder decision — Custom Hybrid A + B + C
+
+**Approved direction:** The Living Book supplies the signature product metaphor: a book becomes intelligent around the reader through margin memory, earlier passages, and evidence. Intellectual Editorial supplies the discipline for reader typography, citations, privacy, and trust. The Reading Journey is limited to cinematic marketing storytelling that demonstrates memory, evidence, spoiler boundaries, and “I’m Lost.”
+
+**Visual constraint:** ReadBuddy must feel like a beautiful book coming alive around the reader: warm, human, artistic, and cinematic. It must not become neon sci-fi, constellation-themed, fantasy-like, overly academic, or a navy/purple AI SaaS product. Marketing may be dramatic; the reader must become almost invisible.
+
+**Implementation gate:** The accessible boards above must be reviewed before production visual work begins. Once the founder confirms the actual boards are accessible and acceptable, implementation is limited to the hero, first scroll sequence, and strongest margin-memory/evidence moment on desktop and mobile. No full-site redesign is authorized in that next build.
 
 ## References
 

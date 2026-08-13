@@ -473,6 +473,14 @@
 - [x] Score all directions critically, recommend one, and prepare the founder approval gate
 - [x] Stop after founder review; do not implement, deploy, or modify production code until a direction is explicitly approved
 
+## Approved Custom Hybrid — A + B + C
+
+- [x] Founder direction: use The Living Book as the product metaphor, Intellectual Editorial for reading/trust discipline, and The Reading Journey for marketing-only storytelling
+- [x] Package the six actual A/B/C desktop and mobile concept boards as committed, accessible founder-review assets and repair every review link
+- [ ] Re-present the accessible boards for founder confirmation before any production visual implementation
+- [ ] After asset approval only: implement the Custom Hybrid hero, first scroll sequence, and signature margin-memory/evidence moment on desktop and mobile
+- [ ] Verify the limited visual implementation without extending into a full-site redesign
+
 ## Independent ReadBuddy Authentication
 
 - [x] Audit all logout, login, callback, fallback, and navigation paths for legacy Manus identity redirects or branding
