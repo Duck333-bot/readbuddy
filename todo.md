@@ -472,3 +472,11 @@
 - [x] Generate high-fidelity desktop and mobile concept boards for all three directions without modifying production code
 - [x] Score all directions critically, recommend one, and prepare the founder approval gate
 - [x] Stop after founder review; do not implement, deploy, or modify production code until a direction is explicitly approved
+
+## Independent ReadBuddy Authentication
+
+- [x] Audit all logout, login, callback, fallback, and navigation paths for legacy Manus identity redirects or branding
+- [x] Replace legacy logout behavior with a ReadBuddy-owned session clear and `/login` redirect
+- [x] Remove legacy Manus OAuth login entry points from public and protected ReadBuddy surfaces
+- [ ] Verify Google login and account continuity still work after removing legacy Manus routes
+- [ ] Test production logout and protected-route fallback so no reader sees a Manus-branded identity screen
