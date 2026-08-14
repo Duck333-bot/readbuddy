@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { parse as parseCookie } from "cookie";
 import * as db from "../db";
 import { parseMaterial, MaterialParseError, MAX_MATERIAL_BYTES, inferMimeType } from "../materials/parser";
 import { storagePut } from "../storage";
@@ -9,6 +10,7 @@ import { createHeartbeatJob, deleteHeartbeatJob } from "../_core/heartbeat";
 import { ensureGroundedStudySet } from "../studyGeneration";
 import { recordMasterySignal } from "../learnerIntelligence";
 import { ensureAdaptiveLesson } from "../adaptiveLesson";
+import { COOKIE_NAME } from "@shared/const";
 
 const filenameSchema = z.string().trim().min(1).max(400);
 
@@ -49,13 +51,14 @@ export const materialsRouter = router({
     if (intelligence.jobTaskUid) {
       try { await deleteHeartbeatJob(intelligence.jobTaskUid, ""); } catch { /* A missing stale task is safe to replace. */ }
     }
+    const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
     const job = await createHeartbeatJob({
       name: `material-intelligence-${material.id}`,
       cron: "0 * * * * *",
       path: "/api/scheduled/materialIntelligence",
       payload: { materialId: material.id },
       description: `Material Intelligence retry for material ${material.id}`,
-    }, "");
+    }, sessionToken);
     await db.updateMaterialIntelligence(material.id, { jobTaskUid: job.taskUid, pipelineStage: "chunks", pipelineError: null, pipelineRetryAfter: null });
     await db.updateMaterialProcessing(material.id, { processingState: "ready", processingError: null, processingRetryAfter: null });
     return { scheduled: true, taskUid: job.taskUid };
@@ -187,13 +190,14 @@ export const materialsRouter = router({
       await db.insertMaterialUnits(materialId, parsed.units);
       await db.createMaterialIntelligence(materialId);
       try {
-        const job = await createHeartbeatJob({
+      const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+      const job = await createHeartbeatJob({
           name: `material-intelligence-${materialId}`,
           cron: "0 * * * * *",
           path: "/api/scheduled/materialIntelligence",
           payload: { materialId },
           description: `Material Intelligence pipeline for material ${materialId}`,
-        }, "");
+      }, sessionToken);
         await db.updateMaterialIntelligence(materialId, { jobTaskUid: job.taskUid, pipelineStage: "chunks" });
       } catch (error) {
         // The material remains usable. A user-facing retry may be added later;
