@@ -21,6 +21,16 @@ describe("Material parser adapters", () => {
     expect(material.units.some(unit => unit.headings.includes("Price elasticity"))).toBe(true);
   });
 
+  it("strips pasted web-reader chrome before it can become textbook evidence", async () => {
+    const source = "Skip to main content\nchrome_reader_mode Enter Reader Mode\n# 6.2: The Cell Membrane\n\n1. Learning Objectives\n2. Structure and Composition\n\n##### Learning Objectives\n\nExplain how phospholipid tails create a selectively permeable barrier.\n\n## Transport\n\nPassive transport moves substances down a concentration gradient.";
+    const material = await parseMaterial({ filename: "cell-membrane.md", bytes: new TextEncoder().encode(source) });
+    const content = material.units.map(unit => unit.text).join("\n");
+
+    expect(content).not.toMatch(/skip to main|reader mode|learning objectives\n2\./i);
+    expect(content).toContain("phospholipid tails");
+    expect(material.units[0]?.headings).toContain("Learning Objectives");
+  });
+
   it("extracts text from ordered PowerPoint slide XML", async () => {
     const archive = new JSZip();
     archive.file("ppt/slides/slide2.xml", "<p:sld xmlns:p='p' xmlns:a='a'><a:t>Second slide</a:t></p:sld>");

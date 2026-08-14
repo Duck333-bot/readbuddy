@@ -111,8 +111,27 @@ function plainTextUnits(text: string): NormalizedMaterialUnit[] {
   return units;
 }
 
-function markdownUnits(markdown: string): NormalizedMaterialUnit[] {
+/** Removes browser-reader chrome only when a pasted Markdown source clearly contains it. */
+export function stripMarkdownWebChrome(markdown: string): string {
   const lines = normalizeText(markdown).split("\n");
+  const firstH1 = lines.findIndex(line => /^#\s+\S/.test(line));
+  const opening = lines.slice(0, Math.max(firstH1, 0)).join("\n");
+  const hasWebChrome = /skip to main content|chrome[_ ]reader|library homepage|expand\/collapse|keyboard shortcuts/i.test(opening);
+  let cleaned = hasWebChrome && firstH1 >= 0 ? lines.slice(firstH1) : lines;
+
+  if (hasWebChrome) {
+    const firstSubheading = cleaned.findIndex((line, index) => index > 0 && /^#{2,6}\s+\S/.test(line));
+    if (firstSubheading > 1) cleaned = [cleaned[0], ...cleaned.slice(firstSubheading)];
+  }
+
+  return cleaned
+    .filter(line => !/^\\\(|^\\\)|^\s*\d+\.\s*Username\s*$|^\s*[-*]\s*$/.test(line))
+    .join("\n")
+    .trim();
+}
+
+function markdownUnits(markdown: string): NormalizedMaterialUnit[] {
+  const lines = stripMarkdownWebChrome(markdown).split("\n");
   const units: NormalizedMaterialUnit[] = [];
   const headingPath: string[] = [];
   let buffer: string[] = [];

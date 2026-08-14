@@ -46,6 +46,30 @@ export type MaterialEvidence = {
   excerpt: string;
 };
 
+/** A compact, source-backed teaching plan persisted with Material Intelligence. */
+export type MaterialLessonPlan = {
+  centralQuestion: string;
+  narrative: string;
+  conceptNames: string[];
+  visual?: {
+    kind: "comparison" | "sequence";
+    title: string;
+    caption?: string;
+    conceptNames: string[];
+    evidenceChunk: number;
+  };
+  checks: {
+    conceptName: string;
+    kind: "application" | "distinction" | "definition";
+    prompt: string;
+    choices: string[];
+    answer: string;
+    explanation: string;
+    evidenceChunk: number;
+  }[];
+  estimatedMinutes: number;
+};
+
 /**
  * Structured, source-grounded presentation details for a persisted lesson step.
  * The lesson player uses these data to render an interaction without having to

@@ -42,6 +42,7 @@ function getConfig(task: LLMTask): TaskConfig {
         : { provider: openaiProvider, model: "gpt-4o-mini" };
 
     case "material_analysis":
+    case "lesson_planning":
     case "study_generation":
       return hasDeepSeek()
         ? { provider: deepseekProvider, model: "deepseek-chat" }

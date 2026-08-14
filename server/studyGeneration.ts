@@ -24,8 +24,10 @@ export async function ensureGroundedStudySet(userId: number, materialId: number)
   ]);
   if (!material) throw new Error("Material not found.");
   if (!concepts.length) throw new Error("Material Intelligence is still preparing source-backed concepts.");
+  const validConceptIds = new Set(concepts.map(concept => concept.id));
+  const usableCards = existingCards.filter(card => card.conceptId !== null && validConceptIds.has(card.conceptId));
 
-  if (!existingCards.length) {
+  if (!usableCards.length) {
     await db.insertFlashcards(concepts.slice(0, 12).map(concept => ({
       userId,
       materialId,
@@ -37,8 +39,9 @@ export async function ensureGroundedStudySet(userId: number, materialId: number)
     })));
   }
 
-  if (!notes.some(note => note.noteType === "generated")) {
-    const content = concepts.slice(0, 8).map(concept => `• ${concept.canonicalName}: ${concept.definition}`).join("\n\n");
+  const content = concepts.slice(0, 8).map(concept => `• ${concept.canonicalName}: ${concept.definition}`).join("\n\n");
+  const generatedNote = notes.find(note => note.noteType === "generated");
+  if (!generatedNote) {
     await db.createMaterialNote({
       userId,
       materialId,
@@ -47,10 +50,14 @@ export async function ensureGroundedStudySet(userId: number, materialId: number)
       content,
       evidence: concepts.slice(0, 8).flatMap(concept => conceptEvidence(concept.evidence)).slice(0, 16),
     });
+  } else if (generatedNote.content !== content) {
+    await db.updateMaterialNote(generatedNote.id, userId, materialId, { title: `Key ideas: ${material.title}`, content });
   }
 
   let quiz = existingQuiz;
-  if (!quiz) {
+  const existingQuestions = quiz ? await db.getQuizQuestions(quiz.id) : [];
+  const hasUsableQuiz = existingQuestions.some(question => question.conceptId !== null && validConceptIds.has(question.conceptId));
+  if (!quiz || !hasUsableQuiz) {
     const quizId = await db.createStudyQuiz({ userId, materialId, title: `Concept check: ${material.title}`, status: "active" });
     const rows = concepts.slice(0, 6).map((concept, index) => {
       const choices = [concept.definition, ...distractorDefinitions(concepts, concept.id)].slice(0, 4);

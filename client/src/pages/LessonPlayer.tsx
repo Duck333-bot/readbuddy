@@ -95,6 +95,7 @@ export default function LessonPlayer() {
     setActiveIndex(firstOpen >= 0 ? firstOpen : steps.length - 1);
   }, [lesson.data]);
   const current = steps[activeIndex];
+  const estimatedMinutes = Math.max(3, Math.round(steps.reduce((total, step) => total + (step.metadata?.estimatedMinutes ?? 0), 0)) || 3);
   const currentTheme = current ? stepTheme[current.stepType] : stepTheme.intro;
   const currentCards = useMemo(() => {
     const ids = current?.metadata?.flashcardIds ?? [];
@@ -153,7 +154,7 @@ export default function LessonPlayer() {
   return <main className="min-h-screen bg-[#f8f7fb] text-slate-900">
     <header className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-5 sm:px-8 sm:py-7">
       <button type="button" onClick={() => setLocation(`/materials/${materialId}`)} className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:text-slate-900" aria-label="Close lesson"><X className="h-4 w-4" /></button>
-      <div className="min-w-0 flex-1"><div className="h-1.5 overflow-hidden rounded-full bg-slate-200"><motion.div className="h-full rounded-full bg-slate-900" animate={{ width: `${progress}%` }} transition={{ duration: shouldReduceMotion ? 0 : .35, ease: [0.23, 1, 0.32, 1] }} /></div><div className="mt-2 flex justify-between text-[10px] font-bold uppercase tracking-[.14em] text-slate-500"><span>7-minute revision</span><span>Step {activeIndex + 1} of {steps.length}</span></div></div>
+      <div className="min-w-0 flex-1"><div className="h-1.5 overflow-hidden rounded-full bg-slate-200"><motion.div className="h-full rounded-full bg-slate-900" animate={{ width: `${progress}%` }} transition={{ duration: shouldReduceMotion ? 0 : .35, ease: [0.23, 1, 0.32, 1] }} /></div><div className="mt-2 flex justify-between text-[10px] font-bold uppercase tracking-[.14em] text-slate-500"><span>{estimatedMinutes}-minute revision</span><span>Step {activeIndex + 1} of {steps.length}</span></div></div>
       <div className="hidden gap-1 sm:flex"><button type="button" disabled={activeIndex === 0} onClick={() => setActiveIndex(index => Math.max(index - 1, 0))} className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 disabled:opacity-35" aria-label="Previous step"><ChevronLeft className="h-4 w-4" /></button><button type="button" disabled={activeIndex >= steps.length - 1} onClick={() => setActiveIndex(index => Math.min(index + 1, steps.length - 1))} className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 disabled:opacity-35" aria-label="Next step"><ChevronRight className="h-4 w-4" /></button></div>
     </header>
     <section className="mx-auto flex min-h-[calc(100vh-155px)] max-w-5xl items-center px-4 pb-28 pt-4 sm:px-8 sm:pb-32">

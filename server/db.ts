@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   bookPages,
@@ -1154,7 +1154,7 @@ export async function updateMaterialNote(noteId: number, userId: number, materia
 
 export async function listFlashcards(userId: number, materialId: number) {
   const db = await requireDb();
-  return db.select().from(flashcards).where(and(eq(flashcards.userId, userId), eq(flashcards.materialId, materialId))).orderBy(desc(flashcards.updatedAt));
+  return db.select().from(flashcards).where(and(eq(flashcards.userId, userId), eq(flashcards.materialId, materialId), isNotNull(flashcards.conceptId))).orderBy(desc(flashcards.updatedAt));
 }
 
 export async function insertFlashcards(rows: InsertFlashcard[]) {

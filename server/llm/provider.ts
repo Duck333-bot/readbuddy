@@ -40,6 +40,7 @@ export type LLMTask =
   | "chapter_synthesis"  // Combine chunk analyses into a chapter summary
   | "book_synthesis"     // Combine chapter summaries into a whole-book brain
   | "material_analysis"  // Source-grounded Material Intelligence concepts and study objectives
+  | "lesson_planning"    // Compact source-grounded teaching plan assembled after concepts are validated
   | "study_generation"   // Source-grounded notes, flashcards, quizzes, and lessons
   | "embedding"          // Generate an embedding vector for a text
   | "reading_buddy"      // Answer a live reading question

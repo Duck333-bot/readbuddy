@@ -650,3 +650,26 @@
 - [x] Upgrade Library, Material Workspace, and Lesson entry presentation with premium hierarchy, generous spacing, polished empty states, and restrained color while preserving behavior
 - [x] Preserve all existing reader, upload, ingestion, Material Intelligence, Book Brain, privacy, and ownership behavior; do not turn lessons into fixed school-subject content
 - [x] Verify material-grounded generation, lesson persistence, MCQ feedback, visual blocks, flashcards, recap, desktop/mobile layout, and full regression; stop for founder review
+
+## Founder Lesson Engine Quality Review — Three Real Source Types
+
+- [x] Define a strict pedagogy, grounding, interaction, mobile, and product-polish scorecard for the three-source founder review
+- [x] Run a school-material source through the real upload, Material Intelligence, and lesson flow
+- [x] Run a dense nonfiction or research source through the real upload, Material Intelligence, and lesson flow
+- [x] Run a business report or presentation source through the real upload, Material Intelligence, and lesson flow
+- [x] Complete and score every generated lesson for teaching quality, source faithfulness, MCQ quality, flashcard value, visual necessity, lesson coherence, and phone interaction
+- [x] Deliver a strict ship-or-improve decision plus only the highest-leverage adaptive lesson-engine priorities; do not expand the feature set
+
+## Lesson Engine Quality Repair — No Feature Expansion
+
+- [x] Add semantic evidence-quality gates that exclude PDF boilerplate, author blocks, headers, footers, agendas, and low-information excerpts from concepts and study artifacts
+- [x] Add source-backed central-question and concept-dependency lesson planning so the lesson teaches the material’s argument rather than a heading glossary
+- [x] Regenerate lesson steps from adaptive source-supported instructional moves instead of a forced fixed template
+- [x] Replace definition-match MCQs with grounded application, distinction, or decision checks where the source supports them
+- [x] Estimate duration from actual reading and cognitive work rather than assigning one minute to each UI card
+- [x] Add regression coverage for clean research-PDF evidence, business-decision lesson planning, adaptive step selection, and source-faithful checks
+- [x] Re-run the same three real sources across desktop and phone and stop for founder review before any feature expansion
+- [x] Replace the short membrane acceptance sample with a substantive real textbook or class-notes upload, then re-score the school-material lesson before final founder verdict
+- [x] P0: Strip markdown/webpage navigation, accessibility controls, link chrome, and macro noise before they can become units, concepts, evidence, flashcards, or lesson cards
+- [x] P0: Localize each extracted concept to the most relevant source unit instead of attaching all concepts in a large chunk to that chunk’s first section
+- [x] Rebuild and re-score the final version-nine research, business, and substantive school lessons after the browser-chrome and source-localization repairs
