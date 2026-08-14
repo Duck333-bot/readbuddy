@@ -41,6 +41,12 @@ describe("Material parser adapters", () => {
   });
 
   it("rejects unreadable PDFs instead of inventing text", async () => {
-    await expect(parseMaterial({ filename: "scan.pdf", bytes: new TextEncoder().encode("%PDF-not-a-real-file") })).rejects.toThrow("valid PDF");
+    await expect(parseMaterial({ filename: "scan.pdf", bytes: new TextEncoder().encode("%PDF-not-a-real-file") })).rejects.toThrow(/could not be read|selectable text/i);
+  });
+
+  it("normalizes Buffer and Uint8Array PDF input for the shared extractor", async () => {
+    const bytes = Buffer.from("%PDF-not-a-real-file");
+    await expect(parseMaterial({ filename: "buffer.pdf", bytes })).rejects.toThrow(/could not be read|selectable text/i);
+    await expect(parseMaterial({ filename: "array.pdf", bytes: new Uint8Array(bytes) })).rejects.toThrow(/could not be read|selectable text/i);
   });
 });

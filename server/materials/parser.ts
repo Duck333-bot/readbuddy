@@ -181,12 +181,14 @@ export function parsePptxSlideText(xml: string): string {
 const pdfParser: MaterialParser = {
   fileType: "pdf",
   async parse(input) {
-    if (input.bytes.subarray(0, 5).toString() !== "%PDF-") {
+    const pdfBytes = new Uint8Array(input.bytes);
+    const header = Array.from(pdfBytes.subarray(0, 5), byte => String.fromCharCode(byte)).join("");
+    if (header !== "%PDF-") {
       throw new MaterialParseError("That file is not a valid PDF.");
     }
     let extracted;
     try {
-      extracted = await extractPdf(input.bytes);
+      extracted = await extractPdf(pdfBytes);
     } catch {
       throw new MaterialParseError("This PDF could not be read. It may be corrupted or password-protected.");
     }
