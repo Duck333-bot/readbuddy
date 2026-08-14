@@ -10,12 +10,13 @@ const MAX_CONCEPT_SOURCE_CHARS = 42000;
 
 const materialConceptSchema = z.object({
   name: z.string().trim().min(2).max(180),
-  definition: z.string().trim().min(8).max(1000),
+  definition: z.string().trim().min(1).max(1000).optional(),
+  description: z.string().trim().min(1).max(1000).optional(),
   aliases: z.array(z.string().trim().min(1).max(120)).max(8).default([]),
-  importance: z.number().int().min(1).max(5).default(3),
-  difficulty: z.enum(["introductory", "intermediate", "advanced"]).default("intermediate"),
+  importance: z.coerce.number().int().min(1).max(5).default(3),
+  difficulty: z.enum(["introductory", "intermediate", "advanced"]).optional(),
   example: z.string().trim().min(1).max(800).optional(),
-  evidenceChunk: z.number().int().min(1),
+  evidenceChunk: z.union([z.number(), z.string()]).transform(value => Number(value)).pipe(z.number().int().min(1)),
 });
 
 const materialAnalysisSchema = z.object({
@@ -35,6 +36,10 @@ function jsonFromModel(text: string): unknown {
   const end = fenced.lastIndexOf("}");
   if (start < 0 || end < start) throw new Error("Material analysis did not return a JSON object.");
   return JSON.parse(fenced.slice(start, end + 1));
+}
+
+export function parseMaterialAnalysis(raw: unknown) {
+  return materialAnalysisSchema.parse(raw);
 }
 
 export function buildMaterialChunks(units: Awaited<ReturnType<typeof db.getMaterialUnits>>): InsertMaterialChunk[] {
@@ -105,21 +110,24 @@ async function analyzeMaterial(materialId: number) {
       },
     ],
   });
-  const analysis = materialAnalysisSchema.parse(jsonFromModel(response.text));
+  const analysis = parseMaterialAnalysis(jsonFromModel(response.text));
   const conceptRows: InsertConcept[] = [];
   for (const concept of analysis.concepts) {
     const chunk = chunks.find(item => item.chunkSequence === concept.evidenceChunk);
     if (!chunk) continue;
     const evidence = evidenceForChunk(chunk);
     if (!evidence.length) continue;
+    const sourceDefinition = chunk.text.replace(/\s+/g, " ").trim().slice(0, 700);
     conceptRows.push({
       materialId,
       canonicalName: concept.name,
       normalizedKey: normalizeConceptKey(concept.name),
       aliases: concept.aliases,
-      definition: concept.definition,
+      // Some providers label the same field "description". If neither is
+      // returned, preserve a source excerpt rather than inventing a definition.
+      definition: concept.definition ?? concept.description ?? sourceDefinition,
       importance: concept.importance,
-      difficulty: concept.difficulty,
+      difficulty: concept.difficulty ?? "intermediate",
       examples: concept.example ? [{ ...evidence[0], excerpt: concept.example }] : null,
       evidence,
     });
