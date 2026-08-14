@@ -140,6 +140,26 @@ export const materialsRouter = router({
     return { ok: true };
   }),
 
+  answerLessonMcq: protectedProcedure.input(z.object({ stepId: z.number().int().positive(), selectedAnswer: z.string().min(1).max(4000) })).mutation(async ({ ctx, input }) => {
+    const row = await db.getLessonStepForUser(input.stepId, ctx.user.id);
+    if (!row || row.step.stepType !== "mcq" || !row.step.expectedAnswer) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson question not found." });
+    const isCorrect = row.step.expectedAnswer.trim().toLocaleLowerCase() === input.selectedAnswer.trim().toLocaleLowerCase();
+    const owned = await db.completeLessonStep(input.stepId, ctx.user.id, { learnerAnswer: input.selectedAnswer, isCorrect: isCorrect ? 1 : 0 });
+    if (!owned) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson question not found." });
+    if (owned.step.conceptId) {
+      const concepts = await db.getConceptsForMaterial(owned.lesson.materialId);
+      const concept = concepts.find(item => item.id === owned.step.conceptId);
+      if (concept) await recordMasterySignal({ userId: ctx.user.id, materialId: owned.lesson.materialId, conceptId: concept.id, normalizedConceptKey: concept.normalizedKey, signal: isCorrect ? "lesson_correct" : "lesson_incorrect" });
+    }
+    const lesson = await db.getActiveLesson(ctx.user.id, owned.lesson.materialId);
+    if (lesson && lesson.steps.every(step => step.completedAt)) await db.completeLesson(lesson.lesson.id, ctx.user.id);
+    return {
+      isCorrect,
+      explanation: row.step.metadata?.mcq?.explanation ?? row.step.content,
+      correctAnswer: isCorrect ? null : row.step.expectedAnswer,
+    };
+  }),
+
   readerSignal: protectedProcedure.input(z.object({ bookId: z.number().int().positive(), mode: z.enum(["define", "simplify"]), highlight: z.string().trim().min(1).max(5000) })).mutation(async ({ ctx, input }) => {
     const material = await db.getMaterialForLegacyBook(input.bookId, ctx.user.id);
     if (!material) return { recorded: false };

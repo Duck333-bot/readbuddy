@@ -12,6 +12,7 @@ import Home from "./pages/Home";
 const Library = lazy(() => import("./pages/Library"));
 const Materials = lazy(() => import("./pages/Materials"));
 const MaterialWorkspace = lazy(() => import("./pages/MaterialWorkspace"));
+const LessonPlayer = lazy(() => import("./pages/LessonPlayer"));
 const Notebook = lazy(() => import("./pages/Notebook"));
 const Reader = lazy(() => import("./pages/Reader"));
 const AlphaDashboard = lazy(() => import("./pages/AlphaDashboard"));
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/library" component={Library} />
       <Route path="/materials" component={Materials} />
+      <Route path="/materials/:materialId/lesson" component={LessonPlayer} />
       <Route path="/materials/:materialId" component={MaterialWorkspace} />
       <Route path="/read/:bookId" component={Reader} />
       <Route path="/notebook" component={Notebook} />

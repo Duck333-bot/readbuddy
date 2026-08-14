@@ -640,3 +640,13 @@
 - [x] Research current public Turbo AI and RevisionDojo capabilities; write competitive matrix and BUILD NEXT/LATER parity roadmap without copying protected expression
 - [x] Verify typecheck, tests, build, A–F manual acceptance scenarios, ownership isolation, failure handling, and mobile routing; document only verified results
 - [x] Checkpoint the completed ZhiyaAI foundation and first learning loop with founder-ready architecture, migration, risk, and deferred-work documentation
+
+## Material-Generated Micro-Lesson Redesign — Founder Review Required
+
+- [x] Audit the existing lesson, Library, Material Workspace, and study-artifact implementation against the corrected uploaded-material micro-lesson brief
+- [x] Generate a grounded approximately seven-minute lesson from each uploaded material with concept intro, visual understanding, worked explanation, MCQs, notes, flashcards, recap, and continuation
+- [x] Add source-backed visual-understanding blocks using deterministic diagrams, comparisons, or graphs where genuinely supported by uploaded material; avoid decorative or fabricated visual claims
+- [x] Build a premium focused lesson player with progress, close/previous controls, polished note/MCQ/flashcard/card states, bottom navigation, motion, and mobile-specific layout
+- [x] Upgrade Library, Material Workspace, and Lesson entry presentation with premium hierarchy, generous spacing, polished empty states, and restrained color while preserving behavior
+- [x] Preserve all existing reader, upload, ingestion, Material Intelligence, Book Brain, privacy, and ownership behavior; do not turn lessons into fixed school-subject content
+- [x] Verify material-grounded generation, lesson persistence, MCQ feedback, visual blocks, flashcards, recap, desktop/mobile layout, and full regression; stop for founder review

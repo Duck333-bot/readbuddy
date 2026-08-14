@@ -9,7 +9,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
-import type { MaterialEvidence, SourceRef } from "@shared/materials";
+import type { LessonStepMetadata, MaterialEvidence, SourceRef } from "@shared/materials";
 
 /**
  * Core user table backing auth flow.
@@ -863,6 +863,7 @@ export const lessons = mysqlTable(
     userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
     materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 512 }).notNull(),
+    lessonVersion: int("lessonVersion").notNull().default(1),
     status: mysqlEnum("status", ["active", "complete", "abandoned"]).notNull().default("active"),
     currentStepIndex: int("currentStepIndex").notNull().default(0),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -879,11 +880,12 @@ export const lessonSteps = mysqlTable(
     lessonId: int("lessonId").notNull().references(() => lessons.id, { onDelete: "cascade" }),
     conceptId: int("conceptId").references(() => concepts.id, { onDelete: "set null" }),
     position: int("position").notNull(),
-    stepType: mysqlEnum("stepType", ["explain", "example", "check", "adapt"]).notNull(),
+    stepType: mysqlEnum("stepType", ["explain", "example", "check", "adapt", "intro", "visual", "worked", "mcq", "note", "flashcard", "recap", "continuation"]).notNull(),
     content: text("content").notNull(),
     checkPrompt: text("checkPrompt"),
     expectedAnswer: text("expectedAnswer"),
     evidence: json("evidence").$type<MaterialEvidence[]>(),
+    metadata: json("metadata").$type<LessonStepMetadata>(),
     learnerAnswer: text("learnerAnswer"),
     isCorrect: int("isCorrect"),
     completedAt: timestamp("completedAt"),

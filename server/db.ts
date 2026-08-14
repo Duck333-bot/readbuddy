@@ -1210,6 +1210,12 @@ export async function getActiveLesson(userId: number, materialId: number) {
   return { lesson, steps };
 }
 
+/** Retire a legacy active lesson when a newer lesson contract replaces it. */
+export async function abandonLesson(lessonId: number, userId: number) {
+  const db = await requireDb();
+  await db.update(lessons).set({ status: "abandoned", updatedAt: new Date() }).where(and(eq(lessons.id, lessonId), eq(lessons.userId, userId), eq(lessons.status, "active")));
+}
+
 export async function createLesson(values: typeof lessons.$inferInsert, steps: Omit<typeof lessonSteps.$inferInsert, "lessonId">[]) {
   const db = await requireDb();
   const result = await db.insert(lessons).values(values);

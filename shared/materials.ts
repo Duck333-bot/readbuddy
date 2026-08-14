@@ -46,6 +46,29 @@ export type MaterialEvidence = {
   excerpt: string;
 };
 
+/**
+ * Structured, source-grounded presentation details for a persisted lesson step.
+ * The lesson player uses these data to render an interaction without having to
+ * reinterpret an uploaded source in the browser.
+ */
+export type LessonStepMetadata = {
+  sourceLabel?: string;
+  visual?: {
+    kind: "evidence_bridge" | "comparison" | "sequence";
+    title: string;
+    caption?: string;
+    items: { label: string; detail: string }[];
+  };
+  mcq?: {
+    questionId?: number;
+    choices: string[];
+    explanation: string;
+  };
+  flashcardIds?: number[];
+  recapPoints?: string[];
+  estimatedMinutes?: number;
+};
+
 export type NormalizedMaterialUnit = {
   index: number;
   type: MaterialUnitType;
