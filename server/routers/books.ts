@@ -199,6 +199,9 @@ export const booksRouter = router({
       const structureConfidence = brain?.structureConfidence ?? 0;
       return {
         passCompleted: brain?.passCompleted ?? 0,
+        pipelineStage: brain?.pipelineStage ?? "idle",
+        pipelineError: brain?.pipelineError ?? null,
+        pipelineRetryAfter: brain?.pipelineRetryAfter ?? null,
         overallSummary: brain?.overallSummary ?? null,
         themes: (brain?.themes ?? []) as string[],
         structureSource,

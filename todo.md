@@ -562,3 +562,14 @@
 - [x] Strengthen one signature current-sentence → earlier-passage → connection → understanding → return transformation without adding decorative clutter
 - [x] Re-check deployed laptop and phone startup, color, art/graphics, story magic, minimalism, and mobile intention before reconsidering Upload
 - [x] Keep Upload, Library, Reader, and final logo selection frozen until Landing earns a fresh founder approval
+
+## Founder-Authorized Upload / Book Brain Redesign Only
+
+- [x] Audit and preserve existing upload, extraction, Book Brain, error, retry, reader-ready, and background-processing contracts
+- [x] Map Book/text recognition, structure/chapters, people/entities/concepts, connections/evidence, and ready-to-read states to real backend truth with no fake percentage or premature completion
+- [x] Implement the Memory Terrain Upload / Book Brain desktop experience at approximately 55% richness with the book as the central visual object
+- [x] Implement a deliberately composed mobile Upload / Book Brain experience rather than a scaled desktop layout
+- [x] Correct “People” copy to mean people/characters/entities inside the book, distinct from Reader Intelligence
+- [x] Preserve Landing, Library, Reader, Notebook, pricing, final-logo work, product features, and all existing behavior unchanged
+- [x] Verify desktop, phone, successful upload, long-book background processing, failure/retry, ready-to-read transition, and truthful processing states
+- [x] Checkpoint the Upload review package and stop for founder approval before any Library work

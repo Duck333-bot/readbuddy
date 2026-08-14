@@ -432,3 +432,38 @@
     }
   }
 }
+
+/* Upload / Book Brain — Memory Terrain. The book remains the visual subject. */
+.rb-upload-dialog { box-shadow: 0 32px 100px color-mix(in srgb, var(--rb-night) 34%, transparent); }
+.rb-upload-stage { isolation: isolate; }
+.rb-upload-stage::before { content: ""; position: absolute; inset: 0; background: linear-gradient(155deg, color-mix(in srgb, var(--rb-night) 92%, var(--rb-violet)) 0%, var(--rb-night) 66%, color-mix(in srgb, var(--rb-night) 84%, var(--rb-sky)) 100%); opacity: .95; }
+.rb-upload-stage > * { position: relative; z-index: 1; }
+.rb-upload-terrain { position: relative; min-height: 15rem; margin: 1.75rem auto 0; max-width: 29rem; }
+.rb-upload-field { position: absolute; display: block; opacity: .92; }
+.rb-upload-field--blush { top: 10%; right: 6%; width: 40%; height: 53%; background: color-mix(in srgb, var(--rb-coral) 79%, var(--rb-paper)); clip-path: polygon(14% 0, 100% 8%, 93% 100%, 0 78%); }
+.rb-upload-field--mint { bottom: 4%; left: 7%; width: 42%; height: 38%; background: color-mix(in srgb, var(--rb-mint) 72%, var(--rb-paper)); clip-path: polygon(0 23%, 88% 0, 100% 78%, 11% 100%); }
+.rb-upload-field--periwinkle { right: 20%; bottom: 0; width: 34%; height: 28%; background: color-mix(in srgb, var(--rb-violet) 62%, var(--rb-paper)); clip-path: polygon(0 21%, 100% 0, 78% 100%, 9% 89%); }
+.rb-upload-book { position: absolute; z-index: 3; inset: 11% 25% 7% 22%; display: flex; flex-direction: column; justify-content: center; overflow: hidden; padding: 1.45rem; border: 1px solid color-mix(in srgb, var(--rb-paper) 40%, transparent); background: var(--rb-paper); color: var(--rb-ink); box-shadow: 0 1.5rem 2.8rem color-mix(in srgb, black 25%, transparent); transform: rotate(-3deg); transition: transform .5s var(--ease-out-quint); }
+.rb-upload-terrain--ready .rb-upload-book { transform: rotate(-1deg) translateY(-.25rem); }
+.rb-upload-book__eyebrow { font-size: .54rem; font-weight: 750; letter-spacing: .19em; text-transform: uppercase; color: var(--rb-evidence); }
+.rb-upload-book__line { display: block; height: 1px; margin-top: .55rem; background: color-mix(in srgb, var(--rb-ink) 17%, transparent); }
+.rb-upload-book__line--two { width: 88%; }.rb-upload-book__line--three { width: 68%; }
+.rb-upload-book__title { margin-top: auto; font-family: var(--font-serif); font-size: clamp(1.15rem, 3vw, 1.8rem); line-height: .95; letter-spacing: -.05em; }
+.rb-upload-book__pages { margin-top: .55rem; font-size: .63rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted-foreground); }
+.rb-upload-fragments { position: absolute; z-index: 4; inset: 0; pointer-events: none; }
+.rb-upload-fragment { position: absolute; display: flex; align-items: center; gap: .42rem; max-width: 11.3rem; padding: .48rem .6rem; border: 1px solid color-mix(in srgb, var(--rb-paper) 35%, transparent); background: color-mix(in srgb, var(--rb-night) 79%, transparent); color: color-mix(in srgb, var(--rb-paper) 86%, transparent); font-size: .62rem; font-weight: 700; line-height: 1.15; letter-spacing: .02em; opacity: 0; transform: translateY(.7rem); transition: opacity .34s var(--ease-out-quint), transform .34s var(--ease-out-quint), background-color .34s ease; }
+.rb-upload-fragment--1 { top: 3%; left: 0; }.rb-upload-fragment--2 { right: 0; top: 27%; }.rb-upload-fragment--3 { bottom: 4%; right: 7%; }.rb-upload-fragment--4 { bottom: 1%; left: 4%; }
+.rb-upload-fragment.is-active, .rb-upload-terrain--selected .rb-upload-fragment--1, .rb-upload-terrain--preparing .rb-upload-fragment, .rb-upload-terrain--ready .rb-upload-fragment { opacity: 1; transform: translateY(0); }
+.rb-upload-fragment.is-active { background: color-mix(in srgb, var(--rb-evidence) 32%, var(--rb-night)); color: var(--rb-paper); }
+.rb-upload-fragment.is-complete { color: var(--rb-paper); }
+.rb-upload-thread { position: absolute; z-index: 2; top: 26%; right: 22%; width: 45%; height: 35%; border-top: 2px dashed var(--rb-coral); border-radius: 52% 0 0; transform: rotate(23deg); transform-origin: right center; }
+.rb-upload-dropzone { min-height: 23rem; padding: 2.2rem 1.25rem; border: 1px solid color-mix(in srgb, var(--rb-ink) 16%, transparent); background: linear-gradient(145deg, color-mix(in srgb, var(--rb-paper) 95%, var(--rb-terrain-blush)) 0%, var(--rb-paper) 67%); }
+.rb-upload-dropzone:hover, .rb-upload-dropzone:focus-visible, .rb-upload-dropzone.is-dragging { border-color: var(--rb-evidence); background: color-mix(in srgb, var(--rb-evidence-surface) 62%, var(--rb-paper)); outline: none; }
+.rb-upload-working, .rb-upload-error { display: flex; gap: .8rem; padding: 1rem; border-left: 2px solid var(--rb-evidence); background: color-mix(in srgb, var(--rb-evidence-surface) 52%, var(--rb-paper)); }
+.rb-upload-error { border-left-color: var(--destructive); color: var(--destructive); background: color-mix(in srgb, var(--destructive) 7%, var(--rb-paper)); }
+.rb-upload-error p { color: inherit; }
+.rb-upload-brain { padding-top: .4rem; }
+.rb-upload-understanding-step { display: flex; align-items: center; gap: .65rem; color: var(--muted-foreground); font-size: .86rem; }
+.rb-upload-understanding-step.is-active { color: var(--rb-ink); font-weight: 650; }.rb-upload-understanding-step.is-active svg { color: var(--rb-evidence); }.rb-upload-understanding-step.is-complete { color: var(--rb-ink); }.rb-upload-understanding-step.is-complete svg { color: var(--rb-success); }
+@media (max-width: 1023px) { .rb-upload-stage { min-height: 30rem; }.rb-upload-terrain { max-width: 23rem; min-height: 14rem; }.rb-upload-book { inset: 11% 25% 7% 22%; }.rb-upload-fragment { font-size: .57rem; }.rb-upload-layout { display: block; } }
+@media (prefers-reduced-motion: reduce) { .rb-upload-book, .rb-upload-fragment { transition: none; } }
