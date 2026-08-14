@@ -1,84 +1,81 @@
 import { BrandWordmark as Wordmark } from "@/components/BrandWordmark";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BookOpen, CornerDownLeft, Highlighter, Languages, Quote, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, BookOpen, Check, ChevronRight, Highlighter, Sparkles } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { getFunnelVisitorId, markFunnelAuthIntent } from "@/lib/funnel";
-import { EvidenceMoment, HeroMemoryCanvas, MemorySequence, SpoilerBoundary } from "@/components/marketing/MemorySequence";
 
-const moments = [
-  { icon: Highlighter, label: "When a sentence stops you", title: "Highlight it. Stay in the book.", copy: "Ask for a clearer explanation where you are, without opening a chat window or losing your place.", sample: "“What does this actually mean?”" },
-  { icon: Search, label: "When the name feels familiar", title: "You forgot who Thomas is. ReadBuddy didn’t.", copy: "A quiet reminder shows only what the reader has reached, with the pages where that person appeared.", sample: "First seen p.18 · Last seen p.86" },
-  { icon: Quote, label: "When an earlier page matters", title: "See the connection, not just the answer.", copy: "ReadBuddy traces the smallest useful path back to the earlier passage that makes this moment click.", sample: "Earlier connection → p.47" },
-  { icon: ShieldCheck, label: "When you need to ask safely", title: "Ask without learning what happens next.", copy: "Unread pages are excluded before ReadBuddy answers. Spoiler protection is part of how it looks for evidence.", sample: "Only pages you’ve reached" },
-] as const;
-
-const stages = [
-  ["1", "Text and structure are ready", "Start reading immediately."],
-  ["2", "ReadBuddy gets to know the book", "Chapters, people, and ideas keep forming in the background."],
-  ["3", "Connections appear when they help", "No study dashboard. Just better reading."],
+export const zhiyaHomepagePillars = [
+  "Keep your place",
+  "Find earlier context",
+  "Understand without spoilers",
 ] as const;
 
 export default function Home() {
   const [, navigate] = useLocation();
   const reducedMotion = useReducedMotion();
   const sendPublicEvent = (event: "landing_view" | "landing_start_clicked") => {
-    void fetch("/api/public/landing-event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event, visitorId: getFunnelVisitorId() }),
-      keepalive: true,
-    }).catch(() => undefined);
+    void fetch("/api/public/landing-event", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event, visitorId: getFunnelVisitorId() }), keepalive: true }).catch(() => undefined);
   };
   useEffect(() => {
     let cancelled = false;
     void fetch("/api/public/session", { credentials: "include" })
       .then(response => response.ok ? response.json() as Promise<{ authenticated?: boolean }> : null)
-      .then(session => {
-        if (cancelled) return;
-        if (session?.authenticated) navigate("/library");
-        else sendPublicEvent("landing_view");
-      })
+      .then(session => { if (!cancelled && session?.authenticated) navigate("/library"); else if (!cancelled) sendPublicEvent("landing_view"); })
       .catch(() => { if (!cancelled) sendPublicEvent("landing_view"); });
     return () => { cancelled = true; };
   }, [navigate]);
   const begin = (create = false) => { markFunnelAuthIntent(); sendPublicEvent("landing_start_clicked"); navigate(create ? "/create-account" : "/login"); };
-  const motionProps = reducedMotion ? {} : { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { duration: .46, ease: "circOut" as const } };
+  const reveal = reducedMotion ? {} : { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.48, ease: "circOut" as const } };
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#fff9ef] text-[#131c38]">
-      <header className="sticky top-0 z-20 border-b border-[#0e1838]/10 bg-[#fbf8f0]/92 backdrop-blur-sm">
-        <nav className="mx-auto flex h-[4.5rem] max-w-7xl items-center px-5 sm:px-8">
-          <Wordmark className="text-[#0e1838]" />
-          <div className="ml-auto flex items-center gap-2"><Button variant="ghost" className="h-10 px-3 text-sm" onClick={() => begin(false)}>Log in</Button><Button className="h-10 rounded-full bg-[#0e1838] px-4 text-[#fbf8f0] hover:bg-[#1b2c61]" onClick={() => begin(true)}>Begin reading <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button></div>
+    <main className="min-h-screen overflow-x-hidden bg-[#fbfbfe] text-[#18172b]">
+      <header className="relative z-20 mx-auto flex h-20 max-w-7xl items-center px-5 sm:px-8">
+        <Wordmark className="text-[#17162a]" />
+        <nav className="ml-auto flex items-center gap-1 sm:gap-3" aria-label="Primary navigation">
+          <button className="hidden rounded-full px-4 py-2 text-sm text-[#5e5b73] hover:bg-white sm:block" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" })}>How it works</button>
+          <Button variant="ghost" className="h-10 rounded-full px-3 text-sm text-[#3c3954]" onClick={() => begin(false)}>Sign in</Button>
+          <Button className="h-10 rounded-full bg-[#17162a] px-4 text-white shadow-[0_8px_20px_rgba(37,29,73,.16)] hover:bg-[#34304f]" onClick={() => begin(true)}>Get started <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button>
         </nav>
       </header>
-      <section className="relative overflow-hidden bg-[var(--rb-terrain-paper)] px-5 pb-16 pt-14 sm:px-8 sm:pb-24 sm:pt-24">
-        <div className="absolute -left-28 bottom-0 h-72 w-72 bg-[var(--rb-terrain-periwinkle)]/66 [clip-path:polygon(0_0,100%_0,76%_82%,0_100%)]" /><div className="absolute right-0 top-0 h-[30rem] w-[31rem] bg-[var(--rb-terrain-blush)]/62 [clip-path:polygon(0_0,100%_0,100%_100%,33%_76%)]" /><div className="absolute right-[28%] top-5 h-28 w-28 bg-[var(--rb-terrain-mint)]/64 [clip-path:polygon(25%_0,100%_0,100%_100%,0_75%)]" />
-        <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.78fr_1.22fr] lg:items-center lg:gap-16">
-          <motion.div {...motionProps}>
-            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-[var(--rb-terrain-ink)]">Memory · no spoilers · evidence</p>
-            <h1 className="mt-5 max-w-xl font-display text-5xl font-semibold leading-[.93] tracking-[-.06em] text-[var(--rb-terrain-ink)] sm:text-7xl">A book that <em className="font-normal text-[var(--rb-terrain-coral)]">remembers with you.</em></h1>
-            <p className="mt-6 max-w-lg text-base leading-7 text-[#4d5974] sm:text-lg">ReadBuddy remembers what you have reached, finds the earlier page that matters, and helps at the exact moment something stops making sense.</p>
-            <div className="mt-8 flex flex-wrap items-center gap-4"><Button size="lg" className="h-12 rounded-full bg-[#131c38] px-6 font-semibold text-[#fff9ef] hover:bg-[#24335e]" onClick={() => begin(true)}>Bring your next book <ArrowRight className="ml-2 h-4 w-4" /></Button><span className="text-sm text-[#59657f]">Your books and reading stay private.</span></div>
+
+      <section className="relative px-5 pb-20 pt-8 sm:px-8 sm:pb-28 sm:pt-14">
+        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[44rem] overflow-hidden bg-[radial-gradient(circle_at_23%_20%,#e3dcff_0%,transparent_34%),radial-gradient(circle_at_72%_28%,#ffcfe2_0%,transparent_30%),linear-gradient(120deg,#fafbff_0%,#f3f0ff_45%,#fff9fc_100%)]" />
+        <div className="pointer-events-none absolute -right-16 top-32 -z-10 h-80 w-80 rounded-full border-[42px] border-[#ffffff]/45" />
+        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.88fr_1.12fr] lg:items-center lg:gap-16">
+          <motion.div {...reveal}>
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#8b73f8]/18 bg-white/65 px-3 py-1.5 text-xs font-semibold text-[#6552ca] shadow-sm"><Sparkles className="h-3.5 w-3.5" /> Your books, made easier to return to</p>
+            <h1 className="mt-6 max-w-xl font-display text-5xl font-semibold leading-[.98] tracking-[-.055em] text-[#17162a] sm:text-7xl">Read deeper.<br />Remember <span className="text-[#7658e6]">more.</span></h1>
+            <p className="mt-6 max-w-lg text-base leading-7 text-[#5e5b73] sm:text-lg">ZhiyaAI is a reading companion for books that ask a lot of you. It keeps the context, so you can stay with the ideas.</p>
+            <div className="mt-8 flex flex-wrap items-center gap-4"><Button size="lg" className="h-12 rounded-xl bg-[#7658e6] px-6 font-semibold text-white shadow-[0_10px_24px_rgba(118,88,230,.28)] hover:bg-[#6245d1]" onClick={() => begin(true)}>Start with a book <ArrowRight className="ml-2 h-4 w-4" /></Button><span className="text-sm text-[#6c6881]">No credit card. Your reading stays private.</span></div>
+            <div className="mt-10 flex flex-wrap gap-x-5 gap-y-3 text-sm text-[#49465e]">{zhiyaHomepagePillars.map(item => <span key={item} className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-[#7658e6]" />{item}</span>)}</div>
           </motion.div>
-          <motion.div {...motionProps}><HeroMemoryCanvas /></motion.div>
+
+          <motion.div {...reveal} className="relative mx-auto w-full max-w-2xl">
+            <div className="absolute -left-5 top-16 h-32 w-32 rounded-[2rem] bg-[#bcebe4]/65 [transform:rotate(-13deg)]" />
+            <div className="absolute -right-4 bottom-8 h-36 w-36 rounded-full bg-[#ffb4cc]/55 blur-[1px]" />
+            <div className="relative rounded-[1.75rem] border border-white/85 bg-white/90 p-4 shadow-[0_28px_60px_rgba(50,37,111,.17)] backdrop-blur sm:p-6">
+              <div className="flex items-center justify-between border-b border-[#e9e7f2] pb-4"><div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#b9aaff]" /><span className="text-xs font-semibold text-[#5e5b73]">Reading with ZhiyaAI</span></div><span className="text-xs text-[#908da3]">Page 143</span></div>
+              <div className="grid gap-4 pt-5 sm:grid-cols-[1.08fr_.92fr]">
+                <article className="rounded-xl border border-[#ebe8f3] bg-[#fffefd] p-5 sm:p-6"><p className="text-[10px] font-semibold uppercase tracking-[.16em] text-[#7b62e7]">The page you are reading</p><p className="mt-5 font-reading text-xl leading-8 text-[#29263c]">“She understood then that the answer had been there long before the question.”</p><span className="mt-5 inline-flex rounded bg-[#f8e6a8]/75 px-1.5 py-0.5 font-reading text-sm text-[#474158]">had been there long before</span></article>
+                <div className="space-y-3"><article className="rounded-xl bg-[#f3efff] p-4"><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-[#725bd8]">Earlier context · p.47</p><p className="mt-2 font-reading text-sm leading-6 text-[#46405d]">“Some things only become clear when you have lived beyond them.”</p></article><article className="rounded-xl border border-[#ebe8f3] p-4"><p className="flex items-center gap-2 text-sm font-semibold text-[#332f48]"><Highlighter className="h-4 w-4 text-[#7658e6]" /> Why this matters</p><p className="mt-2 text-sm leading-6 text-[#67637b]">ZhiyaAI connects the two moments without looking ahead.</p><button className="mt-3 inline-flex items-center text-xs font-semibold text-[#7658e6]">See the connection <ChevronRight className="h-3.5 w-3.5" /></button></article></div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
-      <MemorySequence />
-      <SpoilerBoundary />
-      <EvidenceMoment />
-      <section className="px-5 py-20 sm:px-8 sm:py-28"><div className="mx-auto max-w-7xl">
-        <div className="grid gap-7 border-b border-[#0e1838]/12 pb-10 lg:grid-cols-[.9fr_1.1fr] lg:items-end"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#7565e8]">The difference is context</p><h2 className="mt-4 max-w-xl font-display text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-6xl">You remember the sentence. <em className="font-normal text-[#7565e8]">ReadBuddy remembers where it came from.</em></h2></div><p className="max-w-xl text-base leading-7 text-[#666b7c]">Kindle holds the page. ChatGPT answers a question. ReadBuddy keeps the connection between this line, earlier evidence, and your own reading history visible.</p></div>
-        <div className="mt-10 grid gap-px overflow-hidden rounded-[1.25rem] border border-[#0e1838]/12 bg-[#0e1838]/12 md:grid-cols-2">{moments.map((moment, index) => { const Icon = moment.icon; return <article key={moment.title} className="bg-[#fbf8f0] p-6 transition hover:bg-[#f3efff] sm:p-8"><div className="flex items-center justify-between"><Icon className="h-5 w-5 text-[#7565e8]" /><span className="font-mono text-[10px] text-[#8a8d9b]">0{index + 1}</span></div><p className="mt-8 text-[10px] font-bold uppercase tracking-[.16em] text-[#7565e8]">{moment.label}</p><h3 className="mt-3 max-w-sm font-display text-2xl font-semibold leading-tight">{moment.title}</h3><p className="mt-3 max-w-sm text-sm leading-6 text-[#666b7c]">{moment.copy}</p><p className="mt-7 inline-flex border-b border-[#7565e8]/45 pb-1 font-reading text-sm italic text-[#0e1838]">{moment.sample}</p></article>; })}</div>
-      </div></section>
-      <section className="bg-[#eeeafb] px-5 py-20 sm:px-8 sm:py-28"><div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.06fr_.94fr] lg:items-center">
-        <div className="rounded-[1.5rem] bg-[#fbf8f0] p-6 shadow-[14px_18px_0_rgba(117,101,232,.13)] sm:p-9"><div className="flex items-center justify-between border-b border-[#0e1838]/10 pb-4"><span className="text-[10px] font-bold uppercase tracking-[.18em] text-[#7565e8]">A book becomes known</span><BookOpen className="h-4 w-4 text-[#7565e8]" /></div><div className="mt-7 space-y-5">{stages.map(([number, title, copy], i) => <div key={number} className="flex items-center gap-4"><span className={`grid h-8 w-8 place-items-center rounded-full text-xs font-bold ${i === 0 ? "bg-[#0e1838] text-[#f2c65b]" : "border border-[#7565e8] text-[#7565e8]"}`}>{number}</span><div><p className="font-medium">{title}</p><p className="text-sm text-[#727687]">{copy}</p></div></div>)}</div></div>
-        <div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#7565e8]">Reading first. AI second.</p><h2 className="mt-5 font-display text-4xl font-semibold leading-tight tracking-[-.045em] sm:text-5xl">Give ReadBuddy a book. It will earn its place in the margin.</h2><p className="mt-5 max-w-xl text-base leading-7 text-[#606577]">Upload a PDF, open the first readable page, and ask for help only when you need it. The Book Brain continues quietly, so the book never has to wait for the AI.</p><Button className="mt-7 h-11 rounded-full bg-[#0e1838] px-5 text-[#fbf8f0] hover:bg-[#1b2c61]" onClick={() => begin(true)}>Start with a book <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
-      </div></section>
-      <section className="px-5 py-20 sm:px-8 sm:py-28"><div className="mx-auto max-w-4xl text-center"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#7565e8]">A private place to think</p><h2 className="mt-5 font-display text-4xl font-semibold leading-tight tracking-[-.05em] sm:text-6xl">Not a book chatbot. <em className="font-normal text-[#7565e8]">Your reading life, remembered.</em></h2><p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-[#666b7c]">Your highlights, questions, vocabulary, and notes stay connected to the pages that made them matter.</p><div className="mt-9 flex flex-wrap justify-center gap-3 text-sm"><span className="inline-flex items-center gap-2 rounded-full border border-[#0e1838]/12 px-4 py-2"><ShieldCheck className="h-4 w-4 text-[#7565e8]" /> Evidence before claims</span><span className="inline-flex items-center gap-2 rounded-full border border-[#0e1838]/12 px-4 py-2"><Languages className="h-4 w-4 text-[#7565e8]" /> Help in your language</span><span className="inline-flex items-center gap-2 rounded-full border border-[#0e1838]/12 px-4 py-2"><CornerDownLeft className="h-4 w-4 text-[#7565e8]" /> Return to the exact page</span></div><Button size="lg" className="mt-9 h-12 rounded-full bg-[#7565e8] px-7 text-white hover:bg-[#6150cf]" onClick={() => begin(true)}>Create your reading space <ArrowRight className="ml-2 h-4 w-4" /></Button></div></section>
-      <footer className="border-t border-[#0e1838]/10 px-5 py-8 sm:px-8"><div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 text-sm text-[#686d7c]"><Wordmark className="text-[#0e1838]" /><span className="text-[#b3b1aa]">·</span><span>A reading companion for difficult books.</span><span className="ml-auto text-xs">Private by default</span></div></footer>
+
+      <section id="how-it-works" className="border-y border-[#e9e7f0] bg-white px-5 py-16 sm:px-8 sm:py-24">
+        <div className="mx-auto max-w-7xl"><div className="max-w-2xl"><p className="text-xs font-semibold uppercase tracking-[.18em] text-[#7658e6]">A quieter way to get unstuck</p><h2 className="mt-4 font-display text-4xl font-semibold leading-tight tracking-[-.045em] sm:text-5xl">The book stays at the center.</h2><p className="mt-4 text-base leading-7 text-[#67637b]">ZhiyaAI appears only when the page needs more context—then sends you back to reading.</p></div>
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
+            {[{ number: "01", title: "Bring in a book", copy: "Upload a text-based PDF and open the first readable page." }, { number: "02", title: "Keep your momentum", copy: "Ask for help where a sentence or name stops making sense." }, { number: "03", title: "Return with context", copy: "See the earlier passage that makes the current page click." }].map(item => <article key={item.number} className="rounded-2xl border border-[#e9e7f0] bg-[#fcfbff] p-6"><span className="text-sm font-semibold text-[#a39abf]">{item.number}</span><h3 className="mt-9 font-display text-2xl font-semibold tracking-[-.03em]">{item.title}</h3><p className="mt-3 text-sm leading-6 text-[#69667d]">{item.copy}</p></article>)}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-5 py-18 sm:px-8 sm:py-24"><div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-8 rounded-[2rem] bg-[#1d1938] p-8 text-white sm:flex-row sm:items-center sm:p-12"><div><p className="text-xs font-semibold uppercase tracking-[.17em] text-[#c9bdff]">Start reading</p><h2 className="mt-3 max-w-xl font-display text-3xl font-semibold tracking-[-.04em] sm:text-4xl">Your next difficult book does not have to be lonely.</h2></div><Button size="lg" className="h-12 shrink-0 rounded-xl bg-white px-6 text-[#211c3b] hover:bg-[#eeeaff]" onClick={() => begin(true)}>Create an account <ArrowRight className="ml-2 h-4 w-4" /></Button></div></section>
+      <footer className="border-t border-[#e9e7f0] px-5 py-8 sm:px-8"><div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 text-sm text-[#6b687e]"><Wordmark className="text-[#17162a]" /><span className="text-[#b0adbc]">·</span><span>A reading companion for difficult books.</span><span className="ml-auto text-xs">Private by default</span></div></footer>
     </main>
   );
 }

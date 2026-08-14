@@ -319,7 +319,7 @@ function LostCard({
   return (
     <div className="mx-auto mb-6 max-w-prose rounded-xl border border-primary/20 bg-primary/5 shadow-md animate-in slide-in-from-top-2 duration-200">
       <div className="flex items-center justify-between border-b border-primary/15 px-4 py-2.5">
-        <span className="text-xs font-semibold text-primary">ReadBuddy</span>
+        <span className="text-xs font-semibold text-primary">ZhiyaAI</span>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
           <X className="h-3.5 w-3.5" />
         </button>
@@ -1023,7 +1023,7 @@ export default function Reader() {
           <DialogHeader className="border-b border-border/60 px-5 pb-4 pt-5">
             <DialogTitle className="font-display text-xl">Ask this book</DialogTitle>
             <DialogDescription>
-              Ask about an idea, person, or earlier event. ReadBuddy only uses pages you have reached.
+              Ask about an idea, person, or earlier event. ZhiyaAI only uses pages you have reached.
             </DialogDescription>
           </DialogHeader>
           <div className="p-5">
@@ -1096,7 +1096,7 @@ export default function Reader() {
           <DialogHeader>
             <DialogTitle className="font-display text-xl">Add a personal note</DialogTitle>
             <DialogDescription>
-              Your thought stays separate from ReadBuddy’s AI explanations.
+              Your thought stays separate from ZhiyaAI’s AI explanations.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1136,7 +1136,7 @@ export default function Reader() {
           <DialogHeader>
             <DialogTitle className="font-display text-xl">Translate into</DialogTitle>
             <DialogDescription>
-              Choose once. ReadBuddy will remember this for your next translation.
+              Choose once. ZhiyaAI will remember this for your next translation.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1179,7 +1179,7 @@ export default function Reader() {
           <DialogHeader>
             <DialogTitle className="font-display text-xl">Use the whole book?</DialogTitle>
             <DialogDescription>
-              ReadBuddy may reveal events or information from pages you haven’t read yet.
+              ZhiyaAI may reveal events or information from pages you haven’t read yet.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-2 flex justify-end gap-2">

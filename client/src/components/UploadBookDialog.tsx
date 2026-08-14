@@ -85,14 +85,14 @@ export function UploadBookDialog({ open, onOpenChange, onUploaded }: { open: boo
     : stage === "ready"
       ? "You can begin reading now. Deeper Book Brain work will continue in the background."
       : busy
-        ? "ReadBuddy is preparing the first readable pages."
+        ? "ZhiyaAI is preparing the first readable pages."
         : file ? "Check the title, then prepare this book for reading." : "Upload a text-based PDF. You can begin reading as soon as its first pages are ready.";
 
   return (
     <Dialog open={open} onOpenChange={next => { if (busy) return; onOpenChange(next); if (!next) reset(); }}>
       <DialogContent className="max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] max-w-xl overflow-y-auto rounded-2xl border-border bg-[var(--rb-paper)] p-6 shadow-[0_1.5rem_4rem_color-mix(in_srgb,var(--rb-ink)_18%,transparent)] sm:p-9">
         <DialogHeader className="space-y-2 text-left">
-          <p className="text-xs font-semibold uppercase tracking-[.16em] text-[var(--rb-evidence)]">ReadBuddy</p>
+          <p className="text-xs font-semibold uppercase tracking-[.16em] text-[var(--rb-evidence)]">ZhiyaAI</p>
           <DialogTitle className="font-display text-3xl font-semibold tracking-[-.04em] text-foreground sm:text-[2.25rem]">{heading}</DialogTitle>
           <DialogDescription className="max-w-lg text-sm leading-relaxed text-muted-foreground">{description}</DialogDescription>
         </DialogHeader>

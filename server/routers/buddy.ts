@@ -228,7 +228,7 @@ export const buddyRouter = router({
         console.error("[buddy.askBook] failed:", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "ReadBuddy could not answer that question just now. Please try again.",
+          message: "ZhiyaAI could not answer that question just now. Please try again.",
         });
       }
     }),

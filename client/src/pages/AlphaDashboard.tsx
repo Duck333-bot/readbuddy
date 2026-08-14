@@ -42,7 +42,7 @@ export default function AlphaDashboard() {
     return <AppShell><div className="mx-auto grid max-w-6xl gap-4 px-4 py-12 sm:grid-cols-3"><Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" /></div></AppShell>;
   }
   if (dashboard.error || !dashboard.data) {
-    return <AppShell><div className="mx-auto max-w-xl px-4 py-20 text-center"><h1 className="font-display text-3xl font-semibold">Private Alpha</h1><p className="mt-3 text-sm text-muted-foreground">This page is available only to the ReadBuddy owner.</p></div></AppShell>;
+    return <AppShell><div className="mx-auto max-w-xl px-4 py-20 text-center"><h1 className="font-display text-3xl font-semibold">Private Alpha</h1><p className="mt-3 text-sm text-muted-foreground">This page is available only to the ZhiyaAI owner.</p></div></AppShell>;
   }
   const data = dashboard.data;
   const ms = (value: number | null) => (value === null ? "—" : `${(value / 1000).toFixed(1)}s`);

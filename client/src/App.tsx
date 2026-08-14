@@ -20,7 +20,7 @@ const LoginPage = () => <AuthPage />;
 const CreateAccountPage = () => <AuthPage create />;
 
 function RouteBoot() {
-  return <div className="min-h-screen bg-[#fbf8f0]" aria-label="Loading ReadBuddy" />;
+  return <div className="min-h-screen bg-[#fbf8f0]" aria-label="Loading ZhiyaAI" />;
 }
 
 function Router() {

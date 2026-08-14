@@ -96,7 +96,7 @@ export const booksRouter = router({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message:
-            "No selectable text was found in this PDF. It is probably a scanned book, which ReadBuddy cannot read yet.",
+            "No selectable text was found in this PDF. It is probably a scanned book, which ZhiyaAI cannot read yet.",
         });
       }
 

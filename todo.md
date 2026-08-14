@@ -594,3 +594,11 @@
 - [x] Preserve real upload, preparing, reader-ready, background Book Brain, invalid-file retry, and reader-entry behavior without fake progress
 - [x] Keep Landing, Library, Reader, Notebook, pricing, final logo selection, and product behavior unchanged
 - [x] Capture desktop and phone screenshots for all real states and stop for founder approval before any Library work
+
+## ZhiyaAI Homepage Replacement and Visible Rebrand
+
+- [x] Audit visible ReadBuddy identity, title/metadata, public homepage content, navigation, and product-shell labels before rebranding
+- [x] Replace the public homepage with an original ZhiyaAI design using a clear two-column conversion structure, not Turbo AI’s protected assets, copy, mascot, or exact visual expression
+- [x] Apply the ZhiyaAI name consistently to visible product identity and metadata without changing reading, upload, Book Brain, Library, Reader, or authentication behavior
+- [x] Preserve all working product interactions and avoid fabricated testimonials, logos, usage counts, or social proof
+- [x] Add focused branding tests, verify desktop and phone homepage behavior, and checkpoint the rebrand

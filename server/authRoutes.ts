@@ -27,7 +27,7 @@ async function ensureUser(provider: "google" | "email", providerId: string, emai
 }
 
 async function issueSession(req: Request, res: Response, user: { openId: string; name: string | null }) {
-  const token = await sdk.createSessionToken(user.openId, { name: user.name || "ReadBuddy reader", expiresInMs: ONE_YEAR_MS });
+  const token = await sdk.createSessionToken(user.openId, { name: user.name || "ZhiyaAI reader", expiresInMs: ONE_YEAR_MS });
   res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
 }
 
@@ -71,6 +71,6 @@ export async function sendMagicLink(email: string, origin: string) {
   const cleanOrigin = originFrom(origin); const token = crypto.randomBytes(32).toString("base64url");
   await db.createEmailLoginToken(hash(token), email, new Date(Date.now() + MAGIC_TTL_MS));
   const url = `${cleanOrigin}/api/auth/email/verify?token=${encodeURIComponent(token)}&origin=${encodeURIComponent(cleanOrigin)}`;
-  const sent = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "content-type": "application/json" }, body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [email], subject: "Your ReadBuddy sign-in link", html: `<p>Use this one-time link to sign in to ReadBuddy:</p><p><a href="${url}">Sign in to ReadBuddy</a></p><p>This link expires in 15 minutes.</p>` }) });
+  const sent = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "content-type": "application/json" }, body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [email], subject: "Your ZhiyaAI sign-in link", html: `<p>Use this one-time link to sign in to ZhiyaAI:</p><p><a href="${url}">Sign in to ZhiyaAI</a></p><p>This link expires in 15 minutes.</p>` }) });
   if (!sent.ok) throw new Error("Email delivery failed");
 }

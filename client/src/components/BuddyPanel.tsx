@@ -224,7 +224,7 @@ export function BuddyPanel({
       <div className="flex shrink-0 items-center justify-between border-b border-border/70 px-4 py-3">
         <div className="flex items-center gap-2">
           <Brain className="h-4 w-4 text-primary" strokeWidth={2} />
-          <span className="font-display text-sm font-semibold tracking-tight">ReadBuddy</span>
+          <span className="font-display text-sm font-semibold tracking-tight">ZhiyaAI</span>
           {passCompleted > 0 && (
             <span
               title={
@@ -362,7 +362,7 @@ export function BuddyPanel({
           {turns.length === 0 && !busy && failure === null && (
             <div className="space-y-1.5">
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Tap any button above to ask ReadBuddy about this passage.
+                Tap any button above to ask ZhiyaAI about this passage.
               </p>
               {!brainReady && passCompleted > 0 && (
                 <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80">
@@ -436,7 +436,7 @@ export function BuddyPanel({
           {busy && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
-              ReadBuddy is thinking…
+              ZhiyaAI is thinking…
             </div>
           )}
 
