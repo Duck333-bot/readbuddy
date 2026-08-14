@@ -587,3 +587,10 @@
 - [x] Replace the invalid-PDF success contradiction with a truthful calm recovery state: “We couldn't read this copy.”
 - [x] Strengthen visual continuity from file → book → readable book → understood book → reading without changing real backend behavior
 - [x] Return new desktop and phone screenshots for initial, preparing, ready/deeper-processing, and invalid/retry states; stop for final Upload approval
+
+## Upload Simplification Reset — Founder Review Required
+
+- [x] Replace the current theatrical Upload / Book Brain window with a minimal, simple, clean interaction hierarchy
+- [x] Preserve real upload, preparing, reader-ready, background Book Brain, invalid-file retry, and reader-entry behavior without fake progress
+- [x] Keep Landing, Library, Reader, Notebook, pricing, final logo selection, and product behavior unchanged
+- [x] Capture desktop and phone screenshots for all real states and stop for founder approval before any Library work
