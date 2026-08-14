@@ -6,8 +6,6 @@ import { storagePut } from "../storage";
 import { protectedProcedure, router } from "../_core/trpc";
 import { MATERIAL_TYPES } from "@shared/materials";
 import { createHeartbeatJob, deleteHeartbeatJob } from "../_core/heartbeat";
-import { parse as parseCookie } from "cookie";
-import { COOKIE_NAME } from "@shared/const";
 import { ensureGroundedStudySet } from "../studyGeneration";
 import { recordMasterySignal } from "../learnerIntelligence";
 import { ensureAdaptiveLesson } from "../adaptiveLesson";
@@ -48,9 +46,8 @@ export const materialsRouter = router({
     const intelligence = await db.getMaterialIntelligence(material.id);
     if (!intelligence) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Understanding has not been prepared for this material yet." });
     if (intelligence.pipelineStage === "complete") return { scheduled: false, reason: "already-complete" as const };
-    const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
     if (intelligence.jobTaskUid) {
-      try { await deleteHeartbeatJob(intelligence.jobTaskUid, sessionToken); } catch { /* A missing stale task is safe to replace. */ }
+      try { await deleteHeartbeatJob(intelligence.jobTaskUid, ""); } catch { /* A missing stale task is safe to replace. */ }
     }
     const job = await createHeartbeatJob({
       name: `material-intelligence-${material.id}`,
@@ -58,7 +55,7 @@ export const materialsRouter = router({
       path: "/api/scheduled/materialIntelligence",
       payload: { materialId: material.id },
       description: `Material Intelligence retry for material ${material.id}`,
-    }, sessionToken);
+    }, "");
     await db.updateMaterialIntelligence(material.id, { jobTaskUid: job.taskUid, pipelineStage: "chunks", pipelineError: null, pipelineRetryAfter: null });
     await db.updateMaterialProcessing(material.id, { processingState: "ready", processingError: null, processingRetryAfter: null });
     return { scheduled: true, taskUid: job.taskUid };
@@ -190,14 +187,13 @@ export const materialsRouter = router({
       await db.insertMaterialUnits(materialId, parsed.units);
       await db.createMaterialIntelligence(materialId);
       try {
-        const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
         const job = await createHeartbeatJob({
           name: `material-intelligence-${materialId}`,
           cron: "0 * * * * *",
           path: "/api/scheduled/materialIntelligence",
           payload: { materialId },
           description: `Material Intelligence pipeline for material ${materialId}`,
-        }, sessionToken);
+        }, "");
         await db.updateMaterialIntelligence(materialId, { jobTaskUid: job.taskUid, pipelineStage: "chunks" });
       } catch (error) {
         // The material remains usable. A user-facing retry may be added later;
