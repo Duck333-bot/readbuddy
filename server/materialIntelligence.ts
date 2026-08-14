@@ -16,7 +16,7 @@ const materialConceptSchema = z.object({
   importance: z.coerce.number().int().min(1).max(5).default(3),
   difficulty: z.enum(["introductory", "intermediate", "advanced"]).optional(),
   example: z.string().trim().min(1).max(800).optional(),
-  evidenceChunk: z.union([z.number(), z.string()]).transform(value => Number(value)).pipe(z.number().int().min(1)),
+  evidenceChunk: z.number().int().min(1),
 });
 
 const materialAnalysisSchema = z.object({
@@ -38,8 +38,34 @@ function jsonFromModel(text: string): unknown {
   return JSON.parse(fenced.slice(start, end + 1));
 }
 
+function sourceChunkNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.max(1, Math.trunc(value));
+  if (typeof value === "string") {
+    const match = value.match(/\d+/);
+    if (match) return Math.max(1, Number.parseInt(match[0], 10));
+  }
+  // When a provider omits or labels the source position non-numerically, bind
+  // the concept to the first supplied chunk rather than inventing an external
+  // citation or failing the entire material. The later chunk lookup remains
+  // the proof boundary.
+  return 1;
+}
+
 export function parseMaterialAnalysis(raw: unknown) {
-  return materialAnalysisSchema.parse(raw);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return materialAnalysisSchema.parse(raw);
+  const input = raw as Record<string, unknown>;
+  const concepts = Array.isArray(input.concepts)
+    ? input.concepts.map(concept => {
+      if (!concept || typeof concept !== "object" || Array.isArray(concept)) return concept;
+      const row = concept as Record<string, unknown>;
+      return {
+        ...row,
+        definition: row.definition ?? row.description ?? row.summary,
+        evidenceChunk: sourceChunkNumber(row.evidenceChunk ?? row.evidence_chunk ?? row.sourceChunk ?? row.evidence),
+      };
+    })
+    : input.concepts;
+  return materialAnalysisSchema.parse({ ...input, concepts });
 }
 
 export function buildMaterialChunks(units: Awaited<ReturnType<typeof db.getMaterialUnits>>): InsertMaterialChunk[] {

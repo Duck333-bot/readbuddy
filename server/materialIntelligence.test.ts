@@ -36,14 +36,25 @@ describe("Material Intelligence chunk construction", () => {
 });
 
 describe("Material Intelligence provider compatibility", () => {
-  it("accepts description aliases and numeric-string evidence chunk references", () => {
+  it("accepts description aliases and provider evidence labels", () => {
     const analysis = parseMaterialAnalysis({
       overview: "A short source-grounded overview.",
       learningObjectives: ["Explain the role of a cell membrane."],
       keyIdeas: ["Membranes regulate what enters a cell."],
-      concepts: [{ name: "Cell membrane", description: "A boundary that regulates passage.", evidenceChunk: "1" }],
+      concepts: [{ name: "Cell membrane", description: "A boundary that regulates passage.", evidenceChunk: "source chunk 1" }],
     });
 
-    expect(analysis.concepts[0]).toMatchObject({ description: "A boundary that regulates passage.", evidenceChunk: 1 });
+    expect(analysis.concepts[0]).toMatchObject({ definition: "A boundary that regulates passage.", evidenceChunk: 1 });
+  });
+
+  it("uses the first supplied source chunk when a provider omits a numeric position", () => {
+    const analysis = parseMaterialAnalysis({
+      overview: "A short source-grounded overview.",
+      learningObjectives: ["Explain the role of a cell membrane."],
+      keyIdeas: ["Membranes regulate what enters a cell."],
+      concepts: [{ name: "Membrane transport", description: "Movement across a membrane.", evidenceChunk: "the supplied source" }],
+    });
+
+    expect(analysis.concepts[0].evidenceChunk).toBe(1);
   });
 });
