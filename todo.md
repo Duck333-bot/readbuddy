@@ -573,3 +573,17 @@
 - [x] Preserve Landing, Library, Reader, Notebook, pricing, final-logo work, product features, and all existing behavior unchanged
 - [x] Verify desktop, phone, successful upload, long-book background processing, failure/retry, ready-to-read transition, and truthful processing states
 - [x] Checkpoint the Upload review package and stop for founder approval before any Library work
+
+## Upload / Book Brain Founder Screenshot Review
+
+- [x] Assemble clearly labeled real desktop and phone captures for initial upload, processing, Book Brain continuation, ready-to-read, and retry/error states
+- [x] Deliver the screenshot package for founder approval without changing Upload implementation or authorizing Library
+
+## Upload Founder Hierarchy Correction — Final Review Required
+
+- [x] Make the uploaded book 2–3× more visually dominant and central in every successful Upload / Book Brain state
+- [x] Reduce oversized editorial headlines, improve line lengths, and give filename, state, CTA, and background status adequate space
+- [x] Turn real Book Brain milestones into visible understanding accumulated around the central book, with no fake percentages
+- [x] Replace the invalid-PDF success contradiction with a truthful calm recovery state: “We couldn't read this copy.”
+- [x] Strengthen visual continuity from file → book → readable book → understood book → reading without changing real backend behavior
+- [x] Return new desktop and phone screenshots for initial, preparing, ready/deeper-processing, and invalid/retry states; stop for final Upload approval

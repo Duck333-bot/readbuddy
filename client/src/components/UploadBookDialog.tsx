@@ -30,10 +30,10 @@ type Stage = "idle" | "reading" | "uploading" | "ready";
 type ReadyBook = { bookId: number; title: string; pageCount: number };
 
 const UNDERSTANDING_STEPS: { label: string; mark: MarginMarkKind }[] = [
-  { label: "Text and reading structure", mark: "memory" },
-  { label: "People and ideas in this book", mark: "context" },
-  { label: "Connections that matter", mark: "evidence" },
-  { label: "Evidence paths back to the page", mark: "return" },
+	{ label: "Pages understood", mark: "memory" },
+	{ label: "Structure, people & ideas", mark: "context" },
+	{ label: "Connections", mark: "evidence" },
+	{ label: "Evidence paths", mark: "return" },
 ];
 
 function BookTerrain({
@@ -42,26 +42,35 @@ function BookTerrain({
   pageCount,
   presentation,
 }: {
-  mode: "empty" | "selected" | "preparing" | "ready";
+	mode: "empty" | "selected" | "preparing" | "ready" | "failure";
   title?: string;
   pageCount?: number;
   presentation?: BookBrainPresentation;
 }) {
-  const activeIndex = presentation?.activeIndex ?? (mode === "preparing" ? 0 : -1);
-  const visibleCount = mode === "empty" ? 1 : mode === "selected" ? 2 : mode === "preparing" ? 3 : 4;
+	const activeIndex = presentation?.activeIndex ?? (mode === "preparing" ? 0 : -1);
+	const visibleCount = mode === "empty" ? 1 : mode === "selected" ? 2 : mode === "preparing" ? 3 : mode === "failure" ? 0 : 4;
+	const bookState = mode === "empty"
+		? "Your next book"
+		: mode === "selected"
+			? "A file becoming a book"
+			: mode === "preparing"
+				? "Making it readable"
+				: mode === "ready"
+					? "Ready to begin"
+					: "Needs another copy";
 
   return (
     <div className={`rb-upload-terrain rb-upload-terrain--${mode}`} data-brain-kind={presentation?.kind}>
       <span className="rb-upload-field rb-upload-field--blush" />
       <span className="rb-upload-field rb-upload-field--mint" />
       <span className="rb-upload-field rb-upload-field--periwinkle" />
-      <div className="rb-upload-book" aria-hidden="true">
-        <span className="rb-upload-book__eyebrow">{mode === "empty" ? "Your next book" : "ReadBuddy is reading"}</span>
+			<div className="rb-upload-book" aria-hidden="true">
+				<span className="rb-upload-book__eyebrow">{bookState}</span>
         <span className="rb-upload-book__line rb-upload-book__line--one" />
         <span className="rb-upload-book__line rb-upload-book__line--two" />
         <span className="rb-upload-book__line rb-upload-book__line--three" />
         <span className="rb-upload-book__title">{title?.slice(0, 25) || "A book"}</span>
-        {pageCount ? <span className="rb-upload-book__pages">{pageCount} pages</span> : null}
+				{pageCount ? <span className="rb-upload-book__pages">{pageCount} readable pages</span> : null}
       </div>
       <div className="rb-upload-fragments" aria-hidden="true">
         {UNDERSTANDING_STEPS.slice(0, visibleCount).map((item, index) => {
@@ -184,17 +193,19 @@ export function UploadBookDialog({
         onOpenChange(next);
         if (!next) reset();
       }}>
-      <DialogContent className="rb-upload-dialog h-[100dvh] w-screen max-w-none overflow-hidden rounded-none border-0 bg-[var(--rb-paper)] p-0 sm:h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:rounded-[2rem] sm:border sm:border-border">
+		<DialogContent className="rb-upload-dialog h-[100dvh] w-screen max-w-none overflow-hidden rounded-none border-0 bg-[var(--rb-paper)] p-0 sm:h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-none sm:rounded-[2rem] sm:border sm:border-border">
         <div className="rb-upload-layout h-full overflow-y-auto lg:grid lg:grid-cols-[1.02fr_0.98fr]">
           <section className="rb-upload-stage relative min-h-[31rem] overflow-hidden bg-[var(--rb-night)] px-6 pb-8 pt-10 text-[var(--rb-paper)] sm:px-10 sm:pt-12 lg:min-h-0 lg:px-14 lg:py-14">
             <div className="relative z-10 max-w-md">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--rb-sun)]">ReadBuddy / Understanding a book</p>
-              <h2 className="mt-4 font-display text-4xl font-semibold leading-[0.95] tracking-[-0.055em] sm:text-5xl">
-                {stage === "ready" ? "Your book is ready to begin." : busy ? "The book is becoming readable." : file ? "A book begins to take shape." : "Give ReadBuddy a book."}
-              </h2>
-              <p className="mt-4 max-w-sm text-sm leading-relaxed text-[var(--rb-on-night-muted)] sm:text-base">
-                {stage === "ready"
-                  ? "Open the first readable page now. The deeper understanding keeps forming quietly around it."
+				<h2 className="mt-4 max-w-xl font-display text-[1.85rem] font-semibold leading-[1.04] tracking-[-0.04em] sm:text-[2.15rem]">
+					{uploadError ? "We couldn't read this copy." : stage === "ready" ? "Your book is ready to begin." : busy ? "The book is becoming readable." : file ? "Your book is taking shape." : "Give ReadBuddy a book."}
+				</h2>
+				<p className="mt-4 max-w-lg text-sm leading-relaxed text-[var(--rb-on-night-muted)] sm:text-base">
+					{uploadError
+						? "This PDF's structure could not be processed. Choose another copy or try this one again."
+						: stage === "ready"
+						? "Open the first readable page now. The deeper understanding keeps forming quietly around it."
                   : busy
                     ? "First, ReadBuddy prepares the book you can read. The deeper work comes after that."
                     : file
@@ -202,7 +213,7 @@ export function UploadBookDialog({
                       : "Start with the book itself. ReadBuddy will build understanding around the pages as you read."}
               </p>
             </div>
-            <BookTerrain mode={stage === "ready" ? "ready" : busy ? "preparing" : file ? "selected" : "empty"} title={readyBook?.title ?? title} pageCount={readyBook?.pageCount} presentation={stage === "ready" ? presentation : undefined} />
+			<BookTerrain mode={uploadError ? "failure" : stage === "ready" ? "ready" : busy ? "preparing" : file ? "selected" : "empty"} title={readyBook?.title ?? title} pageCount={readyBook?.pageCount} presentation={stage === "ready" ? presentation : undefined} />
           </section>
 
           <section className="flex min-h-0 items-center bg-[var(--rb-paper)] px-6 py-8 sm:px-10 sm:py-12 lg:px-14">
@@ -218,7 +229,7 @@ export function UploadBookDialog({
                     onDrop={event => { event.preventDefault(); setDragging(false); acceptFile(event.dataTransfer.files?.[0]); }}
                     className={`group rb-upload-dropzone w-full text-left transition-colors ${dragging ? "is-dragging" : ""}`}>
                     <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--rb-night)] text-[var(--rb-sun)] transition-transform duration-200 group-hover:scale-105"><UploadCloud className="h-5 w-5" strokeWidth={1.8} /></span>
-                    <span className="mt-7 block font-display text-4xl font-semibold tracking-[-.045em] text-foreground">Bring in a book</span>
+					<span className="mt-7 block font-display text-3xl font-semibold tracking-[-.04em] text-foreground">Bring in a book</span>
                     <span className="mt-3 block max-w-sm text-sm leading-relaxed text-muted-foreground">Choose a text-based PDF from your computer. You can begin reading as soon as the first usable pages are ready.</span>
                     <span className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-[var(--rb-evidence)]">Choose your book <ArrowRight className="h-4 w-4" /></span>
                   </button>
@@ -233,16 +244,16 @@ export function UploadBookDialog({
                     {!busy && <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={reset} aria-label="Remove file"><X className="h-4 w-4" /></Button>}
                   </div>
                   {!busy && <div className="space-y-2"><Label htmlFor="book-title" className="text-xs font-bold uppercase tracking-[.14em]">Book title <span className="font-normal normal-case tracking-normal text-muted-foreground">optional</span></Label><Input id="book-title" value={title} onChange={event => { setTitleTouched(true); setTitle(event.target.value); }} placeholder="Use the book title" className="h-12 rounded-xl border-border bg-card" /></div>}
-                  {busy && <div className="rb-upload-working" aria-live="polite"><MarginMark kind="memory" className="h-5 w-5 text-[var(--rb-evidence)]" /><div><p className="font-display text-3xl font-semibold tracking-[-.04em] text-foreground">{stage === "reading" ? "Preparing the first readable pages." : "Saving this book and its readable text."}</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">You will be able to read before the deeper connections are finished.</p></div></div>}
-                  {uploadError && <div className="rb-upload-error" role="alert"><MarginMark kind="return" className="h-5 w-5 shrink-0" /><div><p className="font-semibold">This book needs another try.</p><p className="mt-1 text-sm leading-relaxed">{uploadError}</p></div></div>}
+					{busy && <div className="rb-upload-working" aria-live="polite"><MarginMark kind="memory" className="h-5 w-5 text-[var(--rb-evidence)]" /><div><p className="font-display text-2xl font-semibold tracking-[-.035em] text-foreground">{stage === "reading" ? "Preparing readable pages" : "Saving readable text"}</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">You can begin reading before the deeper connections are finished.</p></div></div>}
+					{uploadError && <div className="rb-upload-error" role="alert"><MarginMark kind="return" className="h-5 w-5 shrink-0" /><div><p className="font-display text-2xl font-semibold tracking-[-.035em]">We couldn't read this copy.</p><p className="mt-2 text-sm leading-relaxed">This PDF's structure could not be processed. {uploadError}</p></div></div>}
                   {!busy && <Button className="h-12 w-full rounded-xl bg-primary text-primary-foreground hover:opacity-90" onClick={() => void handleSubmit()}>{uploadError ? "Try this book again" : "Prepare this book"} <ArrowRight className="ml-2 h-4 w-4" /></Button>}
                 </div>
               )}
 
               {stage === "ready" && readyBook && (
-                <div className="space-y-7">
-                  <div className="border-b border-border pb-6"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[var(--rb-evidence)]">Ready to begin reading</p><h3 className="mt-3 font-display text-4xl font-semibold tracking-[-.05em] text-foreground">{readyBook.title}</h3><p className="mt-3 text-sm leading-relaxed text-muted-foreground">{readyBook.pageCount} pages are ready. The deeper understanding can continue without holding up your first chapter.</p><Button className="mt-6 h-12 rounded-xl bg-primary px-6 text-primary-foreground hover:opacity-90" onClick={beginReading}>Open the first readable page <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
-                  <div className="rb-upload-brain"><div className="flex items-start gap-3"><MarginMark kind={presentation.kind === "connections" ? "context" : presentation.kind === "evidence" ? "evidence" : presentation.kind === "complete" ? "return" : "memory"} className="mt-0.5 h-5 w-5 shrink-0 text-[var(--rb-evidence)]" /><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-muted-foreground">{presentation.eyebrow}</p><p className="mt-2 font-display text-2xl font-semibold tracking-[-.035em] text-foreground">{presentation.title}</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{presentation.detail}</p></div></div><ol className="mt-6 space-y-3">{UNDERSTANDING_STEPS.map((item, index) => { const complete = presentation.kind === "complete" || index < presentation.activeIndex; const active = index === presentation.activeIndex && presentation.kind !== "complete"; return <li key={item.label} className={`rb-upload-understanding-step ${complete ? "is-complete" : ""} ${active ? "is-active" : ""}`}><MarginMark kind={item.mark} className="h-4 w-4" /><span>{item.label}</span>{complete ? <Check className="ml-auto h-4 w-4" /> : null}</li>; })}</ol></div>
+					<div className="space-y-8">
+						<div className="border-b border-border pb-7"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[var(--rb-evidence)]">Ready to begin reading</p><h3 className="mt-3 font-display text-3xl font-semibold tracking-[-.04em] text-foreground">{readyBook.title}</h3><p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">{readyBook.pageCount} pages are ready. Deeper understanding can continue without holding up your first chapter.</p><Button className="mt-6 h-12 rounded-xl bg-primary px-6 text-primary-foreground hover:opacity-90" onClick={beginReading}>Open the first readable page <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
+						<div className="rb-upload-brain"><div className="flex items-start gap-3"><MarginMark kind={presentation.kind === "connections" ? "context" : presentation.kind === "evidence" ? "evidence" : presentation.kind === "complete" ? "return" : "memory"} className="mt-0.5 h-5 w-5 shrink-0 text-[var(--rb-evidence)]" /><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-muted-foreground">{presentation.eyebrow}</p><p className="mt-2 font-display text-2xl font-semibold tracking-[-.035em] text-foreground">{presentation.title}</p><p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{presentation.detail}</p></div></div><ol className="mt-7 rb-upload-understanding-orbit">{UNDERSTANDING_STEPS.map((item, index) => { const complete = presentation.kind === "complete" || index < presentation.activeIndex; const active = index === presentation.activeIndex && presentation.kind !== "complete"; return <li key={item.label} className={`rb-upload-understanding-step ${complete ? "is-complete" : ""} ${active ? "is-active" : ""}`}><MarginMark kind={item.mark} className="h-4 w-4" /><span>{item.label}</span>{complete ? <Check className="ml-auto h-4 w-4" /> : null}</li>; })}</ol></div>
                 </div>
               )}
               <input ref={inputRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={event => acceptFile(event.target.files?.[0])} />
