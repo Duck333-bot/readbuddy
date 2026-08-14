@@ -609,3 +609,11 @@
 - [x] Keep all ZhiyaAI copy, layout decisions, graphic expression, and interactions original; do not reuse Turbo AI or RevisionDojo assets, mascots, customer logos, metrics, or wording
 - [x] Preserve product behavior, visible ZhiyaAI branding, and all non-homepage surfaces unchanged
 - [x] Test and review desktop and phone homepage behavior before checkpointing the refinement
+
+## Landing Memory / Context Walkthrough — Founder Review Required
+
+- [x] Implement one product-faithful walkthrough: current passage → select sentence → ZhiyaAI action bar → Context → earlier passage → evidence connection → concise understanding → return to quiet reading
+- [x] Use natural desktop cursor interaction and mobile touch / long-press interaction without a mouse cursor
+- [x] Bind the walkthrough to real ZhiyaAI capabilities only, preserve landing performance, and respect reduced-motion preferences
+- [x] Keep Upload, Library, Reader, Notebook, pricing, final logo selection, and product behavior unchanged
+- [x] Verify desktop and phone interactions, checkpoint, and stop for founder review before any Library work

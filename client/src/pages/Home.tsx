@@ -1,6 +1,7 @@
 import { BrandWordmark as Wordmark } from "@/components/BrandWordmark";
+import { LandingContextWalkthrough } from "@/components/marketing/LandingContextWalkthrough";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BookOpen, Check, ChevronRight, Highlighter, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Sparkles } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
@@ -53,19 +54,7 @@ export default function Home() {
             <div className="mt-10 flex flex-wrap gap-x-5 gap-y-3 text-sm text-[#49465e]">{zhiyaHomepagePillars.map(item => <span key={item} className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-[#7658e6]" />{item}</span>)}</div>
           </motion.div>
 
-          <motion.div {...reveal} className="relative mx-auto w-full max-w-2xl">
-            <div className="absolute -left-5 top-16 h-32 w-32 rounded-[2rem] bg-[#bcebe4]/65 [transform:rotate(-13deg)]" />
-            <div className="absolute -right-4 bottom-8 h-36 w-36 rounded-full bg-[#ffb4cc]/55 blur-[1px]" />
-            <span className="absolute -left-4 top-4 z-10 rounded-full bg-[#fff7ca] px-3 py-1.5 text-[10px] font-semibold text-[#645930] shadow-[0_8px_20px_rgba(75,64,37,.13)]">Earlier page · p.47</span>
-            <span className="absolute -right-2 top-[-.65rem] z-10 rounded-full bg-[#c7f1e7] px-3 py-1.5 text-[10px] font-semibold text-[#28635b] shadow-[0_8px_20px_rgba(30,92,81,.13)]">No spoilers</span>
-            <div className="relative rounded-[1.75rem] border border-white/85 bg-white/90 p-4 shadow-[0_28px_60px_rgba(50,37,111,.17)] backdrop-blur sm:p-6">
-              <div className="flex items-center justify-between border-b border-[#e9e7f2] pb-4"><div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#b9aaff]" /><span className="text-xs font-semibold text-[#5e5b73]">Reading with ZhiyaAI</span></div><span className="text-xs text-[#908da3]">Page 143</span></div>
-              <div className="grid gap-4 pt-5 sm:grid-cols-[1.08fr_.92fr]">
-                <article className="rounded-xl border border-[#ebe8f3] bg-[#fffefd] p-5 sm:p-6"><p className="text-[10px] font-semibold uppercase tracking-[.16em] text-[#7b62e7]">The page you are reading</p><p className="mt-5 font-reading text-xl leading-8 text-[#29263c]">“She understood then that the answer had been there long before the question.”</p><span className="mt-5 inline-flex rounded bg-[#f8e6a8]/75 px-1.5 py-0.5 font-reading text-sm text-[#474158]">had been there long before</span></article>
-                <div className="space-y-3"><article className="rounded-xl bg-[#f3efff] p-4"><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-[#725bd8]">Earlier context · p.47</p><p className="mt-2 font-reading text-sm leading-6 text-[#46405d]">“Some things only become clear when you have lived beyond them.”</p></article><article className="rounded-xl border border-[#ebe8f3] p-4"><p className="flex items-center gap-2 text-sm font-semibold text-[#332f48]"><Highlighter className="h-4 w-4 text-[#7658e6]" /> Why this matters</p><p className="mt-2 text-sm leading-6 text-[#67637b]">ZhiyaAI connects the two moments without looking ahead.</p><button className="mt-3 inline-flex items-center text-xs font-semibold text-[#7658e6]">See the connection <ChevronRight className="h-3.5 w-3.5" /></button></article></div>
-              </div>
-            </div>
-          </motion.div>
+          <motion.div {...reveal}><LandingContextWalkthrough /></motion.div>
         </div>
       </section>
 
