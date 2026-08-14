@@ -617,3 +617,11 @@
 - [x] Bind the walkthrough to real ZhiyaAI capabilities only, preserve landing performance, and respect reduced-motion preferences
 - [x] Keep Upload, Library, Reader, Notebook, pricing, final logo selection, and product behavior unchanged
 - [x] Verify desktop and phone interactions, checkpoint, and stop for founder review before any Library work
+
+## Landing Walkthrough Framer Motion Choreography — Founder Review Required
+
+- [x] Use existing Framer Motion for desktop cursor path/easing, selection, action-bar, fragment, evidence, explanation, return, and viewport autoplay choreography
+- [x] Use React DOM/SVG/CSS only for the simulated Reader, cursor, touch indicator, Margin Thread, and Evidence Bracket; add no video or new animation runtime
+- [x] Build a distinct mobile touch choreography rather than hiding the desktop cursor
+- [x] Preserve reduced-motion accessibility, replay interaction, landing performance, and all frozen product surfaces
+- [x] Verify desktop/mobile choreography and stop for founder review before any Library work

@@ -13,3 +13,9 @@ The highlighted sentence also starts the walkthrough after a touch-pointer hold.
 ## Phone visual review
 
 At a 390px viewport the hero becomes a deliberate vertical reading journey. The walkthrough panel follows the opening promise rather than being compressed beside it, exposes the long-press instruction below the current passage, and has no cursor affordance. The context, evidence, and return states remain available by interaction while the initial phone view stays quiet and readable.
+
+## Framer Motion refinement status
+
+The React DOM/SVG Framer Motion rewrite is in place. An initial viewport-autoplay race was identified and corrected: setting the one-time autoplay flag had cancelled the pending timer. The repaired browser check showed the complete Framer Motion sequence from selection through earlier context, drawn evidence thread, concise explanation, and return controls.
+
+The refined walkthrough has no video, Lottie, Rive, GSAP, or added animation runtime. It uses the existing Framer Motion dependency for the cursor, selection, action bar, earlier-fragment, thread-drawing, explanation, return, and viewport choreography. Full regression coverage passed with 146 tests, and the production build completed successfully. The landing’s route-level `Home` payload remains separate from the authenticated application bundle.
