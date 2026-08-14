@@ -602,3 +602,10 @@
 - [x] Apply the ZhiyaAI name consistently to visible product identity and metadata without changing reading, upload, Book Brain, Library, Reader, or authentication behavior
 - [x] Preserve all working product interactions and avoid fabricated testimonials, logos, usage counts, or social proof
 - [x] Add focused branding tests, verify desktop and phone homepage behavior, and checkpoint the rebrand
+
+## ZhiyaAI Safe Inspiration Homepage Refinement
+
+- [x] Refine the original ZhiyaAI homepage using only broad inspiration: clear conversion hierarchy, lively controlled color, concise navigation, and visible product proof
+- [x] Keep all ZhiyaAI copy, layout decisions, graphic expression, and interactions original; do not reuse Turbo AI or RevisionDojo assets, mascots, customer logos, metrics, or wording
+- [x] Preserve product behavior, visible ZhiyaAI branding, and all non-homepage surfaces unchanged
+- [x] Test and review desktop and phone homepage behavior before checkpointing the refinement

@@ -31,6 +31,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#fbfbfe] text-[#18172b]">
+      <div className="border-b border-[#7658e6]/10 bg-[#f0ecff] px-5 py-2 text-center text-[11px] font-medium text-[#5d4ac0] sm:px-8 sm:text-xs">For readers who want the whole picture—without skipping ahead.</div>
       <header className="relative z-20 mx-auto flex h-20 max-w-7xl items-center px-5 sm:px-8">
         <Wordmark className="text-[#17162a]" />
         <nav className="ml-auto flex items-center gap-1 sm:gap-3" aria-label="Primary navigation">
@@ -41,8 +42,8 @@ export default function Home() {
       </header>
 
       <section className="relative px-5 pb-20 pt-8 sm:px-8 sm:pb-28 sm:pt-14">
-        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[44rem] overflow-hidden bg-[radial-gradient(circle_at_23%_20%,#e3dcff_0%,transparent_34%),radial-gradient(circle_at_72%_28%,#ffcfe2_0%,transparent_30%),linear-gradient(120deg,#fafbff_0%,#f3f0ff_45%,#fff9fc_100%)]" />
-        <div className="pointer-events-none absolute -right-16 top-32 -z-10 h-80 w-80 rounded-full border-[42px] border-[#ffffff]/45" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[44rem] overflow-hidden bg-[radial-gradient(circle_at_20%_18%,#d8ccff_0%,transparent_35%),radial-gradient(circle_at_78%_26%,#ffc9e1_0%,transparent_30%),radial-gradient(circle_at_54%_78%,#c8f2e8_0%,transparent_27%),linear-gradient(122deg,#fafbff_0%,#f3efff_47%,#fff8fd_100%)]" />
+        <div className="pointer-events-none absolute -right-16 top-32 -z-10 h-80 w-80 rounded-full border-[42px] border-[#ffffff]/50" />
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.88fr_1.12fr] lg:items-center lg:gap-16">
           <motion.div {...reveal}>
             <p className="inline-flex items-center gap-2 rounded-full border border-[#8b73f8]/18 bg-white/65 px-3 py-1.5 text-xs font-semibold text-[#6552ca] shadow-sm"><Sparkles className="h-3.5 w-3.5" /> Your books, made easier to return to</p>
@@ -55,6 +56,8 @@ export default function Home() {
           <motion.div {...reveal} className="relative mx-auto w-full max-w-2xl">
             <div className="absolute -left-5 top-16 h-32 w-32 rounded-[2rem] bg-[#bcebe4]/65 [transform:rotate(-13deg)]" />
             <div className="absolute -right-4 bottom-8 h-36 w-36 rounded-full bg-[#ffb4cc]/55 blur-[1px]" />
+            <span className="absolute -left-4 top-4 z-10 rounded-full bg-[#fff7ca] px-3 py-1.5 text-[10px] font-semibold text-[#645930] shadow-[0_8px_20px_rgba(75,64,37,.13)]">Earlier page · p.47</span>
+            <span className="absolute -right-2 top-[-.65rem] z-10 rounded-full bg-[#c7f1e7] px-3 py-1.5 text-[10px] font-semibold text-[#28635b] shadow-[0_8px_20px_rgba(30,92,81,.13)]">No spoilers</span>
             <div className="relative rounded-[1.75rem] border border-white/85 bg-white/90 p-4 shadow-[0_28px_60px_rgba(50,37,111,.17)] backdrop-blur sm:p-6">
               <div className="flex items-center justify-between border-b border-[#e9e7f2] pb-4"><div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#b9aaff]" /><span className="text-xs font-semibold text-[#5e5b73]">Reading with ZhiyaAI</span></div><span className="text-xs text-[#908da3]">Page 143</span></div>
               <div className="grid gap-4 pt-5 sm:grid-cols-[1.08fr_.92fr]">
@@ -69,7 +72,7 @@ export default function Home() {
       <section id="how-it-works" className="border-y border-[#e9e7f0] bg-white px-5 py-16 sm:px-8 sm:py-24">
         <div className="mx-auto max-w-7xl"><div className="max-w-2xl"><p className="text-xs font-semibold uppercase tracking-[.18em] text-[#7658e6]">A quieter way to get unstuck</p><h2 className="mt-4 font-display text-4xl font-semibold leading-tight tracking-[-.045em] sm:text-5xl">The book stays at the center.</h2><p className="mt-4 text-base leading-7 text-[#67637b]">ZhiyaAI appears only when the page needs more context—then sends you back to reading.</p></div>
           <div className="mt-12 grid gap-4 md:grid-cols-3">
-            {[{ number: "01", title: "Bring in a book", copy: "Upload a text-based PDF and open the first readable page." }, { number: "02", title: "Keep your momentum", copy: "Ask for help where a sentence or name stops making sense." }, { number: "03", title: "Return with context", copy: "See the earlier passage that makes the current page click." }].map(item => <article key={item.number} className="rounded-2xl border border-[#e9e7f0] bg-[#fcfbff] p-6"><span className="text-sm font-semibold text-[#a39abf]">{item.number}</span><h3 className="mt-9 font-display text-2xl font-semibold tracking-[-.03em]">{item.title}</h3><p className="mt-3 text-sm leading-6 text-[#69667d]">{item.copy}</p></article>)}
+            {[{ number: "01", title: "Bring in a book", copy: "Upload a text-based PDF and open the first readable page.", tint: "bg-[#f4f0ff]" }, { number: "02", title: "Keep your momentum", copy: "Ask for help where a sentence or name stops making sense.", tint: "bg-[#fff2f8]" }, { number: "03", title: "Return with context", copy: "See the earlier passage that makes the current page click.", tint: "bg-[#edfbf7]" }].map(item => <article key={item.number} className={`rounded-2xl border border-[#e9e7f0] ${item.tint} p-6`}><span className="text-sm font-semibold text-[#8f85b3]">{item.number}</span><h3 className="mt-9 font-display text-2xl font-semibold tracking-[-.03em]">{item.title}</h3><p className="mt-3 text-sm leading-6 text-[#69667d]">{item.copy}</p></article>)}
           </div>
         </div>
       </section>
