@@ -5,7 +5,7 @@ import { parseMaterial, MaterialParseError, MAX_MATERIAL_BYTES, inferMimeType } 
 import { storagePut } from "../storage";
 import { protectedProcedure, router } from "../_core/trpc";
 import { MATERIAL_TYPES } from "@shared/materials";
-import { createHeartbeatJob } from "../_core/heartbeat";
+import { createHeartbeatJob, deleteHeartbeatJob } from "../_core/heartbeat";
 import { parse as parseCookie } from "cookie";
 import { COOKIE_NAME } from "@shared/const";
 import { ensureGroundedStudySet } from "../studyGeneration";
@@ -41,6 +41,27 @@ export const materialsRouter = router({
       db.listMaterialNotes(ctx.user.id, input.materialId),
     ]);
     return { material, intelligence, concepts, mastery, notes };
+  }),
+
+  retryIntelligence: protectedProcedure.input(z.object({ materialId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const material = await ownMaterialOrThrow(input.materialId, ctx.user.id);
+    const intelligence = await db.getMaterialIntelligence(material.id);
+    if (!intelligence) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Understanding has not been prepared for this material yet." });
+    if (intelligence.pipelineStage === "complete") return { scheduled: false, reason: "already-complete" as const };
+    const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+    if (intelligence.jobTaskUid) {
+      try { await deleteHeartbeatJob(intelligence.jobTaskUid, sessionToken); } catch { /* A missing stale task is safe to replace. */ }
+    }
+    const job = await createHeartbeatJob({
+      name: `material-intelligence-${material.id}`,
+      cron: "0 * * * * *",
+      path: "/api/scheduled/materialIntelligence",
+      payload: { materialId: material.id },
+      description: `Material Intelligence retry for material ${material.id}`,
+    }, sessionToken);
+    await db.updateMaterialIntelligence(material.id, { jobTaskUid: job.taskUid, pipelineStage: "chunks", pipelineError: null, pipelineRetryAfter: null });
+    await db.updateMaterialProcessing(material.id, { processingState: "ready", processingError: null, processingRetryAfter: null });
+    return { scheduled: true, taskUid: job.taskUid };
   }),
 
   saveNote: protectedProcedure.input(z.object({
