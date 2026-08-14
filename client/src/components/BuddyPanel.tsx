@@ -126,6 +126,7 @@ export function BuddyPanel({
   const spoilerMode = spoilerData?.spoilerMode ?? "safe";
 
   const askMutation = trpc.buddy.ask.useMutation();
+  const readerSignalMutation = trpc.materials.readerSignal.useMutation();
   const saveMutation = trpc.notebook.save.useMutation({
     onSuccess: () => {
       void utils.notebook.list.invalidate();
@@ -180,6 +181,9 @@ export function BuddyPanel({
             saved: false,
           },
         ]);
+        if (mode === "define" || mode === "simplify") {
+          void readerSignalMutation.mutate({ bookId, mode, highlight });
+        }
       } catch (error) {
         const message =
           error instanceof Error
@@ -190,7 +194,7 @@ export function BuddyPanel({
         setActiveMode(null);
       }
     },
-    [askMutation, bookId, highlight, language, pageNumber, turns],
+    [askMutation, bookId, highlight, language, pageNumber, readerSignalMutation, turns],
   );
 
   const handleSave = useCallback(

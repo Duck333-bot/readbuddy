@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { bookBrainHandler } from "../handlers/bookBrainHandler";
+import { materialIntelligenceHandler } from "../handlers/materialIntelligenceHandler";
 import { registerPublicLandingRoutes } from "../publicLanding";
 import { redirectLegacyReadBuddyHost } from "../domainIdentity";
 
@@ -43,6 +44,7 @@ async function startServer() {
   registerPublicLandingRoutes(app);
   // Heartbeat scheduled handlers — must be registered before the tRPC middleware
   app.post("/api/scheduled/bookBrain", bookBrainHandler);
+  app.post("/api/scheduled/materialIntelligence", materialIntelligenceHandler);
 
   // tRPC API
   app.use(

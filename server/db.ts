@@ -26,7 +26,34 @@ import {
   InsertBookBrain,
   InsertBookEntity,
   InsertReaderMemory,
+  InsertMaterial,
+  InsertMaterialUnit,
+  materialIntelligence,
+  materials,
+  materialUnits,
+  Material,
+  materialChunks,
+  concepts,
+  InsertMaterialChunk,
+  InsertConcept,
+  InsertMaterialIntelligence,
+  materialEmbeddings,
+  materialRetrievalPassages,
+  InsertMaterialEmbedding,
+  InsertMaterialRetrievalPassage,
+  learnerConceptMastery,
+  learnerSignals,
+  materialNotes,
+  InsertMaterialNote,
+  flashcards,
+  studyQuizzes,
+  quizQuestions,
+  quizAnswers,
+  InsertFlashcard,
+  lessons,
+  lessonSteps,
 } from "../drizzle/schema";
+import type { NormalizedMaterialUnit } from "@shared/materials";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -963,4 +990,255 @@ export async function getPrivateAnalyticsSummary() {
   const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
   const events = await db.select().from(analyticsEvents).where(gte(analyticsEvents.createdAt, weekAgo));
   return summarizeAlphaEvents(events as unknown as AnalyticsEventRow[], now);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              ZhiyaAI Materials                              */
+/* -------------------------------------------------------------------------- */
+
+export async function createMaterial(values: InsertMaterial) {
+  const db = await requireDb();
+  const result = await db.insert(materials).values(values);
+  return readInsertId(result);
+}
+
+export async function getMaterialForUser(materialId: number, userId: number): Promise<Material | undefined> {
+  const db = await requireDb();
+  const rows = await db.select().from(materials).where(and(eq(materials.id, materialId), eq(materials.userId, userId))).limit(1);
+  return rows[0];
+}
+
+export async function getMaterialForLegacyBook(bookId: number, userId: number): Promise<Material | undefined> {
+  const db = await requireDb();
+  const rows = await db.select().from(materials).where(and(eq(materials.legacyBookId, bookId), eq(materials.userId, userId))).limit(1);
+  return rows[0];
+}
+
+export async function listMaterialsForUser(userId: number) {
+  const db = await requireDb();
+  return db.select().from(materials).where(eq(materials.userId, userId)).orderBy(desc(materials.updatedAt));
+}
+
+export async function insertMaterialUnits(materialId: number, units: NormalizedMaterialUnit[]) {
+  if (units.length === 0) return;
+  const db = await requireDb();
+  const rows: InsertMaterialUnit[] = units.map(unit => ({
+    materialId,
+    unitIndex: unit.index,
+    unitType: unit.type,
+    title: unit.title ?? null,
+    content: unit.text,
+    headings: unit.headings,
+    sourceRef: unit.sourceRef,
+  }));
+  const CHUNK_SIZE = 40;
+  for (let start = 0; start < rows.length; start += CHUNK_SIZE) {
+    await db.insert(materialUnits).values(rows.slice(start, start + CHUNK_SIZE));
+  }
+}
+
+export async function getMaterialUnits(materialId: number) {
+  const db = await requireDb();
+  return db.select().from(materialUnits).where(eq(materialUnits.materialId, materialId)).orderBy(asc(materialUnits.unitIndex));
+}
+
+export async function createMaterialIntelligence(materialId: number) {
+  const db = await requireDb();
+  await db.insert(materialIntelligence).values({ materialId }).onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
+}
+
+export async function getMaterialById(materialId: number) {
+  const db = await requireDb();
+  const rows = await db.select().from(materials).where(eq(materials.id, materialId)).limit(1);
+  return rows[0];
+}
+
+export async function getMaterialIntelligence(materialId: number) {
+  const db = await requireDb();
+  const rows = await db.select().from(materialIntelligence).where(eq(materialIntelligence.materialId, materialId)).limit(1);
+  return rows[0];
+}
+
+export async function updateMaterialIntelligence(materialId: number, values: Partial<InsertMaterialIntelligence>) {
+  const db = await requireDb();
+  await db.update(materialIntelligence).set({ ...values, updatedAt: new Date() }).where(eq(materialIntelligence.materialId, materialId));
+}
+
+export async function replaceMaterialChunks(materialId: number, rows: InsertMaterialChunk[]) {
+  const db = await requireDb();
+  await db.delete(materialChunks).where(eq(materialChunks.materialId, materialId));
+  if (rows.length === 0) return;
+  const CHUNK_SIZE = 30;
+  for (let start = 0; start < rows.length; start += CHUNK_SIZE) {
+    await db.insert(materialChunks).values(rows.slice(start, start + CHUNK_SIZE));
+  }
+}
+
+export async function getMaterialChunks(materialId: number) {
+  const db = await requireDb();
+  return db.select().from(materialChunks).where(eq(materialChunks.materialId, materialId)).orderBy(asc(materialChunks.chunkSequence));
+}
+
+export async function replaceMaterialConcepts(materialId: number, rows: InsertConcept[]) {
+  const db = await requireDb();
+  await db.delete(concepts).where(eq(concepts.materialId, materialId));
+  if (rows.length) await db.insert(concepts).values(rows);
+}
+
+export async function replaceMaterialRetrievalPassages(materialId: number, rows: InsertMaterialRetrievalPassage[]) {
+  const db = await requireDb();
+  await db.delete(materialRetrievalPassages).where(eq(materialRetrievalPassages.materialId, materialId));
+  if (rows.length) await db.insert(materialRetrievalPassages).values(rows);
+}
+
+export async function replaceMaterialEmbeddings(materialId: number, rows: InsertMaterialEmbedding[]) {
+  const db = await requireDb();
+  await db.delete(materialEmbeddings).where(eq(materialEmbeddings.materialId, materialId));
+  if (rows.length) await db.insert(materialEmbeddings).values(rows);
+}
+
+export async function getConceptsForMaterial(materialId: number) {
+  const db = await requireDb();
+  return db.select().from(concepts).where(eq(concepts.materialId, materialId)).orderBy(desc(concepts.importance));
+}
+
+export async function getLearnerMastery(userId: number, materialId: number) {
+  const db = await requireDb();
+  return db.select().from(learnerConceptMastery).where(and(eq(learnerConceptMastery.userId, userId), eq(learnerConceptMastery.materialId, materialId))).orderBy(asc(learnerConceptMastery.masteryState));
+}
+
+export async function getLearnerMasteryForConcept(userId: number, conceptId: number) {
+  const db = await requireDb();
+  const rows = await db.select().from(learnerConceptMastery).where(and(eq(learnerConceptMastery.userId, userId), eq(learnerConceptMastery.conceptId, conceptId))).limit(1);
+  return rows[0];
+}
+
+export async function upsertLearnerMastery(values: typeof learnerConceptMastery.$inferInsert) {
+  const db = await requireDb();
+  await db.insert(learnerConceptMastery).values(values).onDuplicateKeyUpdate({
+    set: {
+      masteryState: values.masteryState,
+      confidenceEvidence: values.confidenceEvidence,
+      correctAnswers: values.correctAnswers,
+      incorrectAnswers: values.incorrectAnswers,
+      timesExplained: values.timesExplained,
+      simplifyRequests: values.simplifyRequests,
+      defineRequests: values.defineRequests,
+      lastSeenAt: values.lastSeenAt,
+      lastPracticedAt: values.lastPracticedAt,
+      updatedAt: new Date(),
+    },
+  });
+}
+
+export async function recordLearnerSignal(values: typeof learnerSignals.$inferInsert) {
+  const db = await requireDb();
+  await db.insert(learnerSignals).values(values);
+}
+
+export async function listMaterialNotes(userId: number, materialId: number) {
+  const db = await requireDb();
+  return db.select().from(materialNotes).where(and(eq(materialNotes.userId, userId), eq(materialNotes.materialId, materialId))).orderBy(desc(materialNotes.updatedAt));
+}
+
+export async function createMaterialNote(values: InsertMaterialNote) {
+  const db = await requireDb();
+  const result = await db.insert(materialNotes).values(values);
+  return readInsertId(result);
+}
+
+export async function updateMaterialNote(noteId: number, userId: number, materialId: number, values: Pick<InsertMaterialNote, "title" | "content">) {
+  const db = await requireDb();
+  await db.update(materialNotes).set({ ...values, updatedAt: new Date() }).where(and(eq(materialNotes.id, noteId), eq(materialNotes.userId, userId), eq(materialNotes.materialId, materialId)));
+}
+
+export async function listFlashcards(userId: number, materialId: number) {
+  const db = await requireDb();
+  return db.select().from(flashcards).where(and(eq(flashcards.userId, userId), eq(flashcards.materialId, materialId))).orderBy(desc(flashcards.updatedAt));
+}
+
+export async function insertFlashcards(rows: InsertFlashcard[]) {
+  if (!rows.length) return;
+  const db = await requireDb();
+  await db.insert(flashcards).values(rows);
+}
+
+export async function updateFlashcardRating(flashcardId: number, userId: number, materialId: number, lastRating: "again" | "hard" | "good") {
+  const db = await requireDb();
+  await db.update(flashcards).set({ lastRating, updatedAt: new Date() }).where(and(eq(flashcards.id, flashcardId), eq(flashcards.userId, userId), eq(flashcards.materialId, materialId)));
+}
+
+export async function createStudyQuiz(values: typeof studyQuizzes.$inferInsert) {
+  const db = await requireDb();
+  const result = await db.insert(studyQuizzes).values(values);
+  return readInsertId(result);
+}
+
+export async function getLatestStudyQuiz(userId: number, materialId: number) {
+  const db = await requireDb();
+  const rows = await db.select().from(studyQuizzes).where(and(eq(studyQuizzes.userId, userId), eq(studyQuizzes.materialId, materialId))).orderBy(desc(studyQuizzes.createdAt)).limit(1);
+  return rows[0];
+}
+
+export async function getQuizQuestions(quizId: number) {
+  const db = await requireDb();
+  return db.select().from(quizQuestions).where(eq(quizQuestions.quizId, quizId)).orderBy(asc(quizQuestions.position));
+}
+
+export async function insertQuizQuestions(rows: (typeof quizQuestions.$inferInsert)[]) {
+  if (!rows.length) return;
+  const db = await requireDb();
+  await db.insert(quizQuestions).values(rows);
+}
+
+export async function getQuizQuestionForUser(questionId: number, userId: number) {
+  const db = await requireDb();
+  const rows = await db.select({ question: quizQuestions, quiz: studyQuizzes }).from(quizQuestions).innerJoin(studyQuizzes, eq(quizQuestions.quizId, studyQuizzes.id)).where(and(eq(quizQuestions.id, questionId), eq(studyQuizzes.userId, userId))).limit(1);
+  return rows[0];
+}
+
+export async function recordQuizAnswer(values: typeof quizAnswers.$inferInsert) {
+  const db = await requireDb();
+  await db.insert(quizAnswers).values(values);
+}
+
+export async function getActiveLesson(userId: number, materialId: number) {
+  const db = await requireDb();
+  const lesson = (await db.select().from(lessons).where(and(eq(lessons.userId, userId), eq(lessons.materialId, materialId), eq(lessons.status, "active"))).orderBy(desc(lessons.updatedAt)).limit(1))[0];
+  if (!lesson) return undefined;
+  const steps = await db.select().from(lessonSteps).where(eq(lessonSteps.lessonId, lesson.id)).orderBy(asc(lessonSteps.position));
+  return { lesson, steps };
+}
+
+export async function createLesson(values: typeof lessons.$inferInsert, steps: Omit<typeof lessonSteps.$inferInsert, "lessonId">[]) {
+  const db = await requireDb();
+  const result = await db.insert(lessons).values(values);
+  const lessonId = readInsertId(result);
+  if (steps.length) await db.insert(lessonSteps).values(steps.map(step => ({ ...step, lessonId })));
+  return lessonId;
+}
+
+export async function getLessonStepForUser(stepId: number, userId: number) {
+  const db = await requireDb();
+  const rows = await db.select({ step: lessonSteps, lesson: lessons }).from(lessonSteps).innerJoin(lessons, eq(lessonSteps.lessonId, lessons.id)).where(and(eq(lessonSteps.id, stepId), eq(lessons.userId, userId))).limit(1);
+  return rows[0];
+}
+
+export async function completeLessonStep(stepId: number, userId: number, values: { learnerAnswer?: string | null; isCorrect?: number | null }) {
+  const db = await requireDb();
+  const owned = await getLessonStepForUser(stepId, userId);
+  if (!owned) return undefined;
+  await db.update(lessonSteps).set({ ...values, completedAt: new Date() }).where(eq(lessonSteps.id, stepId));
+  await db.update(lessons).set({ currentStepIndex: owned.step.position, updatedAt: new Date() }).where(eq(lessons.id, owned.lesson.id));
+  return owned;
+}
+
+export async function completeLesson(lessonId: number, userId: number) {
+  const db = await requireDb();
+  await db.update(lessons).set({ status: "complete", updatedAt: new Date() }).where(and(eq(lessons.id, lessonId), eq(lessons.userId, userId)));
+}
+
+export async function updateMaterialProcessing(materialId: number, values: Partial<Pick<Material, "processingState" | "processingError" | "processingRetryAfter" | "unitCount" | "lastOpenedAt">>) {
+  const db = await requireDb();
+  await db.update(materials).set({ ...values, updatedAt: new Date() }).where(eq(materials.id, materialId));
 }

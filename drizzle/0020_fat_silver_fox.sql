@@ -1,0 +1,1 @@
+ALTER TABLE `materialIntelligence` ADD `jobTaskUid` varchar(255);

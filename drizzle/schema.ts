@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
+import type { MaterialEvidence, SourceRef } from "@shared/materials";
 
 /**
  * Core user table backing auth flow.
@@ -523,3 +524,374 @@ export const readerSettings = mysqlTable(
 );
 export type ReaderSettings = typeof readerSettings.$inferSelect;
 export type InsertReaderSettings = typeof readerSettings.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/*                 ZhiyaAI Material and Learner Intelligence                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Generic source identity for ZhiyaAI. Legacy PDF books keep their existing
+ * rows and receive a compatibility link through legacyBookId instead of a
+ * destructive Book → Material database rename.
+ */
+export const materials = mysqlTable(
+  "materials",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    legacyBookId: int("legacyBookId").unique().references(() => books.id, { onDelete: "set null" }),
+    title: varchar("title", { length: 512 }).notNull(),
+    source: varchar("source", { length: 512 }),
+    materialType: mysqlEnum("materialType", [
+      "book",
+      "textbook",
+      "lecture_notes",
+      "slides",
+      "research_paper",
+      "school_material",
+      "business_report",
+      "document",
+    ]).notNull().default("document"),
+    fileType: mysqlEnum("fileType", ["pdf", "docx", "pptx", "txt", "markdown"]).notNull(),
+    mimeType: varchar("mimeType", { length: 160 }).notNull(),
+    originalFilename: varchar("originalFilename", { length: 512 }).notNull(),
+    fileKey: varchar("fileKey", { length: 512 }).notNull(),
+    fileUrl: varchar("fileUrl", { length: 768 }).notNull(),
+    coverKey: varchar("coverKey", { length: 512 }),
+    coverUrl: varchar("coverUrl", { length: 768 }),
+    unitCount: int("unitCount").notNull().default(0),
+    fileSize: int("fileSize").notNull().default(0),
+    processingState: mysqlEnum("processingState", ["uploaded", "ready", "processing", "complete", "paused", "failed"])
+      .notNull()
+      .default("uploaded"),
+    processingError: text("processingError"),
+    processingRetryAfter: timestamp("processingRetryAfter"),
+    lastOpenedAt: timestamp("lastOpenedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    index("materials_user_updated_idx").on(table.userId, table.updatedAt),
+    index("materials_user_type_idx").on(table.userId, table.materialType),
+  ],
+);
+export type Material = typeof materials.$inferSelect;
+export type InsertMaterial = typeof materials.$inferInsert;
+
+/** Ordered normalized material source units: pages, slides, or logical sections. */
+export const materialUnits = mysqlTable(
+  "materialUnits",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    unitIndex: int("unitIndex").notNull(),
+    unitType: mysqlEnum("unitType", ["page", "slide", "section"]).notNull(),
+    title: varchar("title", { length: 512 }),
+    content: text("content").notNull(),
+    headings: json("headings").$type<string[]>(),
+    sourceRef: json("sourceRef").$type<SourceRef>().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("materialUnits_material_unit_unique").on(table.materialId, table.unitIndex),
+    index("materialUnits_material_type_idx").on(table.materialId, table.unitType),
+  ],
+);
+export type MaterialUnit = typeof materialUnits.$inferSelect;
+export type InsertMaterialUnit = typeof materialUnits.$inferInsert;
+
+/** Shared, resumable understanding state for every non-reader Material workflow. */
+export const materialIntelligence = mysqlTable(
+  "materialIntelligence",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    materialId: int("materialId").notNull().unique().references(() => materials.id, { onDelete: "cascade" }),
+    passCompleted: int("passCompleted").notNull().default(0),
+    analysisVersion: int("analysisVersion").notNull().default(1),
+    pipelineVersion: int("pipelineVersion").notNull().default(0),
+    pipelineStage: mysqlEnum("pipelineStage", ["idle", "chunks", "synthesis", "embeddings", "complete", "paused", "failed"])
+      .notNull()
+      .default("idle"),
+    pipelineError: text("pipelineError"),
+    pipelineRetryAfter: timestamp("pipelineRetryAfter"),
+    processingLeaseUntil: timestamp("processingLeaseUntil"),
+    jobTaskUid: varchar("jobTaskUid", { length: 255 }),
+    overview: text("overview"),
+    learningObjectives: json("learningObjectives").$type<string[]>(),
+    keyIdeas: json("keyIdeas").$type<string[]>(),
+    structuredSummary: json("structuredSummary").$type<Record<string, unknown>>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("materialIntelligence_material_idx").on(table.materialId)],
+);
+export type MaterialIntelligence = typeof materialIntelligence.$inferSelect;
+export type InsertMaterialIntelligence = typeof materialIntelligence.$inferInsert;
+
+/** Token-bounded chunks for common understanding and concept extraction. */
+export const materialChunks = mysqlTable(
+  "materialChunks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    chunkSequence: int("chunkSequence").notNull(),
+    startUnitIndex: int("startUnitIndex").notNull(),
+    endUnitIndex: int("endUnitIndex").notNull(),
+    text: text("text").notNull(),
+    sourceRefs: json("sourceRefs").$type<SourceRef[]>().notNull(),
+    summary: text("summary"),
+    concepts: json("concepts").$type<string[]>(),
+    status: mysqlEnum("status", ["pending", "processing", "done", "failed"]).notNull().default("pending"),
+    attemptCount: int("attemptCount").notNull().default(0),
+    lastError: text("lastError"),
+    processedAt: timestamp("processedAt"),
+    analysisVersion: int("analysisVersion").notNull().default(1),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("materialChunks_material_sequence_unique").on(table.materialId, table.chunkSequence, table.analysisVersion),
+    index("materialChunks_material_status_idx").on(table.materialId, table.status),
+  ],
+);
+export type MaterialChunk = typeof materialChunks.$inferSelect;
+export type InsertMaterialChunk = typeof materialChunks.$inferInsert;
+
+/** Fine-grained, source-citable passages for material-grounded generation. */
+export const materialRetrievalPassages = mysqlTable(
+  "materialRetrievalPassages",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    startSourceRef: json("startSourceRef").$type<SourceRef>().notNull(),
+    endSourceRef: json("endSourceRef").$type<SourceRef>().notNull(),
+    text: text("text").notNull(),
+    embedding: json("embedding").$type<number[]>(),
+    analysisVersion: int("analysisVersion").notNull().default(1),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("materialRetrievalPassages_material_idx").on(table.materialId)],
+);
+export type MaterialRetrievalPassage = typeof materialRetrievalPassages.$inferSelect;
+export type InsertMaterialRetrievalPassage = typeof materialRetrievalPassages.$inferInsert;
+
+export const materialEmbeddings = mysqlTable(
+  "materialEmbeddings",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    chunkId: int("chunkId").notNull().references(() => materialChunks.id, { onDelete: "cascade" }),
+    embedding: json("embedding").$type<number[]>().notNull(),
+    metadata: json("metadata").$type<{ startUnitIndex: number; endUnitIndex: number; chunkSequence: number }>(),
+    analysisVersion: int("analysisVersion").notNull().default(1),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("materialEmbeddings_material_idx").on(table.materialId)],
+);
+export type MaterialEmbedding = typeof materialEmbeddings.$inferSelect;
+export type InsertMaterialEmbedding = typeof materialEmbeddings.$inferInsert;
+
+/** Shared source-backed concepts, reused by every learning feature. */
+export const concepts = mysqlTable(
+  "concepts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    canonicalName: varchar("canonicalName", { length: 255 }).notNull(),
+    normalizedKey: varchar("normalizedKey", { length: 255 }).notNull(),
+    aliases: json("aliases").$type<string[]>(),
+    definition: text("definition").notNull(),
+    importance: int("importance").notNull().default(1),
+    difficulty: mysqlEnum("difficulty", ["introductory", "intermediate", "advanced"]).default("intermediate"),
+    prerequisites: json("prerequisites").$type<string[]>(),
+    relatedConcepts: json("relatedConcepts").$type<string[]>(),
+    examples: json("examples").$type<MaterialEvidence[]>(),
+    evidence: json("evidence").$type<MaterialEvidence[]>().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("concepts_material_key_unique").on(table.materialId, table.normalizedKey),
+    index("concepts_material_importance_idx").on(table.materialId, table.importance),
+  ],
+);
+export type Concept = typeof concepts.$inferSelect;
+export type InsertConcept = typeof concepts.$inferInsert;
+
+/** Transparent learner model; raw source text and learner answers never belong here. */
+export const learnerConceptMastery = mysqlTable(
+  "learnerConceptMastery",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    conceptId: int("conceptId").notNull().references(() => concepts.id, { onDelete: "cascade" }),
+    normalizedConceptKey: varchar("normalizedConceptKey", { length: 255 }).notNull(),
+    masteryState: mysqlEnum("masteryState", ["new", "learning", "familiar", "strong"]).notNull().default("new"),
+    confidenceEvidence: int("confidenceEvidence").notNull().default(0),
+    correctAnswers: int("correctAnswers").notNull().default(0),
+    incorrectAnswers: int("incorrectAnswers").notNull().default(0),
+    timesExplained: int("timesExplained").notNull().default(0),
+    simplifyRequests: int("simplifyRequests").notNull().default(0),
+    defineRequests: int("defineRequests").notNull().default(0),
+    lastSeenAt: timestamp("lastSeenAt"),
+    lastPracticedAt: timestamp("lastPracticedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("learnerMastery_user_concept_unique").on(table.userId, table.conceptId),
+    index("learnerMastery_user_material_idx").on(table.userId, table.materialId),
+    index("learnerMastery_user_state_idx").on(table.userId, table.masteryState),
+  ],
+);
+export type LearnerConceptMastery = typeof learnerConceptMastery.$inferSelect;
+export type InsertLearnerConceptMastery = typeof learnerConceptMastery.$inferInsert;
+
+/** Privacy-minimal signals that explain learner state transitions. */
+export const learnerSignals = mysqlTable(
+  "learnerSignals",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    conceptId: int("conceptId").references(() => concepts.id, { onDelete: "set null" }),
+    signalType: mysqlEnum("signalType", ["define", "simplify", "exposure", "quiz_correct", "quiz_incorrect", "lesson_correct", "lesson_incorrect"])
+      .notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("learnerSignals_user_material_idx").on(table.userId, table.materialId, table.createdAt),
+    index("learnerSignals_concept_idx").on(table.conceptId),
+  ],
+);
+export type LearnerSignal = typeof learnerSignals.$inferSelect;
+
+/** Generated and personal notes remain separate and source-backed by default. */
+export const materialNotes = mysqlTable(
+  "materialNotes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    noteType: mysqlEnum("noteType", ["generated", "personal"]).notNull(),
+    title: varchar("title", { length: 512 }).notNull(),
+    content: text("content").notNull(),
+    evidence: json("evidence").$type<MaterialEvidence[]>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("materialNotes_user_material_idx").on(table.userId, table.materialId, table.noteType)],
+);
+export type MaterialNote = typeof materialNotes.$inferSelect;
+export type InsertMaterialNote = typeof materialNotes.$inferInsert;
+
+export const flashcards = mysqlTable(
+  "flashcards",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    conceptId: int("conceptId").references(() => concepts.id, { onDelete: "set null" }),
+    front: text("front").notNull(),
+    back: text("back").notNull(),
+    evidence: json("evidence").$type<MaterialEvidence[]>().notNull(),
+    difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).default("medium"),
+    lastRating: mysqlEnum("lastRating", ["again", "hard", "good"]),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("flashcards_user_material_idx").on(table.userId, table.materialId)],
+);
+export type Flashcard = typeof flashcards.$inferSelect;
+export type InsertFlashcard = typeof flashcards.$inferInsert;
+
+export const studyQuizzes = mysqlTable(
+  "studyQuizzes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 512 }).notNull(),
+    status: mysqlEnum("status", ["draft", "active", "complete"]).notNull().default("draft"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("studyQuizzes_user_material_idx").on(table.userId, table.materialId)],
+);
+export type StudyQuiz = typeof studyQuizzes.$inferSelect;
+
+export const quizQuestions = mysqlTable(
+  "quizQuestions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    quizId: int("quizId").notNull().references(() => studyQuizzes.id, { onDelete: "cascade" }),
+    conceptId: int("conceptId").references(() => concepts.id, { onDelete: "set null" }),
+    questionType: mysqlEnum("questionType", ["multiple_choice", "short_answer"]).notNull(),
+    prompt: text("prompt").notNull(),
+    choices: json("choices").$type<string[]>(),
+    answer: text("answer").notNull(),
+    explanation: text("explanation").notNull(),
+    evidence: json("evidence").$type<MaterialEvidence[]>().notNull(),
+    difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull().default("medium"),
+    position: int("position").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("quizQuestions_quiz_position_idx").on(table.quizId, table.position)],
+);
+export type QuizQuestion = typeof quizQuestions.$inferSelect;
+
+export const quizAnswers = mysqlTable(
+  "quizAnswers",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    questionId: int("questionId").notNull().references(() => quizQuestions.id, { onDelete: "cascade" }),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    answer: text("answer").notNull(),
+    isCorrect: int("isCorrect").notNull().default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("quizAnswers_user_question_idx").on(table.userId, table.questionId)],
+);
+export type QuizAnswer = typeof quizAnswers.$inferSelect;
+
+/** Persisted tutoring sequence: one lesson owns a structured, resumable set of steps. */
+export const lessons = mysqlTable(
+  "lessons",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    materialId: int("materialId").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 512 }).notNull(),
+    status: mysqlEnum("status", ["active", "complete", "abandoned"]).notNull().default("active"),
+    currentStepIndex: int("currentStepIndex").notNull().default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("lessons_user_material_idx").on(table.userId, table.materialId, table.status)],
+);
+export type Lesson = typeof lessons.$inferSelect;
+
+export const lessonSteps = mysqlTable(
+  "lessonSteps",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    lessonId: int("lessonId").notNull().references(() => lessons.id, { onDelete: "cascade" }),
+    conceptId: int("conceptId").references(() => concepts.id, { onDelete: "set null" }),
+    position: int("position").notNull(),
+    stepType: mysqlEnum("stepType", ["explain", "example", "check", "adapt"]).notNull(),
+    content: text("content").notNull(),
+    checkPrompt: text("checkPrompt"),
+    expectedAnswer: text("expectedAnswer"),
+    evidence: json("evidence").$type<MaterialEvidence[]>(),
+    learnerAnswer: text("learnerAnswer"),
+    isCorrect: int("isCorrect"),
+    completedAt: timestamp("completedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("lessonSteps_lesson_position_unique").on(table.lessonId, table.position),
+    index("lessonSteps_lesson_idx").on(table.lessonId),
+  ],
+);
+export type LessonStep = typeof lessonSteps.$inferSelect;

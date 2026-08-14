@@ -625,3 +625,18 @@
 - [x] Build a distinct mobile touch choreography rather than hiding the desktop cursor
 - [x] Preserve reduced-motion accessibility, replay interaction, landing performance, and all frozen product surfaces
 - [x] Verify desktop/mobile choreography and stop for founder review before any Library work
+
+## ZhiyaAI Foundation + First Learning Loop
+
+- [x] Audit the actual working tree, recent commits, migrations, bookId dependencies, visible ReadBuddy wording, and baseline typecheck/test/build; write docs/zhiya-current-state-audit.md
+- [ ] Introduce backward-compatible Material domain types and schema without destructive book-table renames; safely map existing books into the new abstraction
+- [ ] Implement normalized parser adapters for PDF, DOCX, PPTX, TXT, and Markdown with original source coordinates and evidence preservation
+- [ ] Generalize reusable Book Brain infrastructure into Material Intelligence while preserving narrative reading, citations, embeddings, spoiler safety, provider routing, and existing books
+- [ ] Add shared concept intelligence and persistent transparent Learner Intelligence mastery states
+- [ ] Build a coherent material workspace with Overview, Read, Learn, Flashcards, Quiz, and Notes entry points while retaining /read/:bookId compatibility
+- [ ] Build evidence-grounded editable notes, persistent flashcards, conceptual quizzes, and resilient structured-output handling
+- [ ] Build resumable adaptive personalized Lessons with explained, example, check, adapt, progress, and mastery updates
+- [ ] Connect reader learning signals gently to Learner Intelligence and complete visible ZhiyaAI rebrand cleanup without leaking private material into analytics
+- [ ] Research current public Turbo AI and RevisionDojo capabilities; write competitive matrix and BUILD NEXT/LATER parity roadmap without copying protected expression
+- [ ] Verify typecheck, tests, build, A–F manual acceptance scenarios, ownership isolation, failure handling, and mobile routing; document only verified results
+- [ ] Checkpoint the completed ZhiyaAI foundation and first learning loop with founder-ready architecture, migration, risk, and deferred-work documentation

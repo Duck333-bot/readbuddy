@@ -41,6 +41,12 @@ function getConfig(task: LLMTask): TaskConfig {
         ? { provider: deepseekProvider, model: "deepseek-chat" }
         : { provider: openaiProvider, model: "gpt-4o-mini" };
 
+    case "material_analysis":
+    case "study_generation":
+      return hasDeepSeek()
+        ? { provider: deepseekProvider, model: "deepseek-chat" }
+        : { provider: openaiProvider, model: "gpt-4o-mini" };
+
     case "embedding":
       // Only OpenAI has embeddings for now.
       return { provider: openaiProvider, model: "text-embedding-3-small" };

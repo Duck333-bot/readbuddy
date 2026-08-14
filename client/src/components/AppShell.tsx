@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BookMarked, LogOut, NotebookPen } from "lucide-react";
+import { BookMarked, Layers3, LogOut, NotebookPen } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { BrandWordmark } from "./BrandWordmark";
@@ -38,6 +38,7 @@ export function AppShell({ children, bare = false }: AppShellProps) {
 
   const navItems = [
     { href: "/library", label: "Library", icon: BookMarked },
+    { href: "/materials", label: "Materials", icon: Layers3 },
     { href: "/notebook", label: "Notebook", icon: NotebookPen },
   ];
 

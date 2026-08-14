@@ -42,7 +42,7 @@ export function getBookBrainPresentation({
       kind: "failed",
       eyebrow: "Book Brain paused",
       title: "Your book is still ready to read.",
-      detail: "ReadBuddy will keep the work that is already finished and continue when it can.",
+      detail: "ZhiyaAI will keep the work that is already finished and continue when it can.",
       activeIndex: Math.max(0, Math.min(passCompleted, 3)),
     };
   }
@@ -51,7 +51,7 @@ export function getBookBrainPresentation({
       kind: "paused",
       eyebrow: "Book Brain will continue",
       title: "Nothing you have reached is lost.",
-      detail: "The book stays ready while ReadBuddy waits to continue its background work.",
+      detail: "The book stays ready while ZhiyaAI waits to continue its background work.",
       activeIndex: Math.max(0, Math.min(passCompleted, 3)),
     };
   }
@@ -69,7 +69,7 @@ export function getBookBrainPresentation({
       kind: "evidence",
       eyebrow: "Background understanding",
       title: "Making earlier pages easy to find.",
-      detail: "ReadBuddy is preparing the evidence paths that can bring you back to the right page.",
+      detail: "ZhiyaAI is preparing the evidence paths that can bring you back to the right page.",
       activeIndex: 3,
     };
   }
@@ -87,7 +87,7 @@ export function getBookBrainPresentation({
       kind: "structure",
       eyebrow: "Background understanding",
       title: "Finding structure, people, and ideas.",
-      detail: "ReadBuddy is learning the people and concepts inside this book, not learning about you.",
+      detail: "ZhiyaAI is learning the people and concepts inside this book, not learning about you.",
       activeIndex: 1,
     };
   }
@@ -95,7 +95,7 @@ export function getBookBrainPresentation({
     kind: "text",
     eyebrow: "Background understanding",
     title: "Text and reading structure are ready.",
-    detail: "You can begin reading now while ReadBuddy starts getting to know the rest of the book.",
+    detail: "You can begin reading now while ZhiyaAI starts getting to know the rest of the book.",
     activeIndex: 0,
   };
 }
