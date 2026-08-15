@@ -673,3 +673,11 @@
 - [x] P0: Strip markdown/webpage navigation, accessibility controls, link chrome, and macro noise before they can become units, concepts, evidence, flashcards, or lesson cards
 - [x] P0: Localize each extracted concept to the most relevant source unit instead of attaching all concepts in a large chunk to that chunk’s first section
 - [x] Rebuild and re-score the final version-nine research, business, and substantive school lessons after the browser-chrome and source-localization repairs
+
+## Founder Login Screen Redesign
+
+- [x] Audit the current ZhiyaAI login and account-creation routes, available providers, and protected navigation behavior
+- [x] Apply the approved centered, quiet authentication-card hierarchy with ZhiyaAI-specific copy and responsive styling
+- [x] Keep only genuine working authentication actions visible; do not imply Apple, email/password, recovery, or legal flows that are not yet implemented
+- [x] Add or update login UI regression coverage and verify desktop, phone, keyboard, focus, and Google-login behavior
+- [x] Save a founder-review checkpoint and stop before expanding authentication features
