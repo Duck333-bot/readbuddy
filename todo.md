@@ -681,3 +681,11 @@
 - [x] Keep only genuine working authentication actions visible; do not imply Apple, email/password, recovery, or legal flows that are not yet implemented
 - [x] Add or update login UI regression coverage and verify desktop, phone, keyboard, focus, and Google-login behavior
 - [x] Save a founder-review checkpoint and stop before expanding authentication features
+
+## Founder Dashboard + Materials Library Redesign
+
+- [x] Audit the existing Materials Library, shared shell, upload entry points, search behavior, processing states, and real navigation actions
+- [x] Redesign the signed-in dashboard around a responsive left navigation, greeting, search, real upload entry cards, and a simple material-list hierarchy adapted to ZhiyaAI purple
+- [x] Preserve real material uploads, Material Intelligence states, workspace entry, lessons, notes, flashcards, quizzes, authentication, and user ownership; hide actions without an implemented flow
+- [x] Add focused UI regressions for the dashboard action and material-list contracts
+- [x] Verify empty, loading, processing, ready, search, desktop, phone, focus, and keyboard states; checkpoint and stop for founder review

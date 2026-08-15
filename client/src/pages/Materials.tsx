@@ -1,6 +1,8 @@
-import { ArrowRight, BookOpen, FileText, Layers3, Presentation, Sparkles } from "lucide-react";
-import { Link } from "wouter";
+import { useMemo, useState } from "react";
+import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, FileText, Layers3, LogOut, NotebookPen, Presentation, Search, Sparkles, Upload } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import AppShell from "@/components/AppShell";
+import { BrandWordmark } from "@/components/BrandWordmark";
 import UploadMaterialDialog from "@/components/UploadMaterialDialog";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -9,22 +11,88 @@ const typeLabel: Record<string, string> = {
   document: "Document", slides: "Slides", lecture_notes: "Notes", book: "Book", textbook: "Textbook", research_paper: "Research paper", school_material: "School material", business_report: "Report",
 };
 
+function firstName(name: string | null | undefined) {
+  return name?.trim().split(/\s+/)[0] || "there";
+}
+
 function StateChip({ state }: { state: string }) {
-  const detail = state === "complete" ? { label: "Ready to revise", className: "bg-emerald-100 text-emerald-800" } : state === "paused" || state === "failed" ? { label: "Needs attention", className: "bg-amber-100 text-amber-900" } : { label: "Understanding", className: "bg-sky-100 text-sky-800" };
-  return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.11em] ${detail.className}`}><span className="h-1.5 w-1.5 rounded-full bg-current" />{detail.label}</span>;
+  const detail = state === "complete"
+    ? { label: "Ready", className: "bg-emerald-50 text-emerald-700 ring-emerald-100" }
+    : state === "paused" || state === "failed"
+      ? { label: "Needs attention", className: "bg-amber-50 text-amber-800 ring-amber-100" }
+      : { label: "Understanding", className: "bg-sky-50 text-sky-700 ring-sky-100" };
+  return <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.11em] ring-1 ${detail.className}`}><span className="h-1.5 w-1.5 rounded-full bg-current" />{detail.label}</span>;
 }
 
 function MaterialGlyph({ materialType }: { materialType: string }) {
   const Icon = materialType === "slides" ? Presentation : materialType === "book" || materialType === "textbook" ? BookOpen : FileText;
-  return <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 text-violet-700"><Icon className="h-5 w-5" /></div>;
+  return <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700"><Icon className="h-5 w-5" strokeWidth={1.8} /></div>;
 }
 
 export default function Materials() {
-  const { isAuthenticated, loading } = useAuth({ redirectOnUnauthenticated: true });
+  const { user, isAuthenticated, loading, logout } = useAuth({ redirectOnUnauthenticated: true });
   const materials = trpc.materials.list.useQuery(undefined, { enabled: isAuthenticated });
-  const count = materials.data?.length ?? 0;
-  return <AppShell><div className="mx-auto max-w-6xl px-5 py-9 sm:px-8 sm:py-12">
-    <header className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white px-6 py-8 shadow-[0_18px_55px_rgba(36,61,98,.08)] sm:px-9 sm:py-10"><div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-violet-100/80 blur-3xl" /><div className="absolute -bottom-28 left-1/3 h-56 w-56 rounded-full bg-sky-100/70 blur-3xl" /><div className="relative flex flex-wrap items-end justify-between gap-6"><div className="max-w-2xl"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-700">Your learning library</p><h1 className="mt-3 font-display text-4xl leading-[.98] tracking-[-.055em] text-slate-950 sm:text-5xl">Everything you are learning, in one quiet place.</h1><p className="mt-4 max-w-xl text-sm leading-6 text-slate-600">Upload notes, slides, articles, or books. ZhiyaAI keeps the original source close while helping you revise what matters.</p></div><div className="flex items-center gap-3"><div className="hidden rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-right sm:block"><p className="text-[10px] font-bold uppercase tracking-[.13em] text-slate-500">In your library</p><p className="mt-1 font-display text-2xl text-slate-950">{count}</p></div><UploadMaterialDialog /></div></div></header>
-    {loading || materials.isLoading ? <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map(item => <div key={item} className="h-72 animate-pulse rounded-[1.7rem] bg-white" />)}</section> : count === 0 ? <section className="mt-9 rounded-[2rem] border border-dashed border-slate-300 bg-white/70 px-6 py-14 text-center sm:py-18"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-violet-700"><Layers3 className="h-6 w-6" /></div><h2 className="mt-6 font-display text-3xl tracking-[-.05em] text-slate-950">Start with what you are actually studying.</h2><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-600">Once a source is uploaded, ZhiyaAI can build a grounded overview, revision lesson, cards, and checks from its own content.</p><div className="mt-6"><UploadMaterialDialog triggerLabel="Add your first material" /></div></section> : <><div className="mt-9 flex flex-wrap items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-slate-500">Your collection</p><h2 className="mt-2 font-display text-3xl tracking-[-.05em] text-slate-950">Pick up where your learning left off.</h2></div><p className="text-sm text-slate-500">{count} material{count === 1 ? "" : "s"} · private to your account</p></div><section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{materials.data?.map((material, index) => <article key={material.id} className={`group relative overflow-hidden rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(36,61,98,.045)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(36,61,98,.11)] ${index === 0 ? "sm:col-span-2 lg:col-span-2" : ""}`}><div className="absolute inset-x-0 top-0 h-1.5 bg-violet-300" /><div className="flex items-start justify-between gap-3"><MaterialGlyph materialType={material.materialType} /><StateChip state={material.processingState} /></div><Link href={`/materials/${material.id}`} className="mt-8 block no-underline"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-500">{typeLabel[material.materialType] ?? "Material"} · {material.unitCount} unit{material.unitCount === 1 ? "" : "s"}</p><h3 className="mt-3 line-clamp-2 min-h-14 font-display text-2xl leading-[1.04] tracking-[-.045em] text-slate-950 transition group-hover:text-violet-800">{material.title}</h3><p className="mt-4 text-sm leading-6 text-slate-600">{material.processingState === "complete" ? "Concepts and study tools are grounded in this source." : material.processingState === "paused" || material.processingState === "failed" ? "The original material remains available while this needs attention." : "The original material is ready while deeper understanding continues."}</p></Link><div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4"><Link href={`/materials/${material.id}`} className="text-sm font-semibold text-slate-700 no-underline hover:text-slate-950">Open workspace</Link><Link href={`/materials/${material.id}/lesson`} className="inline-flex items-center gap-1.5 rounded-xl bg-violet-100 px-3 py-2 text-xs font-bold text-violet-900 no-underline transition hover:bg-violet-200">Revise <ArrowRight className="h-3.5 w-3.5" /></Link></div></article>)}</section></>}
+  const [location] = useLocation();
+  const [query, setQuery] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const allMaterials = materials.data ?? [];
+  const visibleMaterials = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return allMaterials;
+    return allMaterials.filter(material => `${material.title} ${typeLabel[material.materialType] ?? material.materialType}`.toLowerCase().includes(normalized));
+  }, [allMaterials, query]);
+  const featuredMaterial = allMaterials.find(material => material.processingState === "complete") ?? allMaterials[0];
+  const navItems = [
+    { href: "/materials", label: "Dashboard", icon: Layers3 },
+    { href: "/library", label: "Reading library", icon: BookOpen },
+    { href: "/notebook", label: "Notebook", icon: NotebookPen },
+  ];
+
+  return <AppShell bare><div className="min-h-screen bg-[#f8f8f7] text-[#25242a]">
+    <div className="mx-auto flex min-h-screen max-w-[96rem]">
+      <aside className={`sticky top-0 hidden h-screen shrink-0 border-r border-[#e5e4e3] bg-white px-3 py-5 transition-[width] duration-200 lg:flex lg:flex-col ${sidebarOpen ? "w-64" : "w-[5.4rem]"}`}>
+        <div className={`flex h-10 items-center ${sidebarOpen ? "justify-between px-2" : "justify-center"}`}>
+          {sidebarOpen && <Link href="/materials" className="text-[#25242a] no-underline"><BrandWordmark className="text-[1.06rem]" /></Link>}
+          <button type="button" aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"} onClick={() => setSidebarOpen(value => !value)} className="grid h-9 w-9 place-items-center rounded-lg text-[#77757d] transition hover:bg-[#f1f0f2] hover:text-[#29272e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7665ec]">
+            {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <nav className="mt-7 grid gap-1" aria-label="Workspace navigation">
+          {navItems.map(item => {
+            const active = location === item.href || (item.href === "/materials" && location.startsWith("/materials"));
+            return <Link key={item.href} href={item.href} title={!sidebarOpen ? item.label : undefined} className={`flex h-11 items-center rounded-xl no-underline transition ${sidebarOpen ? "gap-3 px-3" : "justify-center"} ${active ? "bg-[#f0eef3] text-[#302d36]" : "text-[#5e5b64] hover:bg-[#f7f6f7] hover:text-[#29272e]"}`}><item.icon className="h-4.5 w-4.5 shrink-0" strokeWidth={1.8} />{sidebarOpen && <span className="text-sm font-semibold">{item.label}</span>}</Link>;
+          })}
+        </nav>
+
+        <div className="mt-auto border-t border-[#efeeee] pt-4">
+          <div className={`flex items-center ${sidebarOpen ? "gap-3 px-2" : "justify-center"}`}>
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">{firstName(user?.name).slice(0, 1).toUpperCase()}</div>
+            {sidebarOpen && <div className="min-w-0"><p className="truncate text-sm font-semibold text-[#38363d]">{user?.name ?? "ZhiyaAI reader"}</p><p className="truncate text-xs text-[#8b8991]">Private workspace</p></div>}
+          </div>
+          <button type="button" onClick={() => void logout()} title={!sidebarOpen ? "Sign out" : undefined} className={`mt-3 flex h-10 items-center rounded-xl text-sm font-medium text-[#726f78] transition hover:bg-[#f7f6f7] hover:text-[#2c2931] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7665ec] ${sidebarOpen ? "w-full gap-3 px-3" : "w-full justify-center"}`}><LogOut className="h-4 w-4" strokeWidth={1.8} />{sidebarOpen && "Sign out"}</button>
+        </div>
+      </aside>
+
+      <main className="min-w-0 flex-1 px-5 py-5 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+        <header className="flex items-center justify-between gap-4 lg:hidden"><Link href="/materials" className="no-underline"><BrandWordmark className="text-[1.05rem]" /></Link><button type="button" onClick={() => void logout()} className="rounded-lg px-2 py-2 text-xs font-semibold text-[#6c6971] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7665ec]">Sign out</button></header>
+
+        <div className="mt-7 flex flex-col justify-between gap-5 sm:flex-row sm:items-start lg:mt-0">
+          <div><h1 className="text-4xl font-bold tracking-[-.055em] text-[#25242a] sm:text-[2.85rem]">Hi {firstName(user?.name)}</h1><p className="mt-1 text-base text-[#89868e]">Your materials, ready to learn from.</p></div>
+          <label className="relative block w-full sm:mt-1 sm:max-w-[17rem]"><span className="sr-only">Search your materials</span><Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#96939a]" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search your materials" className="h-11 w-full rounded-xl border border-[#dedddb] bg-white pl-10 pr-4 text-sm text-[#322f37] shadow-[0_2px_5px_rgba(36,33,42,.035)] outline-none placeholder:text-[#aaa7ae] focus:border-violet-400 focus:ring-2 focus:ring-violet-100" /></label>
+        </div>
+
+        <section className="mt-7 grid gap-3 lg:grid-cols-2" aria-label="Material actions">
+          <UploadMaterialDialog triggerLabel="Upload material" triggerClassName="h-auto min-h-20 w-full justify-start rounded-2xl border border-[#dedddb] bg-white px-5 py-4 text-left text-[#302d36] shadow-[0_3px_0_rgba(45,40,50,.11)] hover:bg-[#fbfaff] hover:text-[#302d36]" triggerContent={<><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-100 text-violet-700"><Upload className="h-5 w-5" strokeWidth={1.8} /></span><span><span className="block text-[0.97rem] font-bold">Upload material</span><span className="mt-0.5 block text-sm font-normal text-[#8b8890]">PDF, Word, slides, text, or Markdown</span></span></>} />
+          {featuredMaterial && <Link href={`/materials/${featuredMaterial.id}`} className="group flex min-h-20 items-center gap-4 rounded-2xl border border-[#dedddb] bg-white px-5 py-4 no-underline shadow-[0_3px_0_rgba(45,40,50,.11)] transition hover:bg-[#fbfaff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7665ec]"><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-100 text-violet-700"><Sparkles className="h-5 w-5" strokeWidth={1.8} /></span><span className="min-w-0 flex-1"><span className="block text-[0.97rem] font-bold text-[#302d36]">Continue learning</span><span className="mt-0.5 block truncate text-sm text-[#8b8890]">Open {featuredMaterial.title}</span></span><ArrowRight className="h-5 w-5 text-[#817d86] transition group-hover:translate-x-0.5" /></Link>}
+        </section>
+
+        {loading || materials.isLoading ? <section className="mt-10 space-y-3"><div className="h-5 w-28 animate-pulse rounded bg-[#e8e7e7]" />{[1, 2, 3].map(item => <div key={item} className="h-20 animate-pulse rounded-2xl bg-white" />)}</section> : allMaterials.length === 0 ? <section className="mt-10 rounded-2xl border border-dashed border-[#d7d5d6] bg-white px-6 py-16 text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-violet-100 text-violet-700"><Layers3 className="h-5 w-5" /></span><h2 className="mt-5 text-xl font-bold tracking-[-.03em]">Your dashboard is ready for the first material.</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#817e87]">Upload a source you are genuinely studying. ZhiyaAI will keep it private and build study tools from its own content.</p></section> : <section className="mt-10"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[.13em] text-[#918e96]">Your materials</p><h2 className="mt-1 text-xl font-bold tracking-[-.035em] text-[#2b2930]">{query ? `${visibleMaterials.length} matching material${visibleMaterials.length === 1 ? "" : "s"}` : "Continue where you left off"}</h2></div><p className="hidden text-sm text-[#97939c] sm:block">{allMaterials.length} private material{allMaterials.length === 1 ? "" : "s"}</p></div>
+          <div className="mt-4 space-y-3">{visibleMaterials.map(material => <article key={material.id} className="group flex min-h-[5.5rem] items-center gap-4 rounded-2xl border border-[#dfdedd] bg-white px-4 py-4 shadow-[0_3px_0_rgba(45,40,50,.06)] transition hover:border-[#cfcae8] hover:shadow-[0_8px_20px_rgba(53,44,76,.07)] sm:px-5"><MaterialGlyph materialType={material.materialType} /><Link href={`/materials/${material.id}`} className="min-w-0 flex-1 no-underline focus-visible:outline-none"><p className="truncate text-[1rem] font-bold text-[#302e34] transition group-hover:text-[#6353d9]">{material.title}</p><p className="mt-1 text-sm text-[#918e98]">{typeLabel[material.materialType] ?? "Material"} · {material.unitCount} unit{material.unitCount === 1 ? "" : "s"} · {material.processingState === "complete" ? "Study tools are ready" : material.processingState === "paused" || material.processingState === "failed" ? "Original source is still available" : "Understanding continues in the background"}</p></Link><div className="flex shrink-0 items-center gap-3"><StateChip state={material.processingState} /><Link href={material.processingState === "complete" ? `/materials/${material.id}/lesson` : `/materials/${material.id}`} className="hidden items-center gap-1.5 rounded-xl bg-[#f0edff] px-3 py-2 text-xs font-bold text-[#5949c9] no-underline transition hover:bg-[#e7e2ff] sm:inline-flex">{material.processingState === "complete" ? "Revise" : "Open"}<ArrowRight className="h-3.5 w-3.5" /></Link></div></article>)}
+            {visibleMaterials.length === 0 && <div className="rounded-2xl border border-dashed border-[#d9d6dc] bg-white px-6 py-12 text-center"><p className="font-semibold text-[#4c4952]">No materials match “{query}”.</p><button type="button" onClick={() => setQuery("")} className="mt-3 text-sm font-semibold text-[#6353d9] underline underline-offset-4">Clear search</button></div>}
+          </div>
+        </section>}
+      </main>
+    </div>
   </div></AppShell>;
 }

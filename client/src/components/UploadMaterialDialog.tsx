@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { FileText, Loader2, Plus, Upload } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -19,7 +20,13 @@ function toBase64(file: File) {
   });
 }
 
-export default function UploadMaterialDialog({ triggerLabel = "Add material" }: { triggerLabel?: string }) {
+type UploadMaterialDialogProps = {
+  triggerLabel?: string;
+  triggerClassName?: string;
+  triggerContent?: ReactNode;
+};
+
+export default function UploadMaterialDialog({ triggerLabel = "Add material", triggerClassName = "", triggerContent }: UploadMaterialDialogProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
@@ -50,7 +57,7 @@ export default function UploadMaterialDialog({ triggerLabel = "Add material" }: 
     }
   };
   return <Dialog open={open} onOpenChange={setOpen}>
-    <DialogTrigger asChild><Button className="gap-2 rounded-xl"><Plus className="h-4 w-4" />{triggerLabel}</Button></DialogTrigger>
+    <DialogTrigger asChild><Button className={`gap-2 rounded-xl ${triggerClassName}`}>{triggerContent ?? <><Plus className="h-4 w-4" />{triggerLabel}</>}</Button></DialogTrigger>
     <DialogContent className="max-w-lg rounded-2xl">
       <DialogHeader><DialogTitle className="font-display text-2xl">Add a learning material</DialogTitle><DialogDescription>PDF, Word, PowerPoint, text, or Markdown. You can start learning once the material is ready while deeper analysis continues.</DialogDescription></DialogHeader>
       <input ref={inputRef} className="sr-only" type="file" accept={ACCEPTED} onChange={event => chooseFile(event.target.files?.[0] ?? null)} />
