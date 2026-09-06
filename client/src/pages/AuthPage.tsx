@@ -1,8 +1,15 @@
 import { BrandWordmark } from "@/components/BrandWordmark";
+import { trpc } from "@/lib/trpc";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
-
 export default function AuthPage({ create = false }: { create?: boolean }) {
   const [, navigate] = useLocation();
+  const [email, setEmail] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
+  const capabilities = trpc.auth.capabilities.useQuery();
+  const requestEmailLink = trpc.auth.requestEmailLink.useMutation({
+    onSuccess: () => setEmailSent(true),
+  });
   const continueWithGoogle = () => {
     window.location.assign(`/api/auth/google/start?origin=${encodeURIComponent(window.location.origin)}`);
   };
@@ -38,7 +45,12 @@ export default function AuthPage({ create = false }: { create?: boolean }) {
 
           <div className="my-8 flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-[#e8e7e5]" /><span className="h-1.5 w-1.5 rounded-full bg-[#ddd9f6]" /><span className="h-px flex-1 bg-[#e8e7e5]" /></div>
 
-          <p className="text-center text-sm leading-6 text-[#77757d]">Google uses your verified email. ZhiyaAI does not use a password.</p>
+          {capabilities.data?.email ? emailSent ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-center text-sm leading-6 text-emerald-800">Check your inbox for a one-time ZhiyaAI sign-in link. It expires in 15 minutes.</div> : <form className="space-y-3" onSubmit={event => { event.preventDefault(); requestEmailLink.mutate({ email, origin: window.location.origin }); }}>
+            <label className="block text-sm font-semibold text-[#39363f]" htmlFor="email">Continue with email</label>
+            <input id="email" type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" className="h-12 w-full rounded-xl border border-[#dad9d7] bg-white px-4 text-sm text-[#29272d] outline-none placeholder:text-[#aaa7ae] focus:border-[#8b78f0] focus:ring-2 focus:ring-[#ded8ff]" />
+            <button type="submit" disabled={requestEmailLink.isPending} className="flex h-12 w-full items-center justify-center rounded-xl bg-[#2e2a38] px-5 text-sm font-semibold text-white shadow-[0_2px_0_#17141d] transition hover:bg-[#3b3548] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7362df] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">{requestEmailLink.isPending ? "Sending secure link…" : "Email me a sign-in link"}</button>
+            {requestEmailLink.error && <p role="alert" className="text-center text-sm text-red-700">{requestEmailLink.error.message}</p>}
+          </form> : <p className="text-center text-sm leading-6 text-[#77757d]">Google uses your verified email. ZhiyaAI does not use a password.</p>}
 
           <p className="mt-8 text-center text-sm text-[#77757d]">
             {create ? "Already have an account?" : "New to ZhiyaAI?"}{" "}

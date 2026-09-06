@@ -36,6 +36,38 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+/**
+ * Minimal Stripe linkage plus a local entitlement cache. Stripe remains the
+ * source of truth; status and paidUntil are cached only for fast access checks.
+ * Card, payment-method, amount, and invoice details are never stored here.
+ */
+export const billingAccounts = mysqlTable("billingAccounts", {
+  userId: int("userId").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  customerId: varchar("customerId", { length: 255 }).unique(),
+  subscriptionId: varchar("subscriptionId", { length: 255 }).unique(),
+  status: varchar("status", { length: 40 }).notNull().default("none"),
+  priceId: varchar("priceId", { length: 255 }),
+  paidUntil: timestamp("paidUntil"),
+  cancelAtPeriodEnd: int("cancelAtPeriodEnd").notNull().default(0),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const monthlyUsage = mysqlTable(
+  "monthlyUsage",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    period: varchar("period", { length: 7 }).notNull(),
+    uploads: int("uploads").notNull().default(0),
+    aiCalls: int("aiCalls").notNull().default(0),
+    sourceCharacters: int("sourceCharacters").notNull().default(0),
+  },
+  table => [uniqueIndex("monthly_usage_user_period").on(table.userId, table.period)],
+);
+
+export type BillingAccount = typeof billingAccounts.$inferSelect;
+export type MonthlyUsage = typeof monthlyUsage.$inferSelect;
+
 /** External provider identities linked to one stable ReadBuddy user row. */
 export const authIdentities = mysqlTable(
   "authIdentities",

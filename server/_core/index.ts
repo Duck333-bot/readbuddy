@@ -12,6 +12,9 @@ import { bookBrainHandler } from "../handlers/bookBrainHandler";
 import { materialIntelligenceHandler } from "../handlers/materialIntelligenceHandler";
 import { registerPublicLandingRoutes } from "../publicLanding";
 import { redirectLegacyReadBuddyHost } from "../domainIdentity";
+import { registerBillingWebhook } from "../stripe";
+import { burstLimit, secureRequests } from "../security";
+import { readinessResult } from "../health";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -34,8 +37,18 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
+  app.disable("x-powered-by");
   const server = createServer(app);
+  // Stripe signature verification requires the unmodified raw request body.
+  registerBillingWebhook(app);
+  app.use(secureRequests);
+  app.use("/api/", burstLimit(240, 60_000));
   app.use(redirectLegacyReadBuddyHost);
+  app.get("/healthz", (_req, res) => res.json({ status: "ok" }));
+  app.get("/readyz", async (_req, res) => {
+    const result = await readinessResult();
+    return res.status(result.statusCode).json(result.body);
+  });
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -62,15 +75,18 @@ async function startServer() {
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  const port = process.env.NODE_ENV === "production" ? preferredPort : await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
+  server.listen(port, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
 }
 
-startServer().catch(console.error);
+startServer().catch(error => {
+  console.error(error instanceof Error ? error.message : "Startup failed");
+  process.exitCode = 1;
+});

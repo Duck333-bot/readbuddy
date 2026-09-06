@@ -1053,6 +1053,22 @@ export async function getMaterialById(materialId: number) {
   return rows[0];
 }
 
+export async function userOwnsStorageKey(key: string, userId: number) {
+  const db = await requireDb();
+  const ownedBook = await db
+    .select({ id: books.id })
+    .from(books)
+    .where(and(eq(books.userId, userId), or(eq(books.fileKey, key), eq(books.coverKey, key))))
+    .limit(1);
+  if (ownedBook.length > 0) return true;
+  const ownedMaterial = await db
+    .select({ id: materials.id })
+    .from(materials)
+    .where(and(eq(materials.userId, userId), or(eq(materials.fileKey, key), eq(materials.coverKey, key))))
+    .limit(1);
+  return ownedMaterial.length > 0;
+}
+
 export async function getMaterialIntelligence(materialId: number) {
   const db = await requireDb();
   const rows = await db.select().from(materialIntelligence).where(eq(materialIntelligence.materialId, materialId)).limit(1);

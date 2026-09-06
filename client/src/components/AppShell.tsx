@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BookMarked, Layers3, LogOut, NotebookPen } from "lucide-react";
+import { BookMarked, CreditCard, Layers3, LogOut, NotebookPen } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { BrandWordmark } from "./BrandWordmark";
@@ -104,6 +104,12 @@ export function AppShell({ children, bare = false }: AppShellProps) {
                     )}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/plans" className="cursor-pointer no-underline">
+                      <CreditCard className="mr-2 h-3.5 w-3.5" strokeWidth={1.9} />
+                      Plans & usage
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => void logout()}>
                     <LogOut className="mr-2 h-3.5 w-3.5" strokeWidth={1.9} />
                     Sign out
