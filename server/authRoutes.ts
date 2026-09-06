@@ -1,15 +1,16 @@
 import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 import { parse as parseCookie } from "cookie";
-import { COOKIE_NAME, ONE_YEAR_MS } from "../shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import * as db from "./db";
+import { trustedOrigin } from "./origin";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
 
 const STATE_COOKIE = "__Host-rb_google_state";
 const MAGIC_TTL_MS = 15 * 60 * 1000;
 const hash = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
-const originFrom = (value: string) => { const url = new URL(value); if (url.protocol !== "https:" && url.hostname !== "localhost") throw new Error("Invalid origin"); return url.origin; };
+const originFrom = trustedOrigin;
 
 async function ensureUser(provider: "google" | "email", providerId: string, email: string, name: string | null) {
   const normalizedEmail = email.trim().toLowerCase();

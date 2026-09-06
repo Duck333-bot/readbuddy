@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "../db";
 import { askReadingBuddy, BUDDY_MODES, updateReaderMemoryFromAnswer } from "../readingBuddy";
-import { protectedProcedure, router } from "../_core/trpc";
+import { aiProcedure, protectedProcedure, router } from "../_core/trpc";
 import { buildBrainContext } from "../bookBrain";
 import { collectAllowedPages, validateCitations } from "../citations";
 import { memoryVisibleAtPage } from "../readerMemoryVisibility";
@@ -10,7 +10,7 @@ import { memoryVisibleAtPage } from "../readerMemoryVisibility";
 const modeSchema = z.enum(BUDDY_MODES);
 
 export const buddyRouter = router({
-  ask: protectedProcedure
+  ask: aiProcedure
     .input(
       z.object({
         bookId: z.number().int().positive(),
@@ -148,7 +148,7 @@ export const buddyRouter = router({
     }),
 
   /** Ask about the book without selecting a passage. Retrieval remains page-bounded in safe mode. */
-  askBook: protectedProcedure
+  askBook: aiProcedure
     .input(
       z.object({
         bookId: z.number().int().positive(),

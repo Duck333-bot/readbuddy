@@ -8,7 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "../db";
 import { llmCall } from "../llm/router";
-import { protectedProcedure, router } from "../_core/trpc";
+import { aiProcedure, router } from "../_core/trpc";
 import { buildBrainContext } from "../bookBrain";
 
 /** Used by reader-level AI calls that do not go through askReadingBuddy. */
@@ -28,7 +28,7 @@ export const readerRouter = router({
    * Looks at the current page + last few pages + chapter context + reader history
    * and gives the reader exactly what they need to continue.
    */
-  lost: protectedProcedure
+  lost: aiProcedure
     .input(
       z.object({
         bookId: z.number().int().positive(),
@@ -101,7 +101,7 @@ Task: Give the reader exactly what they need to continue reading.
    * Resume recap — "Welcome back" summary when returning to a book.
    * Returns null if the reader hasn't been away long enough to need a recap.
    */
-  resumeSummary: protectedProcedure
+  resumeSummary: aiProcedure
     .input(
       z.object({
         bookId: z.number().int().positive(),
@@ -163,7 +163,7 @@ Keep it under 80 words. Warm and direct. No spoilers beyond page ${lastPage}.`;
    * Triggered when the reader reaches the last page of a chapter.
    * Uses the stored chapter summary + entities + previous chapter context.
    */
-  chapterDebrief: protectedProcedure
+  chapterDebrief: aiProcedure
     .input(
       z.object({
         bookId: z.number().int().positive(),

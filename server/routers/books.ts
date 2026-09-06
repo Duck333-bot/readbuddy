@@ -5,8 +5,7 @@ import { extractPdf, MAX_PAGES, titleFromFilename } from "../pdf";
 import { protectedProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
 import { createHeartbeatJob } from "../_core/heartbeat";
-import { parse as parseCookie } from "cookie";
-import { COOKIE_NAME } from "@shared/const";
+import { withUsage } from "../usage";
 
 /** 40 MB — comfortably fits most books while staying inside the body limit. */
 const MAX_PDF_BYTES = 40 * 1024 * 1024;
@@ -100,6 +99,7 @@ export const booksRouter = router({
         });
       }
 
+      return withUsage(ctx.user.id, "uploads", async () => {
       const safeName = input.filename.replace(/[^\w.\-]+/g, "_").slice(0, 120);
       const { key: fileKey, url: fileUrl } = await storagePut(
         `books/${ctx.user.id}/${safeName}`,
@@ -159,8 +159,6 @@ export const booksRouter = router({
 
       // Kick off the Book Brain background pipeline via a Heartbeat job.
       try {
-        const sessionToken =
-          parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
         const job = await createHeartbeatJob(
           {
             name: `book-brain-${bookId}`,
@@ -169,7 +167,10 @@ export const booksRouter = router({
             payload: { bookId },
             description: `Book Brain pipeline for book ${bookId}`,
           },
-          sessionToken,
+          // Google/email sessions are local ZhiyaAI sessions, not Forge user
+          // sessions. Empty uses the authenticated project-owner fallback;
+          // the callback is still bound to the stored cron task UID.
+          "",
         );
         await db.upsertBookBrain(bookId, {
           passCompleted: 1,
@@ -187,6 +188,7 @@ export const booksRouter = router({
         firstReadablePage: extracted.firstReadablePage,
         truncated: extracted.pageCount >= MAX_PAGES,
       };
+      }, readableChars);
     }),
 
   getBrain: protectedProcedure

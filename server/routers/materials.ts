@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { parse as parseCookie } from "cookie";
+import { withUsage } from "../usage";
 import * as db from "../db";
 import { parseMaterial, MaterialParseError, MAX_MATERIAL_BYTES, inferMimeType } from "../materials/parser";
 import { storagePut } from "../storage";
@@ -10,7 +10,6 @@ import { createHeartbeatJob, deleteHeartbeatJob } from "../_core/heartbeat";
 import { ensureGroundedStudySet } from "../studyGeneration";
 import { recordMasterySignal } from "../learnerIntelligence";
 import { ensureAdaptiveLesson } from "../adaptiveLesson";
-import { COOKIE_NAME } from "@shared/const";
 
 const filenameSchema = z.string().trim().min(1).max(400);
 
@@ -51,14 +50,13 @@ export const materialsRouter = router({
     if (intelligence.jobTaskUid) {
       try { await deleteHeartbeatJob(intelligence.jobTaskUid, ""); } catch { /* A missing stale task is safe to replace. */ }
     }
-    const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
     const job = await createHeartbeatJob({
       name: `material-intelligence-${material.id}`,
       cron: "0 * * * * *",
       path: "/api/scheduled/materialIntelligence",
       payload: { materialId: material.id },
       description: `Material Intelligence retry for material ${material.id}`,
-    }, sessionToken);
+    }, "");
     await db.updateMaterialIntelligence(material.id, { jobTaskUid: job.taskUid, pipelineStage: "chunks", pipelineError: null, pipelineRetryAfter: null });
     await db.updateMaterialProcessing(material.id, { processingState: "ready", processingError: null, processingRetryAfter: null });
     return { scheduled: true, taskUid: job.taskUid };
@@ -191,6 +189,8 @@ export const materialsRouter = router({
         const message = error instanceof MaterialParseError ? error.message : "This material could not be read.";
         throw new TRPCError({ code: "BAD_REQUEST", message });
       }
+      const sourceCharacters = parsed.units.reduce((total, unit) => total + unit.text.length, 0);
+      return withUsage(ctx.user.id, "uploads", async () => {
       const safeName = input.filename.replace(/[^\w.\-]+/g, "_").slice(0, 120);
       const stored = await storagePut(`materials/${ctx.user.id}/${safeName}`, bytes, input.mimeType || inferMimeType(parsed.fileType));
       const materialId = await db.createMaterial({
@@ -210,14 +210,13 @@ export const materialsRouter = router({
       await db.insertMaterialUnits(materialId, parsed.units);
       await db.createMaterialIntelligence(materialId);
       try {
-      const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
       const job = await createHeartbeatJob({
           name: `material-intelligence-${materialId}`,
           cron: "0 * * * * *",
           path: "/api/scheduled/materialIntelligence",
           payload: { materialId },
           description: `Material Intelligence pipeline for material ${materialId}`,
-      }, sessionToken);
+      }, "");
         await db.updateMaterialIntelligence(materialId, { jobTaskUid: job.taskUid, pipelineStage: "chunks" });
       } catch (error) {
         // The material remains usable. A user-facing retry may be added later;
@@ -225,5 +224,6 @@ export const materialsRouter = router({
         console.warn("[materials.upload] could not schedule Material Intelligence:", error);
       }
       return { materialId, title: (input.title || parsed.title).slice(0, 512), unitCount: parsed.units.length, materialType: parsed.materialType, fileType: parsed.fileType };
+      }, sourceCharacters);
     }),
 });

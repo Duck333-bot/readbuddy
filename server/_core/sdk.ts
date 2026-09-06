@@ -158,6 +158,11 @@ class SDKServer {
     return new TextEncoder().encode(secret);
   }
 
+  private getSessionVerificationSecrets() {
+    return Array.from(new Set([ENV.cookieSecret, ENV.platformCookieSecret].filter(Boolean)))
+      .map(secret => new TextEncoder().encode(secret));
+  }
+
   /**
    * Create a session token for a Manus user openId
    * @example
@@ -205,10 +210,17 @@ class SDKServer {
     }
 
     try {
-      const secretKey = this.getSessionSecret();
-      const { payload } = await jwtVerify(cookieValue, secretKey, {
-        algorithms: ["HS256"],
-      });
+      let payload: Awaited<ReturnType<typeof jwtVerify>>["payload"] | null = null;
+      for (const secretKey of this.getSessionVerificationSecrets()) {
+        try {
+          payload = (await jwtVerify(cookieValue, secretKey, { algorithms: ["HS256"] })).payload;
+          break;
+        } catch {
+          // Local ZhiyaAI sessions and platform cron sessions use separate
+          // managed secrets. Try only the configured fallbacks, never arbitrary keys.
+        }
+      }
+      if (!payload) throw new Error("Session signature verification failed");
       const { openId, appId, name } = payload as Record<string, unknown>;
 
       if (

@@ -35,6 +35,9 @@ import { notebookRouter } from "./routers/notebook";
 import { analyticsRouter } from "./routers/analytics";
 import { annotationsRouter } from "./routers/annotations";
 import { materialsRouter } from "./routers/materials";
+import { billingRouter } from "./routers/billing";
+import { emailAuthenticationEnabled } from "./config";
+import { trustedOrigin } from "./origin";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -42,6 +45,7 @@ export const appRouter = router({
   reader: readerRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    capabilities: publicProcedure.query(() => ({ email: emailAuthenticationEnabled(), google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) })),
     /**
      * Development-only helper: mints a session for the project owner so the
      * scripted UI check (`scripts/ui-check.mjs`) can drive the authenticated
@@ -70,7 +74,10 @@ export const appRouter = router({
       } as const;
     }),
     requestEmailLink: publicProcedure.input(z.object({ email: z.string().email(), origin: z.string().url() })).mutation(async ({ input }) => {
-      await sendMagicLink(input.email.toLowerCase(), input.origin);
+      if (!emailAuthenticationEnabled()) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Email sign-in is not available yet. Continue with Google." });
+      }
+      await sendMagicLink(input.email.toLowerCase(), trustedOrigin(input.origin));
       return { success: true } as const;
     }),
   }),
@@ -81,6 +88,7 @@ export const appRouter = router({
   analytics: analyticsRouter,
   annotations: annotationsRouter,
   materials: materialsRouter,
+  billing: billingRouter,
 });
 
 export type AppRouter = typeof appRouter;
