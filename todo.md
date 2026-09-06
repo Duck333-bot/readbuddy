@@ -707,8 +707,8 @@
 - [x] Generate, review, apply, and verify all additive database migrations required for launch
 - [x] Add meaningful security, billing, ownership, usage-limit, health, and critical Reader regression tests
 - [x] Run `corepack pnpm install --frozen-lockfile`, `corepack pnpm db:migrate`, `corepack pnpm check`, `corepack pnpm test`, `corepack pnpm build`, and `NODE_ENV=production corepack pnpm launch:check --production`
-- [ ] Commit the final launch changes with `Finish ZhiyaAI launch readiness`
-- [ ] Push a `launch-readiness` branch and open a pull request into `main` without overwriting remote changes
+- [x] Commit the final launch changes with `Finish ZhiyaAI launch readiness`
+- [x] Push a `launch-readiness` branch and open a pull request into `main` without overwriting remote changes
 - [ ] Publish through the connected hosting provider and verify the production database and required environment values
 - [ ] Verify deployed authentication, upload, reading, AI explanation, billing, and `/healthz` plus `/readyz`
 - [ ] Deliver the pull request URL, deployed URL, validation results, and only the exact remaining credentials or configuration
