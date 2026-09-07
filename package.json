@@ -4,9 +4,9 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "start": "NODE_ENV=production node dist/index.js",
+    "dev": "NODE_ENV=development tsx watch server/_core/bootstrap.ts",
+    "build": "vite build --outDir ../public && esbuild server/_core/bootstrap.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "start": "NODE_ENV=production node dist/bootstrap.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",

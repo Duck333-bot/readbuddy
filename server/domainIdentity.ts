@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
+import { publicOrigin } from "./origin";
 
-export const READBUDDY_PUBLIC_ORIGIN = "https://readbuddy-fqfwwm4a.manus.space";
 const LEGACY_HOSTS = new Set(["sleepline.icu", "www.sleepline.icu"]);
 
 export function isLegacyReadBuddyHost(host: string | undefined) {
@@ -17,5 +17,5 @@ export function redirectLegacyReadBuddyHost(req: Request, res: Response, next: N
     return;
   }
 
-  res.redirect(308, `${READBUDDY_PUBLIC_ORIGIN}${req.originalUrl || "/"}`);
+  res.redirect(308, `${publicOrigin()}${req.originalUrl || "/"}`);
 }

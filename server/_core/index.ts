@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express from "express";
+import express, { type Express } from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -35,10 +35,17 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-async function startServer() {
+/**
+ * Creates the application without opening a network port.
+ *
+ * Local and managed hosting call `startServer`; the root-level Vercel adapter
+ * imports this factory and lets the platform invoke the same Express app as a
+ * serverless function. Keeping this split prevents two servers from being
+ * created when the app is imported by a host runtime.
+ */
+export function createApp(): Express {
   const app = express();
   app.disable("x-powered-by");
-  const server = createServer(app);
   // Stripe signature verification requires the unmodified raw request body.
   registerBillingWebhook(app);
   app.use(secureRequests);
@@ -67,6 +74,13 @@ async function startServer() {
       createContext,
     })
   );
+
+  return app;
+}
+
+export async function startServer() {
+  const app = createApp();
+  const server = createServer(app);
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
@@ -85,8 +99,3 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
   });
 }
-
-startServer().catch(error => {
-  console.error(error instanceof Error ? error.message : "Startup failed");
-  process.exitCode = 1;
-});

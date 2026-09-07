@@ -712,3 +712,5 @@
 - [ ] Publish through the connected hosting provider and verify the production database and required environment values
 - [ ] Verify deployed authentication, upload, reading, AI explanation, billing, and `/healthz` plus `/readyz`
 - [ ] Deliver the pull request URL, deployed URL, validation results, and only the exact remaining credentials or configuration
+- [ ] Correct the Vercel runtime/routing configuration so the assigned ZhiyaAI production domain serves the Express application, including `/healthz` and `/readyz`
+- [ ] Preserve a reachable production callback path for the existing Manus Heartbeat Book Brain and Material Intelligence jobs before declaring the external host launch-ready

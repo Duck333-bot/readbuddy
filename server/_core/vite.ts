@@ -48,10 +48,16 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath =
-    process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "public");
+  // The standard server bundle keeps client assets at dist/public. Vercel's
+  // Express runtime, by contrast, serves a root-level public directory from
+  // its CDN, so the build command writes the same assets there. Resolve both
+  // layouts to keep local production checks and hosted deployments identical.
+  const candidates = [
+    path.resolve(import.meta.dirname, "public"),
+    path.resolve(process.cwd(), "public"),
+    path.resolve(import.meta.dirname, "../..", "dist", "public"),
+  ];
+  const distPath = candidates.find(candidate => fs.existsSync(candidate)) ?? candidates[0];
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`

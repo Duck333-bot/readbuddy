@@ -4,6 +4,7 @@
 
 # Build outputs
 dist/
+public/
 build/
 *.dist
 
