@@ -5,8 +5,13 @@
   "functions": {
     "api/index.mjs": {
       "maxDuration": 60,
-      "includeFiles": ["dist/vercel-app.mjs", "public/**"]
+      "includeFiles": "dist/vercel-app.mjs"
     }
   },
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/healthz", "destination": "/api/index" },
+    { "source": "/readyz", "destination": "/api/index" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
