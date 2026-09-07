@@ -1,0 +1,12 @@
+# Vercel launch investigation
+
+## Verified on 2026-09-07
+
+| Finding | Evidence | Consequence |
+|---|---|---|
+| Correct public alias | Vercel assigned `https://zhiyaai.vercel.app` to the `zhiya_ai` project. | Never change `zhiya.vercel.app`; it is unrelated. |
+| Original deployment behavior | The prior Vite deployment returned the compiled Express JavaScript at `/` and returned `404` for `/healthz` and `/readyz`. | A serverless Express entrypoint was required. |
+| First adapter build | Deployment `89da09a` failed because Vercel could not detect an entrypoint importing Express. | The root `app.ts` now directly imports Express. |
+| Second adapter build | Deployment `f7f80c6` became ready, but requests returned Vercel `500` errors. Runtime logs reported `ERR_MODULE_NOT_FOUND` for the extensionless import from `app.js` to `server/_core/index`. | The repository now uses a bundled `dist/vercel-app.mjs` behind a small `api/index.mjs` Vercel entrypoint so local TypeScript module paths do not leak into the serverless runtime. This needs a fresh live deployment check. |
+| Environment status | The Vercel project currently has no configured project environment variables. | Database, Google auth, storage/AI, Stripe, and production origin configuration must be added securely only after the runtime adapter starts successfully. |
+| Background processing status | Existing Manus Heartbeat Book Brain jobs are returning `403`; managed-host logs cannot be queried because the Railway deployment binding is absent. | Do not claim resumable Book Brain processing is healthy until a reachable callback runtime is restored and a signed job run is verified. |

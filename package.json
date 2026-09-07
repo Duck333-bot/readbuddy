@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/_core/bootstrap.ts",
-    "build": "vite build --outDir ../public && esbuild server/_core/bootstrap.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "vite build --outDir ../public && esbuild server/_core/bootstrap.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && esbuild app.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/vercel-app.mjs",
     "start": "NODE_ENV=production node dist/bootstrap.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
