@@ -58,11 +58,31 @@ import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+/**
+ * Vercel's .env importer preserves escaped quotes in values copied from JSON.
+ * mysql2 treats that escaped SSL object as a named SSL profile rather than JSON.
+ * Normalize only a valid JSON ssl query option and leave every other URL untouched.
+ */
+export function normalizeDatabaseUrl(databaseUrl: string): string {
+  try {
+    const parsed = new URL(databaseUrl);
+    const ssl = parsed.searchParams.get("ssl");
+    if (!ssl?.includes('\\"')) return databaseUrl;
+
+    const normalizedSsl = ssl.replace(/\\"/g, '"');
+    JSON.parse(normalizedSsl);
+    parsed.searchParams.set("ssl", normalizedSsl);
+    return parsed.toString();
+  } catch {
+    return databaseUrl;
+  }
+}
+
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle(normalizeDatabaseUrl(process.env.DATABASE_URL));
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;

@@ -714,3 +714,4 @@
 - [ ] Deliver the pull request URL, deployed URL, validation results, and only the exact remaining credentials or configuration
 - [ ] Correct the Vercel runtime/routing configuration so the assigned ZhiyaAI production domain serves the Express application, including `/healthz` and `/readyz`
 - [ ] Preserve a reachable production callback path for the existing Manus Heartbeat Book Brain and Material Intelligence jobs before declaring the external host launch-ready
+- [ ] Normalize an escaped TiDB SSL URL imported by Vercel so `/readyz` can safely establish the existing production database connection
