@@ -717,3 +717,5 @@
 - [ ] Normalize an escaped TiDB SSL URL imported by Vercel so `/readyz` can safely establish the existing production database connection
 - [ ] Apply the existing baseline browser security headers to static ZhiyaAI routes served directly by Vercel
 - [ ] Route authenticated private book covers through the existing owner-checked storage proxy on Vercel instead of the SPA fallback
+- [ ] Fix Vercel scheduled callback routing: `/api/scheduled/bookBrain` and `/api/scheduled/materialIntelligence` currently return 404 instead of reaching their protected handlers
+- [ ] Remove internal stack traces, request context, and timestamps from public Book Brain callback errors; return a generic safe error while preserving server-side diagnostics

@@ -55,13 +55,7 @@ export async function bookBrainHandler(req: Request, res: Response) {
   } catch (err) {
     void recordOperationTelemetry({ operation: "book_brain_pipeline", startedAt, success: false, bookId: trackedBookId, error: err });
     const error = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[bookBrainHandler] error:", error);
-    return res.status(500).json({
-      error,
-      stack,
-      context: { url: req.url, taskUid: "unknown" },
-      timestamp: new Date().toISOString(),
-    });
+    console.error("[bookBrainHandler] error:", error, { url: req.url, bookId: trackedBookId });
+    return res.status(500).json({ error: "scheduled processing failed" });
   }
 }
