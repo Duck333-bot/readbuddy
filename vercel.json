@@ -21,6 +21,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/manus-storage/(.*)", "destination": "/api/index" },
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/healthz", "destination": "/api/index" },
     { "source": "/readyz", "destination": "/api/index" },

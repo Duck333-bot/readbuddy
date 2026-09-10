@@ -716,3 +716,4 @@
 - [ ] Preserve a reachable production callback path for the existing Manus Heartbeat Book Brain and Material Intelligence jobs before declaring the external host launch-ready
 - [ ] Normalize an escaped TiDB SSL URL imported by Vercel so `/readyz` can safely establish the existing production database connection
 - [ ] Apply the existing baseline browser security headers to static ZhiyaAI routes served directly by Vercel
+- [ ] Route authenticated private book covers through the existing owner-checked storage proxy on Vercel instead of the SPA fallback
