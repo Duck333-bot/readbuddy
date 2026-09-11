@@ -710,7 +710,7 @@
 - [x] Commit the final launch changes with `Finish ZhiyaAI launch readiness`
 - [x] Push a `launch-readiness` branch and open a pull request into `main` without overwriting remote changes
 - [x] Publish through the connected hosting provider and verify the production database and required environment values
-- [ ] Verify deployed authentication, upload, reading, AI explanation, billing, and `/healthz` plus `/readyz`
+- [ ] Verify deployed authentication, upload, reading, AI explanation, billing, and `/healthz` plus `/readyz` (health/readiness and OAuth-start verified; interactive Google completion and authenticated flows remain open)
 - [ ] Deliver the pull request URL, deployed URL, validation results, and only the exact remaining credentials or configuration
 - [x] Correct the Vercel runtime/routing configuration so the assigned ZhiyaAI production domain serves the Express application, including `/healthz` and `/readyz`
 - [x] Preserve a reachable production callback path for the existing Manus Heartbeat Book Brain and Material Intelligence jobs before declaring the external host launch-ready
@@ -721,7 +721,7 @@
 - [x] Remove internal stack traces, request context, and timestamps from public Book Brain callback errors; return a generic safe error while preserving server-side diagnostics
 
 ## Live Upload Recovery
-- [ ] Make browser-side cover preview best-effort so valid PDF upload cannot be blocked by optional rendering
+- [x] Make browser-side cover preview best-effort so valid PDF upload cannot be blocked by optional rendering
 - [ ] Re-run live Vercel upload, open the reader, and request one grounded AI explanation
 - [ ] Verify signed Heartbeat callback execution on the Vercel host
 - [ ] Deliver final launch report with verified and unverified flows clearly separated
@@ -739,10 +739,10 @@
 ## Current Investigation
 - [x] Preserve all prior launch work and avoid unrelated UI changes
 - [x] Keep Google authentication, private storage, Stripe test mode, health routes, and callback hardening intact
-- [ ] Continue from the current Vercel deployment and close only the remaining live verification gap
+- [x] Continue from the current Vercel deployment and close only the remaining live verification gap
 
 ## Founder Handoff
-- [ ] State whether the Vercel production smoke test passed
+- [ ] State whether the Vercel production smoke test passed (not yet: Google interactive flow returned a malformed-request 400 before authentication)
 - [ ] State whether signed Heartbeat execution was confirmed
 - [ ] State the exact remaining configuration, if any
 - [ ] State the public ZhiyaAI URL
