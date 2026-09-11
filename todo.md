@@ -719,3 +719,46 @@
 - [x] Route authenticated private book covers through the existing owner-checked storage proxy on Vercel instead of the SPA fallback
 - [x] Fix Vercel scheduled callback routing: `/api/scheduled/bookBrain` and `/api/scheduled/materialIntelligence` currently return 404 instead of reaching their protected handlers
 - [x] Remove internal stack traces, request context, and timestamps from public Book Brain callback errors; return a generic safe error while preserving server-side diagnostics
+
+## Live Upload Recovery
+- [ ] Make browser-side cover preview best-effort so valid PDF upload cannot be blocked by optional rendering
+- [ ] Re-run live Vercel upload, open the reader, and request one grounded AI explanation
+- [ ] Verify signed Heartbeat callback execution on the Vercel host
+- [ ] Deliver final launch report with verified and unverified flows clearly separated
+
+## Supporting Evidence
+- [x] Confirmed the harmless PDF is accepted by the server-side parser locally
+- [x] Confirmed the live account had zero reserved uploads after the failed smoke attempt, so the failure occurred before successful upload reservation
+- [x] Confirmed typecheck, 205 passing tests with 2 intentional skips, and production build after the upload fix
+
+## Final Delivery Gate
+- [ ] Save the final checkpoint after live upload verification
+- [ ] Attach the current project version in the final response
+- [ ] Do not claim end-to-end launch completion before live upload and AI answer are verified
+
+## Current Investigation
+- [x] Preserve all prior launch work and avoid unrelated UI changes
+- [x] Keep Google authentication, private storage, Stripe test mode, health routes, and callback hardening intact
+- [ ] Continue from the current Vercel deployment and close only the remaining live verification gap
+
+## Founder Handoff
+- [ ] State whether the Vercel production smoke test passed
+- [ ] State whether signed Heartbeat execution was confirmed
+- [ ] State the exact remaining configuration, if any
+- [ ] State the public ZhiyaAI URL
+- [ ] State the pull request URL
+- [ ] State the checkpoint version
+- [ ] State the exact validation results
+- [ ] State that email authentication remains deferred
+- [ ] State Stripe remains test mode
+- [ ] End with a truthful launch status
+
+## Scope Control
+- [x] No Library redesign
+- [x] No Reader redesign
+- [x] No Notebook redesign
+- [x] No new product feature expansion
+- [x] No secret values committed
+- [x] No private files exposed
+- [x] No spoiler behavior weakened
+- [x] No unrelated production UI changes

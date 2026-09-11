@@ -56,9 +56,16 @@ export function UploadBookDialog({ open, onOpenChange, onUploaded }: { open: boo
       setUploadError(null);
       track.mutate({ event: "upload_started", visitorId: getFunnelVisitorId() });
       setStage("reading");
-      const [preview, fileBase64] = await Promise.all([buildPdfPreview(file), fileToBase64(file)]);
+      const fileBase64 = await fileToBase64(file);
+      let coverBase64: string | undefined;
+      try {
+        coverBase64 = (await buildPdfPreview(file)).coverDataUrl ?? undefined;
+      } catch {
+        // Cover art is optional. A browser PDF-worker failure must never block upload.
+        coverBase64 = undefined;
+      }
       setStage("uploading");
-      const result = await uploadMutation.mutateAsync({ filename: file.name, fileBase64, coverBase64: preview.coverDataUrl ?? undefined, title: titleTouched && title.trim() ? title.trim() : undefined });
+      const result = await uploadMutation.mutateAsync({ filename: file.name, fileBase64, coverBase64, title: titleTouched && title.trim() ? title.trim() : undefined });
       setReadyBook({ bookId: result.bookId, title: result.title, pageCount: result.pageCount });
       setStage("ready");
       track.mutate({ event: "ready_to_read", bookId: result.bookId, visitorId: getFunnelVisitorId() });
