@@ -700,7 +700,7 @@
 - [x] Add database-backed usage limits and Free/Pro plan entitlements without hardcoded billing state
 - [x] Add Stripe checkout, billing portal, signed webhook verification, subscription synchronization, and billing security tests
 - [x] Add a responsive Plans page showing the current plan, entitlements, and real usage
-- [ ] Revalidate Google authentication for launch; keep email login hidden and disabled until a verified Resend `EMAIL_FROM` sender is supplied
+- [x] Revalidate Google authentication for launch; keep email login hidden and disabled until a verified Resend `EMAIL_FROM` sender is supplied
 - [x] Record founder decision to defer email authentication rather than block today’s Google-authenticated launch
 - [x] Add `/healthz` and `/readyz` endpoints with deterministic dependency readiness semantics
 - [x] Add production environment validation and `launch:check --production` without hardcoding secrets
@@ -709,13 +709,13 @@
 - [x] Run `corepack pnpm install --frozen-lockfile`, `corepack pnpm db:migrate`, `corepack pnpm check`, `corepack pnpm test`, `corepack pnpm build`, and `NODE_ENV=production corepack pnpm launch:check --production`
 - [x] Commit the final launch changes with `Finish ZhiyaAI launch readiness`
 - [x] Push a `launch-readiness` branch and open a pull request into `main` without overwriting remote changes
-- [ ] Publish through the connected hosting provider and verify the production database and required environment values
+- [x] Publish through the connected hosting provider and verify the production database and required environment values
 - [ ] Verify deployed authentication, upload, reading, AI explanation, billing, and `/healthz` plus `/readyz`
 - [ ] Deliver the pull request URL, deployed URL, validation results, and only the exact remaining credentials or configuration
-- [ ] Correct the Vercel runtime/routing configuration so the assigned ZhiyaAI production domain serves the Express application, including `/healthz` and `/readyz`
-- [ ] Preserve a reachable production callback path for the existing Manus Heartbeat Book Brain and Material Intelligence jobs before declaring the external host launch-ready
-- [ ] Normalize an escaped TiDB SSL URL imported by Vercel so `/readyz` can safely establish the existing production database connection
-- [ ] Apply the existing baseline browser security headers to static ZhiyaAI routes served directly by Vercel
-- [ ] Route authenticated private book covers through the existing owner-checked storage proxy on Vercel instead of the SPA fallback
-- [ ] Fix Vercel scheduled callback routing: `/api/scheduled/bookBrain` and `/api/scheduled/materialIntelligence` currently return 404 instead of reaching their protected handlers
-- [ ] Remove internal stack traces, request context, and timestamps from public Book Brain callback errors; return a generic safe error while preserving server-side diagnostics
+- [x] Correct the Vercel runtime/routing configuration so the assigned ZhiyaAI production domain serves the Express application, including `/healthz` and `/readyz`
+- [x] Preserve a reachable production callback path for the existing Manus Heartbeat Book Brain and Material Intelligence jobs before declaring the external host launch-ready
+- [x] Normalize an escaped TiDB SSL URL imported by Vercel so `/readyz` can safely establish the existing production database connection
+- [x] Apply the existing baseline browser security headers to static ZhiyaAI routes served directly by Vercel
+- [x] Route authenticated private book covers through the existing owner-checked storage proxy on Vercel instead of the SPA fallback
+- [x] Fix Vercel scheduled callback routing: `/api/scheduled/bookBrain` and `/api/scheduled/materialIntelligence` currently return 404 instead of reaching their protected handlers
+- [x] Remove internal stack traces, request context, and timestamps from public Book Brain callback errors; return a generic safe error while preserving server-side diagnostics

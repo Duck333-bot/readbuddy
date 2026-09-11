@@ -53,8 +53,11 @@ export async function bookBrainHandler(req: Request, res: Response) {
     void recordOperationTelemetry({ operation: "book_brain_pipeline", startedAt, success: true, bookId, extra: { passCompletedBefore: passCompleted, activeVersionBefore: analysisVersion, passCompletedAfter: result.passCompleted ?? null, activeVersionAfter: BOOK_BRAIN_VERSION } });
     return res.json({ ok: true, ...result });
   } catch (err) {
-    void recordOperationTelemetry({ operation: "book_brain_pipeline", startedAt, success: false, bookId: trackedBookId, error: err });
     const error = err instanceof Error ? err.message : String(err);
+    if (/session|authenticate|unauthorized/i.test(error)) {
+      return res.status(401).json({ error: "authentication required" });
+    }
+    void recordOperationTelemetry({ operation: "book_brain_pipeline", startedAt, success: false, bookId: trackedBookId, error: err });
     console.error("[bookBrainHandler] error:", error, { url: req.url, bookId: trackedBookId });
     return res.status(500).json({ error: "scheduled processing failed" });
   }

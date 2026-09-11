@@ -10,27 +10,41 @@ vi.mock("./db", () => ({
   getDb: vi.fn(),
 }));
 
-vi.mock("./bookBrain", () => ({
-  BOOK_BRAIN_VERSION: 5,
-  runBookBrainPipeline: vi.fn(),
+vi.mock("./materialIntelligence", () => ({
+  runMaterialIntelligencePipeline: vi.fn(),
 }));
 
 vi.mock("./telemetry", () => ({
   recordOperationTelemetry: vi.fn(),
 }));
 
+vi.mock("drizzle-orm", () => ({
+  eq: vi.fn(),
+}));
+
+vi.mock("../drizzle/schema", () => ({
+  materialIntelligence: {
+    materialId: "materialId",
+    pipelineStage: "pipelineStage",
+    jobTaskUid: "jobTaskUid",
+  },
+}));
+
 beforeEach(() => {
   authenticateRequest.mockReset();
 });
 
-describe("Book Brain scheduled callback", () => {
-  it("does not expose internal errors to an unauthenticated caller", async () => {
+describe("Material Intelligence scheduled callback", () => {
+  it("returns a safe authentication failure for an invalid session", async () => {
     authenticateRequest.mockRejectedValueOnce(new Error("Invalid session cookie"));
-    const { bookBrainHandler } = await import("./handlers/bookBrainHandler");
+    const { materialIntelligenceHandler } = await import("./handlers/materialIntelligenceHandler");
     const json = vi.fn();
     const status = vi.fn(() => ({ json }));
 
-    await bookBrainHandler({ url: "/api/scheduled/bookBrain" } as never, { status, json } as never);
+    await materialIntelligenceHandler(
+      { url: "/api/scheduled/materialIntelligence" } as never,
+      { status, json } as never,
+    );
 
     expect(status).toHaveBeenCalledWith(401);
     expect(json).toHaveBeenCalledWith({ error: "authentication required" });
@@ -38,3 +52,4 @@ describe("Book Brain scheduled callback", () => {
     expect(JSON.stringify(json.mock.calls[0]?.[0])).not.toContain("stack");
   });
 });
+

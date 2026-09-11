@@ -24,7 +24,11 @@ export async function materialIntelligenceHandler(req: Request, res: Response) {
     void recordOperationTelemetry({ operation: "material_intelligence_pipeline", startedAt, success: true, extra: { materialId, ...result } });
     return res.json({ ok: true, ...result });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/session|authenticate|unauthorized/i.test(message)) {
+      return res.status(401).json({ error: "authentication required" });
+    }
     void recordOperationTelemetry({ operation: "material_intelligence_pipeline", startedAt, success: false, error, extra: { materialId } });
-    return res.status(500).json({ error: error instanceof Error ? error.message : "material intelligence failed" });
+    return res.status(500).json({ error: "material intelligence failed" });
   }
 }
